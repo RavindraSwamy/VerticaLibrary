@@ -1,0 +1,46 @@
+create procedure EDW.MCCM_ACCOUNT_OPEN_REQUEST_UAT()
+begin
+  truncate table reconp.temp_ACCOUNT_OPEN_REQUEST_n_dhamu;
+  drop table reconp.TEMP_ACCOUNT_OPEN_REQUEST_N_MUR1;
+  commit work;
+  select cast(null as varchar(50)) as UCIC_CODE,
+    IAET_TRACKING_NO,
+    999,
+    cast(null as varchar(150)) as PRODUCT_type,
+    IICM_CREATED_DT,
+    cast(null as varchar(150)) as APPLICATION_CHANNEL,
+    IICM_CASE_INST_FLAG,
+    cast(IICM_APP_TITLE as varchar(20)),
+    (IICM_FNAME+IICM_MNAME+IICM_LNAME) as FULL_NAME,
+    IICM_DOB as BIRTH_DATE,
+    IICM_GENDER as GENDER,
+    IICM_PAN_VOTER_ID_NO as PAN_NBR,
+    cast(IICM_CURR_MOB as varchar(20)) as MOBILENUMBER,
+    IICM_EMAIL_ID as APPL_EMAILID,
+    'SA APPLICATION: NOT SUBMIT' as SOURCE_OF_LEAD,
+    IICM_CURR_CITY_ID as CUR_CITY,
+    IICM_CURR_STATE_ID as CUR_STATE,
+    cast(IICM_CURR_PINCODE as varchar(10)) as CUR_PIN,
+    IICM_CURR_COUNTRY_ID as CUR_COUNTRY,
+    IICM_CURR_PHONE1 as CURPHONE1,
+    iicm_prod_type,
+    GETDATE() as ASOF_DATE
+    into reconp.TEMP_ACCOUNT_OPEN_REQUEST_N_MUR1
+    from SRCSTAGE.DBTRACKER_II_CUSTOMER_MASTER_SM_TEMP_UAT
+    where IICM_CASE_INST_FLAG = 0;
+  commit work;
+  update reconp.TEMP_ACCOUNT_OPEN_REQUEST_N_MUR1 as A
+    set A.PRODUCT_type = B.iiat_account_name from
+    SRCSTAGE.DBTRACKER_II_ACCOUNT_TYPE_MASTER_UAT as B
+    where A.iicm_prod_type = B.iiat_id
+    and IICM_CASE_INST_FLAG = 0;
+  commit work;
+  alter table reconp.TEMP_ACCOUNT_OPEN_REQUEST_N_MUR1 delete
+    iicm_prod_type;
+  insert into reconp.temp_ACCOUNT_OPEN_REQUEST_n_dhamu
+    select * from reconp.TEMP_ACCOUNT_OPEN_REQUEST_N_MUR1;
+  commit work;
+  update reconp.temp_ACCOUNT_OPEN_REQUEST_n_dhamu
+    set APPLICATION_CHANNEL = 'SBONLINE-CHANNEL';
+  commit work
+end

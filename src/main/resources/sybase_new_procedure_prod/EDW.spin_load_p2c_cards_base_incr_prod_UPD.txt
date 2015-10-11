@@ -1,0 +1,288 @@
+create procedure EDW.spin_load_p2c_cards_base_incr_prod_UPD()
+on exception resume
+begin
+  declare V$$EDATE date;
+  declare V$$SDATE date;
+  declare V$$SR smallint;
+  declare V$$remark varchar(50);
+  select max(sr) into V$$SR from edw.P2C_BASE_PARAM_N_DEB_UPD
+    where start_date is not null and end_date is not null;
+  select Start_Date into V$$SDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select End_Date into V$$EDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Run_Comment into V$$remark from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  if(V$$remark = 'OK TO PROCESS') then
+    /*
+base cretae for 'CONSUMER','PREMIUM'
+*/
+    select * into #t0300
+      --,exclude in upd 376
+      --   edw.t0220_PRODUCT
+      -- reconp.CARDS_LOGO_MASTER 
+      from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+          T093083.CACCOUNTS_NUMBERX as PRIMARY_CARD_NBR,
+          T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+          T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+          CLM.LOGO as LOGO,
+          (case when aj0904.account_block_code = 'a' or CLM.logo in( 121 ) then 'GPC' else 'Non-GPC' end) as FLAG,
+          T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+          T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE
+          from edw.T0300_Account as T0300
+            ,edw.T093083_CREDIT_CARD_CUST_DETAILS as T093083
+            ,edw.B0220_PRODUCT_PRIME as B0220
+            ,P2C.CARDS_LOGO_MASTER_20MAY2015 as CLM
+            ,reconp.CARD_MASTER_aj0904 as aj0904
+          where T0300.ACCOUNT_NBR = T093083.ACCOUNT_NBR
+          and T0300.ACCOUNT_NBR = aj0904.ACCOUNT_NBR
+          and T0300.PRODUCT_ID = B0220.PRODUCT_ID
+          and B0220.SOURCE_PRODUCT_ID = CLM.PRODUCT
+          and B0220.PRODUCT_NAME = aj0904.PRODUCT_NAME
+          and T0300.SOURCE_SYSTEM_CODE = 20
+          and CLM.TYPE in( 'CONSUMER','PREMIUM' ) ) as x; --9081303 row(s) affected
+    commit work;
+    /*
+
+GPC MISSING ACCOUNT BASE create
+*/
+    select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+      T093083.CACCOUNTS_NUMBERX as PRIMARY_CARD_NBR,
+      T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+      T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+      CLM.LOGO as LOGO,'GPC' as FLAG,
+      T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+      T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE
+      into #t03001
+      from P2C.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as DD
+        ,edw.T0300_Account as T0300
+        ,edw.T093083_CREDIT_CARD_CUST_DETAILS as T093083
+        ,edw.B0220_PRODUCT_PRIME as B0220 ---- edw.t0220_PRODUCT
+        ,P2C.CARDS_LOGO_MASTER_20MAY2015 as CLM ---reconp.CARDS_LOGO_MASTER 
+        ,reconp.CARD_MASTER_aj0904 as aj0904
+      where DD.SOURCE_SYSTEM_CODE = 20
+      and DD.IDENTIFIER = 'GPC'
+      and T0300.ACCOUNT_NBR = DD.ACCOUNT_NBR
+      and T0300.ACCOUNT_NBR = T093083.ACCOUNT_NBR
+      and T0300.ACCOUNT_NBR = aj0904.ACCOUNT_NBR
+      and T0300.PRODUCT_ID = B0220.PRODUCT_ID
+      and B0220.SOURCE_PRODUCT_ID = CLM.PRODUCT
+      and B0220.PRODUCT_NAME = aj0904.PRODUCT_NAME
+      and T0300.SOURCE_SYSTEM_CODE = 20; --2183 row(s) affected
+    create hg index Hg_IDX_temo_t0300_1 on #t0300(ACCOUNT_OPEN_DATE asc);
+    create hg index Hg_IDX_temo_t0300_2 on #t0300(account_nbr asc);
+    drop table p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD;
+    select a.*,'GPC' as Reason into p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD from #t03001 as a; --2183 row(s) affected
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD
+      select a.*,'ADHOC' as Reason
+        from #t0300 as a,P2C.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as P2CS
+        where P2CS.SOURCE_SYSTEM_CODE = 20
+        and P2CS.IDENTIFIER <> 'GPC'
+        and a.account_nbr = P2CS.account_nbr
+        -- not P2CS.account_nbr = any(select ACCOUNT_NBR from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD)
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD as C where A.ACCOUNT_NBR = C.ACCOUNT_NBR); ---779 row(s) inserted
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD
+      select a.*,'Card Logo change' as Reason
+        from #t0300 as a
+          ,p2c.p2c_cards_n_heena_UPD as p2cc
+        where a.ACCOUNT_OPEN_DATE <= V$$SDATE --'2015-05-14' and--V$$SDATE and
+        and a.account_nbr = p2cc.account_nbr
+        and a.LOGO <> p2cc.LOGO
+        --   not a.account_nbr = any(select ACCOUNT_NBR from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD);
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD as C where A.ACCOUNT_NBR = C.ACCOUNT_NBR); --0 row(s) inserted
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD
+      select a.*,'Incremental' as Reason from #t0300 as a where a.ACCOUNT_OPEN_DATE between V$$SDATE and V$$EDATE -- '2015-05-14' AND '2015-05-23' AND  --V$$SDATE and V$$EDATE and
+        -- not a.account_nbr = any(select ACCOUNT_NBR from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD);
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD as C where A.ACCOUNT_NBR = C.ACCOUNT_NBR); --3137 row(s) inserted
+    commit work;
+    select * into #gpid_change
+      --A.Unique_ID <> B.Unique_ID and
+      --substring(A.Unique_ID,1,1) = 'G'
+      from(select a.account_nbr,a.SOURCE_ACCOUNT_NBR,a.source_system_code,'UCIC Change' as Reason
+          from P2c.p2c_UCIC_table as A,p2c.p2c_base_data19_UPD as B
+          where A.Account_NBR = B.Account_NBR
+          and B.Source_System_Code = 20
+          and A.UCIC_VALUE <> B.UCIC_VALUE) as x;
+    --0
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD
+      select a.*,b.reason
+        from #t0300 as a,#gpid_change as b
+        where a.account_nbr = b.account_nbr
+        --   not b.account_nbr = any(select ACCOUNT_NBR from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD);
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD as C where A.ACCOUNT_NBR = C.ACCOUNT_NBR);
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD
+      select a.*,'Account Missing' as Reason from #t0300 as a
+        where a.ACCOUNT_OPEN_DATE <= V$$SDATE --'2015-05-14' --V$$SDATE and
+        --    and not a.account_nbr = any(select account_nbr from p2c.p2c_base_data19 where source_system_code = 20)
+        --   and not a.account_nbr = any(select ACCOUNT_NBR from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD);
+        and not exists(select 1 from p2c.p2c_base_data19_upd as d where a.account_nbr = d.account_nbr and source_system_code = 20)
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD as C where A.ACCOUNT_NBR = C.ACCOUNT_NBR); --9053167 row(s) inserted
+    commit work;
+    drop table p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_UPD;
+    select distinct
+      ACCOUNT_NBR,
+      PRIMARY_CARD_NBR,
+      SOURCE_ACCOUNT_NBR,
+      SOURCE_SYSTEM_CODE,
+      LOGO,
+      FLAG,
+      ACCOUNT_OPEN_DATE,
+      ACCOUNT_CLOSE_DATE
+      into p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_UPD
+      from p2c.TEMP_P2C_BASE_TABLE_CARDS_UPD; --8301066 row(s) affected
+    commit work;
+    create hg index HGIDX_p2c_cards_11 on p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_UPD(ACCOUNT_NBR asc);
+    drop table p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_UPD;
+    select * into p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_UPD
+      from(select PLT.UCIC_VALUE,PLT.UNIQUE_ID,
+          CSBR.ACCOUNT_NBR,
+          CSBR.PRIMARY_CARD_NBR,
+          CSBR.SOURCE_ACCOUNT_NBR,
+          CSBR.SOURCE_SYSTEM_CODE,
+          CSBR.LOGO,
+          CSBR.FLAG,
+          CSBR.ACCOUNT_OPEN_DATE,
+          CSBR.ACCOUNT_CLOSE_DATE
+          from p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_UPD as CSBR,P2c.P2C_UCIC_TABLE as PLT
+          where CSBR.account_nbr = PLT.account_nbr
+          and CSBR.source_system_code = PLT.source_system_code) as x; -- 82 71 887 row(s) affected
+    commit work;
+    /*
+select * into #CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_UPD_UNIQUE from
+(select PLT.UNIQUE_ID,
+CSBR.ACCOUNT_NBR,
+CSBR.PRIMARY_CARD_NBR,
+CSBR.SOURCE_ACCOUNT_NBR,
+CSBR.SOURCE_SYSTEM_CODE,
+CSBR.LOGO,
+CSBR.FLAG,
+CSBR.ACCOUNT_OPEN_DATE,
+CSBR.ACCOUNT_CLOSE_DATE from
+p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_UPD as CSBR,reconp.P2C_LINKAGE_TABLE as PLT where
+CSBR.account_nbr = PLT.account_nbr and
+CSBR.source_system_code = PLT.source_system_code) as x; -- 8301066 row(s) affected
+
+*/
+    drop table p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_1_UPD;
+    select * into p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_1_UPD
+      from(select BASE.*,PROF_QUALIFICATION,PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,
+          NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME
+          from p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_UPD as BASE
+            left outer join edw.B0328_party_account as B0328
+            on BASE.SOURCE_ACCOUNT_NBR = B0328.SOURCE_ACCOUNT_NBR
+            and BASE.source_system_code = B0328.source_system_code
+            left outer join EDW.T0111_SOURCE_CUSTOMER_DETAILS as T0111
+            on TRIM(B0328.SOURCE_PARTY_ID) = TRIM(T0111.SOURCE_PARTY_ID)
+            and B0328.source_system_code = T0111.source_system_code
+          where B0328.source_system_code = 20 and T0111.source_system_code = 20) as x;
+    --14330339 row(s) affected
+    commit work;
+    create hg index HGIDX_p2c_cards_111 on p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_1_UPD(ACCOUNT_NBR asc);
+    drop table p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_2_UPD;
+    select * into p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_2_UPD
+      from(select BASE.*,T0342.surrogate_pricing_code
+          from p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_1_UPD as BASE
+            join edw.T0300_account as T0300
+            on BASE.account_nbr = T0300.account_nbr
+            left outer join edw.T0342_Application as T0342
+            on T0300.application_id = T0342.application_id) as x; --14330339 row(s) affected
+    commit work;
+    -- SELECT COUNT(1) FROM p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_2_UPD
+    drop table p2c.CARDS_CREDIT_LIMIT_1_UPD;
+    select * into p2c.CARDS_CREDIT_LIMIT_1_UPD
+      from(select account_nbr,credit_limit_amount from EDW.T0313_ACCOUNT_CREDIT_LIMIT_PRIME
+          where limit_type_code = '202' and credit_limit_end_date is null) as x; --9719968 row(s) affected
+    commit work;
+    drop table p2c.CARDS_CREDIT_LIMIT_2_UPD;
+    select * into p2c.CARDS_CREDIT_LIMIT_2_UPD
+      from(select account_nbr,max(credit_limit_start_date) as max_date from EDW.T0313_ACCOUNT_CREDIT_LIMIT_PRIME
+          where limit_type_code = '202'
+          and credit_limit_amount > 0
+          and account_nbr = any(select account_nbr from p2c.CARDS_CREDIT_LIMIT_1 where(credit_limit_amount is null
+            or credit_limit_amount = 0)) group by account_nbr) as x; --6224 row(s) affected
+    commit work;
+    drop table p2c.CARDS_CREDIT_LIMIT_3_UPD;
+    select * into p2c.CARDS_CREDIT_LIMIT_3_UPD
+      from(select a.account_nbr,a.credit_limit_amount from EDW.T0313_ACCOUNT_CREDIT_LIMIT_PRIME as a,p2c.CARDS_CREDIT_LIMIT_2 as b
+          where a.account_nbr = b.account_nbr
+          and a.credit_limit_start_date = b.max_date
+          and a.limit_type_code = '202') as x; --6223 row(s) affected
+    commit work;
+    drop table p2c.CARDS_INCR_SEGMNT_CREDIT_LIMIT_UPD;
+    select * into p2c.CARDS_INCR_SEGMNT_CREDIT_LIMIT_UPD
+      from(select a.account_nbr as account_nbr,a.credit_limit_amount as first_limit,b.credit_limit_amount as last_non_zero_limit
+          from p2c.CARDS_CREDIT_LIMIT_1_UPD as a left outer join p2c.CARDS_CREDIT_LIMIT_3_UPD as b
+            on a.account_nbr = b.account_nbr) as x; --9719968 row(s) affected
+    commit work;
+    drop table p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_FINAL_UPD;
+    select distinct * into p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_FINAL_UPD
+      from(select a.*,b.first_limit,b.last_non_zero_limit
+          from p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_SRC_2_UPD as a left outer join p2c.CARDS_INCR_SEGMNT_CREDIT_LIMIT as b
+            on a.account_nbr = b.account_nbr) as x; --8273435 row(s) affected
+    commit work;
+    /*
+ADHOC refresh prepair a.product_id in (1460013,1373133) base create and exclude from final base on the basis of unique id
+*/
+    select a.card_nbr,b.account_nbr,a.Product_id,c.product_name,d.ACCOUNT_OPEN_DATE,d.ACCOUNT_CLOSE_DATE
+      into #account_base -- SELECT COUNT(1)
+      from EDW.T0308_CARD as a,edw.T0330_ACCOUNT_CARD as b,edw.t0220_PRODUCT as c,edw.t0300_account as d
+      where a.card_nbr = b.card_nbr
+      and a.product_id = c.product_id
+      and a.product_id in( 1460013,1373133 ) 
+      and b.account_nbr = d.account_nbr
+      and d.source_system_code = 20
+      and d.ACCOUNT_OPEN_DATE between V$$SDATE and V$$EDATE; --'2015-05-14' AND '2015-05-23'--V$$SDATE and V$$EDATE
+    commit work;
+    select distinct UCIC_VALUE,Unique_ID,b.product_name,b.ACCOUNT_OPEN_DATE,b.ACCOUNT_CLOSE_DATE into #adhoc_Refresh
+      from P2C.p2c_UCIC_table as a,#account_base as b
+      where a.account_nbr = b.account_nbr;
+    commit work;
+    -- delete gpc account of product id 1460013,1373133
+    delete from #adhoc_Refresh as b from
+      P2C.P2C_base_data19_UPD as a,#adhoc_Refresh as b
+      where a.UCIC_VALUE = b.UCIC_VALUE --a.UNIQUE_ID = b.UNIQUE_ID
+      and(substr(a.cust_rule,1,1) = 'P' and servicesegment in( 'GPC' ) );
+    commit work;
+    select a.UCIC_VALUE,a.unique_id,c.account_nbr,a.source_account_nbr,c.card_nbr,b.product_name,
+      b.ACCOUNT_OPEN_DATE,b.ACCOUNT_CLOSE_DATE into #adhoc_Refresh1
+      from p2c.p2c_UCIC_table as a,#adhoc_Refresh as b,edw.T0330_ACCOUNT_CARD as c
+      where a.UCIC_VALUE = b.UCIC_VALUE --a.UNIQUE_ID = b.UNIQUE_ID
+      and a.account_nbr = c.account_nbr
+      and a.source_system_code = 20;
+    commit work;
+    delete from p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_FINAL_UPD as a from
+      p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_FINAL_UPD as a
+      where a.account_nbr = any(select account_nbr from #adhoc_Refresh1 as b);
+    commit work;
+    insert into p2c.CARDS_INCR_SEGMNT_BASE_RETAIL_FINAL_UPD
+      select a.UCIC_VALUE,
+        a.unique_id,
+        a.account_nbr,
+        a.card_nbr,
+        a.SOURCE_ACCOUNT_NBR,
+        20 as SOURCE_SYSTEM_CODE,
+        a.product_name,
+        'Non' as FLAG,
+        a.ACCOUNT_OPEN_DATE,
+        a.ACCOUNT_CLOSE_DATE,
+        null as PROF_QUALIFICATION,
+        null as PROFESSION,
+        null as CUR_CITY,
+        null as MAIL_CITY,
+        null as PER_CITY,
+        null as BUS_CITY,
+        null as SALARY,
+        null as NET_ANNUAL_INCOME,
+        null as GROSS_ANNUAL_INCOME,
+        null as surrogate_pricing_code,
+        null as first_limit,
+        null as last_non_zero_limit
+        from #adhoc_Refresh1 as a; --82 73 970
+    commit work;
+    if sqlstate <> '00000' then
+      return
+    end if
+  end if
+end

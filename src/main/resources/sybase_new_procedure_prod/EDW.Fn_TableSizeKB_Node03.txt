@@ -1,0 +1,12 @@
+create function EDW.Fn_TableSizeKB_Node03( @TABLENAME varchar(200) )  --EDW.FN_TABLESIZEGB(@TABLENAME VARCHAR(128))
+returns decimal(22,2)
+as
+begin
+  declare @CMD varchar(200),
+  @TABSIZE decimal(22,2)
+  select @CMD = 'SELECT CAST(KBytes AS DECIMAL(22,2)) AS KBytes INTO  #A FROM SP_IQTABLESIZE '+'('+''''+@TABLENAME+''''+')'
+  execute(@CMD)
+  if @@ERROR <> 0 return-1
+  select @TABSIZE = KBYTES from #A
+  return @TABSIZE
+end

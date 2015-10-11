@@ -1,0 +1,38 @@
+create procedure -------------------------------------MOBILE ACCOUNT MASTER--------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+EDW.MOBILE_ACCOUNT_MASTER()
+begin
+  truncate table MCCM.MOBILE_ACCOUNT_MASTER;
+  insert into MCCM.MOBILE_ACCOUNT_MASTER
+    select UCIC_VALUE,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      SOURCE_ACCOUNT_NBR,
+      ACCOUNT_OPEN_DATE,
+      ACCOUNT_CLOSE_DATE,
+      null as ACCOUNT_TYPE,
+      null as SAVINGS_ACCOUNT_NO,
+      DORMANCY_STATUS,
+      GETDATE() as AS_OF_DATE,
+      null as MOBILE_NBR,
+      null as USER_ID
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE in( 302,303 ) ;
+  commit work;
+  update MCCM.MOBILE_ACCOUNT_MASTER as A
+    set A.ACCOUNT_TYPE = (case when B.SOURCE_SYSTEM_CODE = 302 then 'MOBOMONEY'
+    when B.SOURCE_SYSTEM_CODE = 303 then 'Mpesa' else null end) from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.MOBILE_ACCOUNT_MASTER as A
+    set A.SAVINGS_ACCOUNT_NO = B.BANK_NBR,
+    A.MOBILE_NBR = B.MOBILENUMBER from
+    EDW.T0111_SOURCE_CUSTOMER_DETAILS_EXTERNAL_SYSTEM as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update MCCM.MOBILE_ACCOUNT_MASTER as A
+    set A.USER_ID = B.USER_ID from
+    EDW.D0122_CAR_CUST_LINKAGE as B
+    where TRIM(A.SOURCE_ACCOUNT_NBR) = TRIM(B.SOURCE_ACCOUNT_NBR);
+  commit work
+end

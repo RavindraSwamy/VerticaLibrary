@@ -1,0 +1,11 @@
+create procedure EDW.icic_cquery_tran_his()
+begin
+  truncate table EDW.main_icici_cquery_tran;
+  load into table EDW.main_icici_cquery_tran( FORACID '|^|' null(zeros,'NULL','null'),TRAN_TYPE '|^|' null(zeros,'NULL','null'),AMOUNT '|^|' null(zeros,'NULL','null'),TO_AC '|^|' null(zeros,'NULL','null'),TRAN_PARTICULAR '|^|' null(zeros,'NULL','null'),SEQ_NO '|^|' null(zeros,'NULL','null'),RCRE_DATE '|^|' null(zeros,'NULL','null'),POST_USER_ID '|^|' null(zeros,'NULL','null'),PROC_FLG '|^|' null(zeros,'NULL','null'),TRAN_ID '|^|' null(zeros,'NULL','null'),TRAN_DATE '|^|' null(zeros,'NULL','null'),CHEQUENO '|^|' null(zeros,'NULL','null'),CHEQUEDT '|^|' null(zeros,'NULL','null'),BENIFICIARY_DETAILS '|^|' null(zeros,'NULL','null'),ADDITIONAL_DETAILS '|^|' null(zeros,'NULL','null'),DATE_CREATED '\x0A' null(zeros,'NULL','null') ) using file
+    '/data_extraction2/icici_cquery_tran.out' quotes off escapes off preview on message log '/data_extraction2/icici_cquery_tran.out_201504150859.msg' row log '/data_extraction2/icici_cquery_tran.out_201504150859.row' only log all log delimited by '|^|' notify 100000 with checkpoint on;
+  commit work;
+  truncate table EDW.main_icici_cquery_tran_his;
+  load into table EDW.main_icici_cquery_tran_his( FORACID '|^|' null(zeros,'NULL','null'),TRAN_TYPE '|^|' null(zeros,'NULL','null'),AMOUNT '|^|' null(zeros,'NULL','null'),TO_AC '|^|' null(zeros,'NULL','null'),TRAN_PARTICULAR '|^|' null(zeros,'NULL','null'),SEQ_NO '|^|' null(zeros,'NULL','null'),RCRE_DATE '|^|' null(zeros,'NULL','null'),POST_USER_ID '|^|' null(zeros,'NULL','null'),PROC_FLG '|^|' null(zeros,'NULL','null'),TRAN_ID '|^|' null(zeros,'NULL','null'),TRAN_DATE '|^|' null(zeros,'NULL','null'),CHEQUENO '|^|' null(zeros,'NULL','null'),CHEQUEDT '|^|' null(zeros,'NULL','null'),BENIFICIARY_DETAILS '|^|' null(zeros,'NULL','null'),ADDITIONAL_DETAILS '|^|' null(zeros,'NULL','null'),DATE_CREATED '\x0A' null(zeros,'NULL','null') ) using file
+    '/data_extraction2/icici_cquery_tran_his.out' quotes off escapes off preview on message log '/data_extraction2/icici_cquery_tran_his.out_201504150900.msg' row log '/data_extraction2/icici_cquery_tran_his.out_201504150900.row' only log all log delimited by '|^|' notify 100000 with checkpoint on;
+  commit work
+end

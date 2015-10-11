@@ -1,0 +1,8 @@
+create procedure edw.tfat()
+begin
+  truncate table edw.S_MAIN_TF_ADDRESS_TABLE;
+  load into table edw.S_MAIN_TF_ADDRESS_TABLE( ADDR_B2KID '|^|' null(zeros,'NULL','null'),ADDR_ID '|^|' null(zeros,'NULL','null'),ADDR_TYPE '|^|' null(zeros,'NULL','null'),DEL_FLG '|^|' null(zeros,'NULL','null'),CUST_TITLE_CODE '|^|' null(zeros,'NULL','null'),NAME '|^|' null(zeros,'NULL','null'),ADDRESS1 '|^|' null(zeros,'NULL','null'),ADDRESS2 '|^|' null(zeros,'NULL','null'),ADDRESS3 '|^|' null(zeros,'NULL','null'),CITY_CODE '|^|' null(zeros,'NULL','null'),STATE_CODE '|^|' null(zeros,'NULL','null'),CNTRY_CODE '|^|' null(zeros,'NULL','null'),PIN_CODE '|^|' null(zeros,'NULL','null'),EMAIL_ID '|^|' null(zeros,'NULL','null'),BIC_CODE '|^|' null(zeros,'NULL','null'),PARTY_IDENTIFIER '|^|' null(zeros,'NULL','null'),ADDR_IDENTIFICATION '|^|',LCHG_USER_ID '|^|' null(zeros,'NULL','null'),LCHG_TIME '|^|' null(zeros,'NULL','null'),RCRE_USER_ID '|^|' null(zeros,'NULL','null'),RCRE_TIME '|^|' null(zeros,'NULL','null'),TS_CNT '|^|' null(zeros,'NULL','null'),BANK_ID '\x0A' null(zeros,'NULL','null') ) using file
+    '/sybase_load/LOAD_MANAGEMENT/TRADEFINANCE/ACCOUNT/YET_TO_LOAD_FILES/tf_address_table.out' quotes off escapes off preview on message log '/data_extraction2/TF_ADDRESS_TABLE.out_201507161025.msg' row log '/data_extraction2/TF_ADDRESS_TABLE.out_201507161025.row' only log all log delimited by '|^|' notify 100000 with checkpoint on;
+  commit work;
+  insert into edw.MAIN_TF_ADDRESS_TABLE select * from edw.S_MAIN_TF_ADDRESS_TABLE
+end

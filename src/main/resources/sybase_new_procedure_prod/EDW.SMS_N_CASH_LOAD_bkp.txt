@@ -1,0 +1,42 @@
+create procedure EDW.SMS_N_CASH_LOAD_bkp()
+on exception resume
+begin
+  truncate table RECONP.TEMP_LOAD_SMS_N_CASH_TRAN_bkp;
+  commit work;
+  set temporary option DATE_ORDER = 'MDY';
+  load into table RECONP.TEMP_LOAD_SMS_N_CASH_TRAN_bkp( REM_ACCOUNT_NO '|^^|',REM_ID_NO '|^^|',REM_DATE_TIME '|^^|',REM_BENE_MOBILE '|^^|',REM_AMOUNT '|^^|',REM_CHARGES '|^^|',REM_SER_TAX '|^^|',REM_STATUS '|^^|',REM_CHANNEL '|^^|',REM_WITHDRAW_DATE '|^^|',REM_WITHDRAW_ATM '|^^|',REM_WITHDRAW_TRAN_ID '|^^|',REM_CANCEL_DATE '|^^|',REM_CANCEL_TRAN_ID '|^^|',REM_CANCEL_CHANNEL '|^^|',REM_BLOCK_DATE '|^^|',REM_INVALID_ATTEMPTS '|^^|',REM_MOB_NO '|^^|',SMS_STATUS '|^^|',RCRE_DATE '|^^|',BENE_NAME '|^^|',BENE_ADDR '|^^|',MAX_RCRE_DATE '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/SMS_N_CASH/sms_n_cash_tran.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/PwC/LOAD_LOGS/ERROR_RECORDS_MSSG/SMS_N_CASH.msg' row log '/sybase_load/LOAD_MANAGEMENT/PwC/LOAD_LOGS/ERROR_RECORDS_MSSG/SMS_N_CASH2.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  --      230 record(s) affected -- 1584 record(s) affected
+  commit work;
+  -- AS discussed with yatin parab TECH I-CORE TEAM  REM_ID_NO is the primary key of column. its never be duplicate.
+  -- CREATE UNIQUE HG INDEX UHG_IDX_REM_ID_NO_temp_load ON RECONP.TEMP_LOAD_SMS_N_CASH_TRAN  (REM_ID_NO);COMMIT; 
+  -- CREATE UNIQUE HG INDEX UHG_IDX_REM_ID_NO_final_tran ON RECONP.SMS_N_CASH_TRAN_FINAL (REM_ID_NO);COMMIT; 
+  delete from EDW.SMS_N_CASH_TRAN_bkp
+    where REM_ID_NO = any(select REM_ID_NO from RECONP.TEMP_LOAD_SMS_N_CASH_TRAN_bkp); -- 40 record(s) deleted
+  commit work;
+  insert into EDW.SMS_N_CASH_TRAN_20june2015
+    select REM_ACCOUNT_NO,
+      REM_ID_NO,
+      REM_DATE_TIME,
+      REM_BENE_MOBILE,
+      REM_AMOUNT,
+      REM_CHARGES,
+      REM_SER_TAX,
+      REM_STATUS,
+      REM_CHANNEL,
+      REM_WITHDRAW_DATE,
+      REM_WITHDRAW_ATM,
+      REM_WITHDRAW_TRAN_ID,
+      REM_CANCEL_DATE,
+      REM_CANCEL_TRAN_ID,
+      REM_CANCEL_CHANNEL,
+      REM_BLOCK_DATE,
+      REM_INVALID_ATTEMPTS,
+      REM_MOB_NO,
+      SMS_STATUS,
+      RCRE_DATE,
+      BENE_NAME,
+      BENE_ADDR
+      from RECONP.TEMP_LOAD_SMS_N_CASH_TRAN_bkp; -- 230 record(s) inserted
+  commit work
+end

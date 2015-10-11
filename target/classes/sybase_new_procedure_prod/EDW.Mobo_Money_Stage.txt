@@ -1,0 +1,93 @@
+create procedure EDW.Mobo_Money_Stage()
+begin
+  create table #UPS_MOBOMONEY(
+    USER_ID varchar(20) null,
+    SYB_USER_ID varchar(20) null,
+    );
+  truncate table RECONP.MOBOMONEY_STAGE_TEMP;
+  commit work;
+  load into table RECONP.MOBOMONEY_STAGE_TEMP( SNo ',',User_Id ',',FirstName ',',LastName ',',Mobile_No ',',DOB ',',gender ',',Email ',',Acc_Open ',',Acc_Update ',',Activated_On ',',status ',',country ',',City ',',State ',',userType ',',panNumber ',',IciciAccount ',',companyname '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MOBOMONEY/ACCOUNT/YET_TO_LOAD_FILES/Mobomoney_Source.txt' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/MOBOMONEY/LOAD_LOGS/ERROR_RECORDS_MSSG/Mobomoney_Source.msg' row log '/sybase_load/LOAD_MANAGEMENT/MOBOMONEY/LOAD_LOGS/ERROR_RECORDS_DATA/Mobomoney_Source.row' only log all log delimited by ',' notify 100000 with checkpoint on;
+  commit work;
+  update RECONP.MOBOMONEY_STAGE_TEMP set date_created = getdate();
+  commit work;
+  delete from RECONP.MOBOMONEY_STAGE_TEMP as A from
+    RECONP.MOBOMONEY_STAGE_TEMP as A
+    ,(select MAX(ROWID(MOBOMONEY_STAGE_TEMP)) as ROW_ID,
+      USER_ID from RECONP.MOBOMONEY_STAGE_TEMP
+      group by USER_ID) as B
+    where A.USER_ID = B.USER_ID
+    and ROWID(A) <> B.ROW_ID;
+  update EDW.MOBOMONEY_STAGE as A
+    set A.SNo = B.SNo,
+    A.FirstName = B.FirstName,
+    A.LastName = B.LastName,
+    A.Mobile_No = B.Mobile_No,
+    A.DOB = B.DOB,
+    A.gender = B.gender,
+    A.Email = B.Email,
+    A.Acc_Open = B.Acc_Open,
+    A.Activated_On = B.Activated_On,
+    A.status = B.status,
+    A.country = B.country,
+    A.CITY = B.CITY,
+    A.State = B.State,
+    A.USERTYPE = B.USERTYPE,
+    A.panNumber = B.panNumber,
+    A.IciciAccount = B.IciciAccount,
+    A.companyname = B.companyname,
+    A.date_created = B.date_created from
+    RECONP.MOBOMONEY_STAGE_TEMP as B
+    where B.USER_ID = A.USER_ID;
+  commit work;
+  insert into #UPS_MOBOMONEY
+    select A.USER_ID,
+      B.USER_ID as SYB_USER_ID
+      from RECONP.MOBOMONEY_STAGE_TEMP as A left outer join EDW.MOBOMONEY_STAGE as B
+        on B.USER_ID = A.USER_ID;
+  insert into EDW.MOBOMONEY_STAGE
+    ( SNo,
+    User_Id,
+    FirstName,
+    LastName,
+    Mobile_No,
+    DOB,
+    gender,
+    Email,
+    Acc_Open,
+    Acc_Update,
+    Activated_On,
+    status,
+    country,
+    City,
+    State,
+    userType,
+    panNumber,
+    IciciAccount,
+    companyname,
+    DATE_CREATED ) 
+    select SNo,
+      A.User_Id,
+      FirstName,
+      LastName,
+      Mobile_No,
+      DOB,
+      gender,
+      Email,
+      Acc_Open,
+      Acc_Update,
+      Activated_On,
+      status,
+      country,
+      City,
+      State,
+      userType,
+      panNumber,
+      IciciAccount,
+      companyname,
+      DATE_CREATED
+      from reconp.MOBOMONEY_STAGE_TEMP as A,#UPS_MOBOMONEY as B
+      where A.USER_ID = B.USER_ID
+      and B.SYB_USER_ID is null;
+  commit work
+end

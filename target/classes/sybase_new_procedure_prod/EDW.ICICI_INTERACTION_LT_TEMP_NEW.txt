@@ -1,0 +1,76 @@
+create procedure EDW.ICICI_INTERACTION_LT_TEMP_NEW()
+begin
+  create table #campaign_history(
+    source_account_nbr varchar(30) null,
+    subject_text varchar(200) null,
+    execution_date date null,
+    channel varchar(10) null,
+    email_mobile varchar(100) null,
+    mailopen varchar(10) null,
+    maillinkclick varchar(10) null,
+    AS_OF_DATE date null,
+    UCIC bigint null,
+    );
+  commit work;
+  insert into #campaign_history
+    select source_account_nbr,Subject_line,execution_date,'EMAIL' as A,email_id,mailopen,linkclick,GETDATE(),null
+      from CAMP.EMAILERS_TRACKER
+      where execution_date >= GETDATE()-15;
+  commit work;
+  insert into #campaign_history
+    select source_account_nbr,sms_text,fired_date,'SMS' as A,mobile,null,null,GETDATE(),null
+      from CAMP.SMS_TRACKER_PP2408
+      where fired_date >= GETDATE()-15;
+  commit work;
+  insert into #campaign_history
+    select source_account_nbr,msg_text_1,upload_date,'S2S' as A,null,null,null,GETDATE(),null
+      from camp.S2S_TRACKER_SHANKESH
+      where upload_date >= GETDATE()-15;
+  commit work;
+  insert into #campaign_history
+    select mcsd_acc_no,mcsd_spacific_message,mcsd_created_date,'MC' as A,null,null,null,GETDATE(),null
+      from CAMP.Message_center_details_hm1901
+      where mcsd_created_date >= GETDATE()-15;
+  commit work;
+  update #campaign_history as A
+    set UCIC = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and B.SOURCE_SYSTEM_CODE = 30
+    and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder');
+  commit work;
+  update #campaign_history as A
+    set UCIC = SCD.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as SCD
+    where A.SOURCE_ACCOUNT_NBR = SCD.SOURCE_ACCOUNT_NBR
+    and SCD.SOURCE_SYSTEM_CODE in( 50,51,52,53,54 ) 
+    and SUBSTR(SCD.SOURCE_PARTY_ID,1,4) <> 'COB_';
+  commit work;
+  update #campaign_history as A
+    set UCIC = SCD.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as SCD
+    where A.SOURCE_ACCOUNT_NBR = SCD.SOURCE_ACCOUNT_NBR
+    and SCD.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  update #campaign_history as A
+    set UCIC = SCD.UCIC_VALUE from
+    RECONP.CARD_MASTER_AJ0904 as B
+    ,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as SCD
+    where A.SOURCE_ACCOUNT_NBR = B.CARD_NBR
+    and TRIM(B.SOURCE_PARTY_ID) = SCD.SOURCE_PARTY_ID
+    and SCD.SOURCE_SYSTEM_CODE = 20
+    and A.UCIC is null;
+  commit work;
+  update #campaign_history as A
+    set UCIC = SCD.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as SCD
+    where A.SOURCE_ACCOUNT_NBR = SCD.SOURCE_ACCOUNT_NBR
+    and A.UCIC is null;
+  commit work;
+  delete from #campaign_history where UCIC is null;
+  commit work;
+  truncate table P2C.ICICI_INTERACTION_LT_TEMP;
+  commit work;
+  insert into P2C.ICICI_INTERACTION_LT_TEMP select cast(ucic as varchar(30)),source_account_nbr,subject_text,execution_date,AS_OF_DATE,channel,email_mobile,mailopen,maillinkclick from #campaign_history;
+  commit work
+end

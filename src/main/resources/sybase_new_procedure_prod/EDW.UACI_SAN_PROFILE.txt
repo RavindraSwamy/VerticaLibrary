@@ -1,0 +1,608 @@
+create procedure edw.UACI_SAN_PROFILE()
+begin
+  select LIABILITY_ACCT_MASTER.SOURCE_ACCOUNT_NBR,
+    LIABILITY_ACCT_MASTER.UCIC_CODE,
+    LIABILITY_ACCT_MASTER.SOURCE_SYSTEM_CODE,
+    cast(null as varchar(50)) as USERID,
+    cast(null as date) as ACTIVATION_DATE,
+    cast(null as date) as FIRST_LOGIN_DATE,
+    cast(null as date) as LAST_LOGIN_DATE,
+    cast(null as varchar(5)) as FD_OPENED,
+    cast(null as varchar(5)) as RD_OPENED,
+    cast(null as varchar(5)) as FT_DONE,
+    cast(null as varchar(5)) as BP_DONE,
+    cast(null as varchar(5)) as PMR_DONE,
+    cast(null as integer) as FT_COUNT,
+    cast(null as integer) as RIB_LOGIN_COUNT,
+    cast(null as varchar(20)) as RIB_RAISED_SR,
+    cast(null as varchar(5)) as R_CHEQUE_BOOK_REQUEST,
+    cast(null as varchar(5)) as MY_MONEY,
+    cast(null as varchar(5)) as IWISH,
+    cast(null as date) as MY_MONEY_ACTIVATION_DATE,
+    cast(null as varchar(20)) as BRANCH_SOLID,
+    cast(null as varchar(25)) as BRANCH_LOCATION,
+    cast(null as varchar(10)) as DD,
+    cast(null as varchar(20)) as TITLE,
+    cast(null as varchar(80)) as FULL_NAME,
+    cast(null as date) as BIRTH_DATE,
+    cast(null as char(5)) as GENDER,
+    cast(null as integer) as AGE,
+    cast(null as varchar(80)) as OCCUPATION,
+    cast(null as char(5)) as MARRIED,
+    cast(null as char(5)) as IMOBILE_ACTIVE,
+    cast(null as char(5)) as INTERNET_ACTIVE,
+    cast(null as char(5)) as ATM_ACTIVE,
+    cast(null as char(5)) as POS_ACTIVE,
+    cast(null as char(5)) as BRANCH_ACTIVE,
+    cast(null as char(5)) as LIABILITY_ACCT_HOLDER,
+    cast(null as char(5)) as CARD_ACCT_HOLDER,
+    cast(null as char(5)) as DEMAT_ACCT_HOLDER,
+    cast(null as char(5)) as LOAN_ACCT_HOLDER,
+    cast(null as char(5)) as MOBILE_ACCT_HOLDER,
+    cast(null as varchar(5)) as OTHER_ACCT_HOLDER, --------------NOT AVAILABLE
+    cast(null as char(5)) as SERVICE_REQUEST_OPEN,
+    cast(null as char(5)) as DELIVERABLE_IN_TRANSIT,
+    cast(null as varchar(20)) as ACCOUNT_OPEN_REQUEST, --------------NOT AVAILABLE
+    cast(null as date) as LAST_CALLCENTER_CONTACT_DATE,
+    cast(null as char(5)) as SERVICE_SEGMENT,
+    cast(null as char(5)) as INCOME_SEGMENT,
+    cast(null as integer) as CREDIT_SCORE,
+    cast(null as varchar(5)) as DNC_NDNC, --------------CUST CONTACT MASTER
+    cast(null as char(5)) as DELINQUENT_CUSTOMER,
+    cast(null as char(5)) as FRAUD_CUSTOMER_FLAG,
+    AS_OF_DATE,
+    cast(null as numeric(20,4)) as ANNUAL_SALARY_OR_TURNOVER,
+    cast(null as varchar(10)) as HAVE_KIDS,
+    cast(null as varchar(10)) as SOCIAL_MEDIA_ACTIVE,
+    cast(null as varchar(10)) as SENTIMENT_GREVIENCES,
+    cast(null as varchar(10)) as BLOCKED_CREDIT_CARD, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+    cast(null as varchar(10)) as DORMANT_DEMAT_ACCOUNT,
+    cast(null as varchar(80)) as EMAILID, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+    cast(null as varchar(15)) as MOBILE_NUMBER, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+    cast(null as varchar(10)) as FOREX_ACTIVE,
+    cast(null as varchar(10)) as TRAVEL_INSURANCE_ACTIVE,
+    cast(null as varchar(10)) as TRAVEL_CARD_ACTIVE,
+    cast(null as varchar(10)) as ECOMMERECE_ACTIVE,
+    cast(null as varchar(10)) as PREF_MERCHANT_SHOPPING,
+    cast(null as varchar(10)) as PREF_MERCHANT_DINNING,
+    cast(null as varchar(80)) as DEVICETYPE,
+    cast(null as varchar(25)) as BROWSED_TIME,
+    cast(null as varchar(80)) as BROWSED_SECTION,
+    cast(null as date) as LAST_LOGIN,
+    cast(null as varchar(10)) as REFEREENAME,
+    cast(null as varchar(10)) as REFEREEMOBILENO,
+    cast(null as varchar(80)) as USER_ID,
+    cast(null as integer) as DEVICESTATUS,
+    cast(null as date) as DEVICEACTIVATIONDATE,
+    cast(null as integer) as NO_OF_LOGINS,
+    cast(null as varchar(10)) as I_CHEQUE_BOOK_REQUEST,
+    cast(null as date) as LOG_DATE,
+    --cast(null as varchar(50)) as DELIVERABLE_IN_TRANSIT,
+    cast(null as varchar(150)) as PARTICULARS,
+    cast(null as varchar(50)) as TRACKING_NO,
+    cast(null as date) as DELIVERY_DUE_DATE,
+    cast(null as integer) as INCIDENT_NO,
+    cast(null as varchar(50)) as SRNO,
+    cast(null as varchar(150)) as SRTYPE,
+    cast(null as varchar(150)) as SR_CATEGORY,
+    cast(null as date) as SR_LOG_DATE,
+    cast(null as date) as SR_DUE_DATE,
+    cast(null as varchar(150)) as SR_STATUS,
+    cast(null as varchar(150)) as SR_CHANNEL,
+    cast(null as varchar(150)) as SR_PRODUCT_LINE,
+    cast(null as varchar(150)) as FAILURE_REASON,
+    cast(null as varchar(50)) as SOURCE_PARTY_ID,
+    --cast(null as integer) as SOURCE_SYSTEM_CODE,
+    cast(null as char(5)) as ERV_CUSTOMER_FLAG,
+    cast(null as varchar(5)) as NEW_MOB_NO_REG,
+    cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+    cast(null as varchar(5)) as OLD_REGISTERED_MOBILE_NO, -----------------------NOT AVAILABLE IN CUSTOMER_MASTER
+    LIABILITY_ACCT_MASTER.CONTRACTED_MAB,
+    LIABILITY_ACCT_MASTER.ACTUAL_MTDMAB,
+    LIABILITY_ACCT_MASTER.MAB_DATE,
+    LIABILITY_ACCT_MASTER.MAB_DAYS_LEFT,
+    LIABILITY_ACCT_MASTER.MAB_NOT_MET,
+    cast(null as char(5)) as POCKETS_ACTIVE,
+    cast(null as char(5)) as SHOPPING_ACTIVE,
+    cast(null as varchar(100)) as MAREKTING_FIELD1,
+    cast(null as varchar(100)) as MAREKTING_FIELD2,
+    cast(null as varchar(100)) as MAREKTING_FIELD3,
+    cast(null as varchar(100)) as MAREKTING_FIELD4,
+    cast(null as varchar(100)) as MAREKTING_FIELD5,
+    cast(null as varchar(100)) as MAREKTING_FIELD6,
+    cast(null as varchar(100)) as MAREKTING_FIELD7,
+    cast(null as varchar(100)) as MAREKTING_FIELD8,
+    cast(null as varchar(100)) as MAREKTING_FIELD9,
+    cast(null as varchar(100)) as MAREKTING_FIELD10
+    into reconp.UACI_ACCTNO_PROFILE2
+    from mccm.LIABILITY_ACCT_MASTER as LIABILITY_ACCT_MASTER
+    where LIABILITY_ACCT_MASTER.source_system_code = 30
+    and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder')
+    and account_close_date is null;
+  commit work;
+  insert into reconp.UACI_ACCTNO_PROFILE2
+    select demat_acct_master.SOURCE_ACCOUNT_NBR,
+      demat_acct_master.UCIC_CODE,
+      demat_acct_master.SOURCE_SYSTEM_CODE,
+      cast(null as varchar(50)) as USERID,
+      cast(null as date) as ACTIVATION_DATE,
+      cast(null as date) as FIRST_LOGIN_DATE,
+      cast(null as date) as LAST_LOGIN_DATE,
+      cast(null as varchar(5)) as FD_OPENED,
+      cast(null as varchar(5)) as RD_OPENED,
+      cast(null as varchar(5)) as FT_DONE,
+      cast(null as varchar(5)) as BP_DONE,
+      cast(null as varchar(5)) as PMR_DONE,
+      cast(null as integer) as FT_COUNT,
+      cast(null as integer) as RIB_LOGIN_COUNT,
+      cast(null as varchar(20)) as RIB_RAISED_SR,
+      cast(null as varchar(5)) as R_CHEQUE_BOOK_REQUEST,
+      cast(null as varchar(5)) as MY_MONEY,
+      cast(null as varchar(5)) as IWISH,
+      cast(null as date) as MY_MONEY_ACTIVATION_DATE,
+      cast(null as varchar(20)) as BRANCH_SOLID,
+      cast(null as varchar(25)) as BRANCH_LOCATION,
+      cast(null as varchar(10)) as DD,
+      cast(null as varchar(20)) as TITLE,
+      cast(null as varchar(80)) as FULL_NAME,
+      cast(null as date) as BIRTH_DATE,
+      cast(null as char(5)) as GENDER,
+      cast(null as integer) as AGE,
+      cast(null as varchar(80)) as OCCUPATION,
+      cast(null as char(5)) as MARRIED,
+      cast(null as char(5)) as IMOBILE_ACTIVE,
+      cast(null as char(5)) as INTERNET_ACTIVE,
+      cast(null as char(5)) as ATM_ACTIVE,
+      cast(null as char(5)) as POS_ACTIVE,
+      cast(null as char(5)) as BRANCH_ACTIVE,
+      cast(null as char(5)) as LIABILITY_ACCT_HOLDER,
+      cast(null as char(5)) as CARD_ACCT_HOLDER,
+      cast(null as char(5)) as DEMAT_ACCT_HOLDER,
+      cast(null as char(5)) as LOAN_ACCT_HOLDER,
+      cast(null as char(5)) as MOBILE_ACCT_HOLDER,
+      cast(null as varchar(20)) as OTHER_ACCT_HOLDER, --------------NOT AVAILABLE
+      cast(null as char(5)) as SERVICE_REQUEST_OPEN,
+      cast(null as char(5)) as DELIVERABLE_IN_TRANSIT,
+      cast(null as varchar(20)) as ACCOUNT_OPEN_REQUEST, --------------NOT AVAILABLE
+      cast(null as date) as LAST_CALLCENTER_CONTACT_DATE,
+      cast(null as char(5)) as SERVICE_SEGMENT,
+      cast(null as char(5)) as INCOME_SEGMENT,
+      cast(null as integer) as CREDIT_SCORE,
+      cast(null as varchar(5)) as DNC_NDNC, --------------CUST CONTACT MASTER
+      cast(null as char(5)) as DELINQUENT_CUSTOMER,
+      cast(null as char(5)) as FRAUD_CUSTOMER_FLAG,
+      ASOF_DATE,
+      cast(null as numeric(20,4)) as ANNUAL_SALARY_OR_TURNOVER,
+      cast(null as varchar(10)) as HAVE_KIDS,
+      cast(null as varchar(10)) as SOCIAL_MEDIA_ACTIVE,
+      cast(null as varchar(10)) as SENTIMENT_GREVIENCES,
+      cast(null as varchar(10)) as BLOCKED_CREDIT_CARD, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+      cast(null as varchar(10)) as DORMANT_DEMAT_ACCOUNT,
+      cast(null as varchar(80)) as EMAILID, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+      cast(null as varchar(15)) as MOBILE_NUMBER, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+      cast(null as varchar(10)) as FOREX_ACTIVE,
+      cast(null as varchar(10)) as TRAVEL_INSURANCE_ACTIVE,
+      cast(null as varchar(10)) as TRAVEL_CARD_ACTIVE,
+      cast(null as varchar(10)) as ECOMMERECE_ACTIVE,
+      cast(null as varchar(10)) as PREF_MERCHANT_SHOPPING,
+      cast(null as varchar(10)) as PREF_MERCHANT_DINNING,
+      cast(null as varchar(80)) as DEVICETYPE,
+      cast(null as varchar(25)) as BROWSED_TIME,
+      cast(null as varchar(80)) as BROWSED_SECTION,
+      cast(null as date) as LAST_LOGIN,
+      cast(null as varchar(10)) as REFEREENAME,
+      cast(null as varchar(10)) as REFEREEMOBILENO,
+      cast(null as varchar(80)) as USER_ID,
+      cast(null as integer) as DEVICESTATUS,
+      cast(null as date) as DEVICEACTIVATIONDATE,
+      cast(null as integer) as NO_OF_LOGINS,
+      cast(null as varchar(10)) as I_CHEQUE_BOOK_REQUEST,
+      cast(null as date) as LOG_DATE,
+      --cast(null as varchar(50)) as DELIVERABLE_IN_TRANSIT,
+      cast(null as varchar(150)) as PARTICULARS,
+      cast(null as varchar(50)) as TRACKING_NO,
+      cast(null as date) as DELIVERY_DUE_DATE,
+      cast(null as integer) as INCIDENT_NO,
+      cast(null as varchar(50)) as SRNO,
+      cast(null as varchar(150)) as SRTYPE,
+      cast(null as varchar(150)) as SR_CATEGORY,
+      cast(null as date) as SR_LOG_DATE,
+      cast(null as date) as SR_DUE_DATE,
+      cast(null as varchar(150)) as SR_STATUS,
+      cast(null as varchar(150)) as SR_CHANNEL,
+      cast(null as varchar(150)) as SR_PRODUCT_LINE,
+      cast(null as varchar(150)) as FAILURE_REASON,
+      cast(null as varchar(50)) as SOURCE_PARTY_ID,
+      --cast(null as integer) as SOURCE_SYSTEM_CODE,
+      cast(null as char(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(5)) as OLD_REGISTERED_MOBILE_NO, -----------------------NOT AVAILABLE IN CUSTOMER_MASTER
+      cast(null as decimal(20,4)) as CONTRACTED_MAB,
+      cast(null as decimal(20,4)) as ACTUAL_MTDMAB,
+      cast(null as integer) as MAB_DATE,
+      cast(null as integer) as MAB_DAYS_LEFT,
+      cast(null as char(5)) as MAB_NOT_MET,
+      cast(null as char(5)) as POCKETS_ACTIVE,
+      cast(null as char(5)) as SHOPPING_ACTIVE,
+      cast(null as varchar(100)) as MAREKTING_FIELD1,
+      cast(null as varchar(100)) as MAREKTING_FIELD2,
+      cast(null as varchar(100)) as MAREKTING_FIELD3,
+      cast(null as varchar(100)) as MAREKTING_FIELD4,
+      cast(null as varchar(100)) as MAREKTING_FIELD5,
+      cast(null as varchar(100)) as MAREKTING_FIELD6,
+      cast(null as varchar(100)) as MAREKTING_FIELD7,
+      cast(null as varchar(100)) as MAREKTING_FIELD8,
+      cast(null as varchar(100)) as MAREKTING_FIELD9,
+      cast(null as varchar(100)) as MAREKTING_FIELD10
+      from mccm.demat_acct_master as demat_acct_master
+      where demat_acct_master.source_system_code = 80
+      and account_close_date is null;
+  commit work;
+  insert into reconp.UACI_ACCTNO_PROFILE2
+    select distinct A.SOURCE_ACCOUNT_NBR,
+      A.UCIC_CODE,
+      A.SOURCE_SYSTEM_CODE,
+      cast(null as varchar(50)) as USERID,
+      cast(null as date) as ACTIVATION_DATE,
+      cast(null as date) as FIRST_LOGIN_DATE,
+      cast(null as date) as LAST_LOGIN_DATE,
+      cast(null as varchar(5)) as FD_OPENED,
+      cast(null as varchar(5)) as RD_OPENED,
+      cast(null as varchar(5)) as FT_DONE,
+      cast(null as varchar(5)) as BP_DONE,
+      cast(null as varchar(5)) as PMR_DONE,
+      cast(null as integer) as FT_COUNT,
+      cast(null as integer) as RIB_LOGIN_COUNT,
+      cast(null as varchar(20)) as RIB_RAISED_SR,
+      cast(null as varchar(5)) as R_CHEQUE_BOOK_REQUEST,
+      cast(null as varchar(5)) as MY_MONEY,
+      cast(null as varchar(5)) as IWISH,
+      cast(null as date) as MY_MONEY_ACTIVATION_DATE,
+      cast(null as varchar(20)) as BRANCH_SOLID,
+      cast(null as varchar(25)) as BRANCH_LOCATION,
+      cast(null as varchar(10)) as DD,
+      cast(null as varchar(20)) as TITLE,
+      cast(null as varchar(80)) as FULL_NAME,
+      cast(null as date) as BIRTH_DATE,
+      cast(null as char(5)) as GENDER,
+      cast(null as integer) as AGE,
+      cast(null as varchar(80)) as OCCUPATION,
+      cast(null as char(5)) as MARRIED,
+      cast(null as char(5)) as IMOBILE_ACTIVE,
+      cast(null as char(5)) as INTERNET_ACTIVE,
+      cast(null as char(5)) as ATM_ACTIVE,
+      cast(null as char(5)) as POS_ACTIVE,
+      cast(null as char(5)) as BRANCH_ACTIVE,
+      cast(null as char(5)) as LIABILITY_ACCT_HOLDER,
+      cast(null as char(5)) as CARD_ACCT_HOLDER,
+      cast(null as char(5)) as DEMAT_ACCT_HOLDER,
+      cast(null as char(5)) as LOAN_ACCT_HOLDER,
+      cast(null as char(5)) as MOBILE_ACCT_HOLDER,
+      cast(null as varchar(20)) as OTHER_ACCT_HOLDER, --------------NOT AVAILABLE
+      cast(null as char(5)) as SERVICE_REQUEST_OPEN,
+      cast(null as char(5)) as DELIVERABLE_IN_TRANSIT,
+      cast(null as varchar(20)) as ACCOUNT_OPEN_REQUEST, --------------NOT AVAILABLE
+      cast(null as date) as LAST_CALLCENTER_CONTACT_DATE,
+      cast(null as char(5)) as SERVICE_SEGMENT,
+      cast(null as char(5)) as INCOME_SEGMENT,
+      cast(null as integer) as CREDIT_SCORE,
+      cast(null as varchar(5)) as DNC_NDNC, --------------CUST CONTACT MASTER
+      cast(null as char(5)) as DELINQUENT_CUSTOMER,
+      cast(null as char(5)) as FRAUD_CUSTOMER_FLAG,
+      A.ASOF_DATE,
+      cast(null as numeric(20,4)) as ANNUAL_SALARY_OR_TURNOVER,
+      cast(null as varchar(10)) as HAVE_KIDS,
+      cast(null as varchar(10)) as SOCIAL_MEDIA_ACTIVE,
+      cast(null as varchar(10)) as SENTIMENT_GREVIENCES,
+      cast(null as varchar(10)) as BLOCKED_CREDIT_CARD, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+      cast(null as varchar(10)) as DORMANT_DEMAT_ACCOUNT,
+      cast(null as varchar(80)) as EMAILID, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+      cast(null as varchar(15)) as MOBILE_NUMBER, ----------------------------------NOT AVAILABLE IN UCIC ATTRIBUTE
+      cast(null as varchar(10)) as FOREX_ACTIVE,
+      cast(null as varchar(10)) as TRAVEL_INSURANCE_ACTIVE,
+      cast(null as varchar(10)) as TRAVEL_CARD_ACTIVE,
+      cast(null as varchar(10)) as ECOMMERECE_ACTIVE,
+      cast(null as varchar(10)) as PREF_MERCHANT_SHOPPING,
+      cast(null as varchar(10)) as PREF_MERCHANT_DINNING,
+      cast(null as varchar(80)) as DEVICETYPE,
+      cast(null as varchar(25)) as BROWSED_TIME,
+      cast(null as varchar(80)) as BROWSED_SECTION,
+      cast(null as date) as LAST_LOGIN,
+      cast(null as varchar(10)) as REFEREENAME,
+      cast(null as varchar(10)) as REFEREEMOBILENO,
+      cast(null as varchar(80)) as USER_ID,
+      cast(null as integer) as DEVICESTATUS,
+      cast(null as date) as DEVICEACTIVATIONDATE,
+      cast(null as integer) as NO_OF_LOGINS,
+      cast(null as varchar(10)) as I_CHEQUE_BOOK_REQUEST,
+      cast(null as date) as LOG_DATE,
+      --cast(null as varchar(50)) as DELIVERABLE_IN_TRANSIT,
+      cast(null as varchar(150)) as PARTICULARS,
+      cast(null as varchar(50)) as TRACKING_NO,
+      cast(null as date) as DELIVERY_DUE_DATE,
+      cast(null as integer) as INCIDENT_NO,
+      cast(null as varchar(50)) as SRNO,
+      cast(null as varchar(150)) as SRTYPE,
+      cast(null as varchar(150)) as SR_CATEGORY,
+      cast(null as date) as SR_LOG_DATE,
+      cast(null as date) as SR_DUE_DATE,
+      cast(null as varchar(150)) as SR_STATUS,
+      cast(null as varchar(150)) as SR_CHANNEL,
+      cast(null as varchar(150)) as SR_PRODUCT_LINE,
+      cast(null as varchar(150)) as FAILURE_REASON,
+      cast(null as varchar(50)) as SOURCE_PARTY_ID,
+      --cast(null as integer) as SOURCE_SYSTEM_CODE,
+      cast(null as char(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(5)) as OLD_REGISTERED_MOBILE_NO, -----------------------NOT AVAILABLE IN CUSTOMER_MASTER---BLOCKED CARD REMOVE---PRIMARY ACCT
+      cast(null as decimal(20,4)) as CONTRACTED_MAB,
+      cast(null as decimal(20,4)) as ACTUAL_MTDMAB,
+      cast(null as integer) as MAB_DATE,
+      cast(null as integer) as MAB_DAYS_LEFT,
+      cast(null as char(5)) as MAB_NOT_MET,
+      cast(null as char(5)) as POCKETS_ACTIVE,
+      cast(null as char(5)) as SHOPPING_ACTIVE,
+      cast(null as varchar(100)) as MAREKTING_FIELD1,
+      cast(null as varchar(100)) as MAREKTING_FIELD2,
+      cast(null as varchar(100)) as MAREKTING_FIELD3,
+      cast(null as varchar(100)) as MAREKTING_FIELD4,
+      cast(null as varchar(100)) as MAREKTING_FIELD5,
+      cast(null as varchar(100)) as MAREKTING_FIELD6,
+      cast(null as varchar(100)) as MAREKTING_FIELD7,
+      cast(null as varchar(100)) as MAREKTING_FIELD8,
+      cast(null as varchar(100)) as MAREKTING_FIELD9,
+      cast(null as varchar(100)) as MAREKTING_FIELD10
+      from mccm.LOAN_ACCT_MASTER as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B where A.source_system_code in( 51,52,53 ) and A.SOURCE_PARTY_ID not like 'COB%'
+      and A.account_close_date is null and A.UCIC_CODE = B.UCIC_VALUE and B.ACC_HOLDER is null and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.source_system_code
+       = B.source_system_code;
+  commit work;
+  create unique hg index UQHGIDX_MCCMSANPROF_1 on reconp.UACI_ACCTNO_PROFILE2(SOURCE_ACCOUNT_NBR);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  create hg index HGIDX_MCCMSANPROF_4 on reconp.UACI_ACCTNO_PROFILE2(UCIC_CODE);
+  create hg index HGIDX_MCCMSANPROF_5 on reconp.UACI_ACCTNO_PROFILE2(user_id);
+  create hg index HGIDX_MCCMCARDPROF_2 on reconp.UACI_ACCTNO_PROFILE2(SOURCE_PARTY_ID);
+  create hg index HGIDX_MCCMCARDPROF_3 on reconp.UACI_ACCTNO_PROFILE2(SOURCE_SYSTEM_CODE);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.TITLE = B.TITLE,
+    A.FULL_NAME = B.FULL_NAME,
+    A.BIRTH_DATE = B.BIRTH_DATE,
+    A.GENDER = B.GENDER,
+    A.AGE = B.AGE,
+    A.OCCUPATION = B.OCCUPATION,
+    A.MARRIED = B.MARRIED,
+    A.IMOBILE_ACTIVE = B.IMOBILE_ACTIVE,
+    A.INTERNET_ACTIVE = B.INTERNET_ACTIVE,
+    A.ATM_ACTIVE = B.ATM_ACTIVE,
+    A.POS_ACTIVE = B.POS_ACTIVE,
+    A.BRANCH_ACTIVE = B.BRANCH_ACTIVE,
+    A.LIABILITY_ACCT_HOLDER = B.LIABILITY_ACCT_HOLDER,
+    A.CARD_ACCT_HOLDER = B.CARD_ACCT_HOLDER,
+    A.DEMAT_ACCT_HOLDER = B.DEMAT_ACCT_HOLDER,
+    A.LOAN_ACCT_HOLDER = B.LOAN_ACCT_HOLDER,
+    A.MOBILE_ACCT_HOLDER = B.MOBILE_ACCT_HOLDER,
+    A.SERVICE_REQUEST_OPEN = B.SERVICE_REQUEST_OPEN,
+    A.DELIVERABLE_IN_TRANSIT = B.DELIVERABLE_IN_TRANSIT,
+    A.LAST_CALLCENTER_CONTACT_DATE = B.LAST_CALLCENTER_CONTACT_DATE,
+    A.SERVICE_SEGMENT = B.SERVICE_SEGMENT,
+    A.INCOME_SEGMENT = B.INCOME_SEGMENT,
+    A.CREDIT_SCORE = B.CREDIT_SCORE,
+    A.DELINQUENT_CUSTOMER = B.DELINQUENT_CUSTOMER,
+    A.FRAUD_CUSTOMER_FLAG = B.FRAUD_CUSTOMER_FLAG,
+    A.AS_OF_DATE = B.AS_OF_DATE,
+    A.POCKETS_ACTIVE = B.POCKET_DOWNLOADED,
+    A.SHOPPING_ACTIVE = B.SHOPPING_ACTIVE from
+    mccm.UCIC_MASTER as B
+    where A.UCIC_CODE = B.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.USERID = B.USERID,
+    A.ACTIVATION_DATE = B.ACTIVATION_DATE,
+    A.FIRST_LOGIN_DATE = B.FIRST_LOGIN_DATE,
+    A.LAST_LOGIN_DATE = B.LAST_LOGIN_DATE,
+    A.FD_OPENED = B.FD_OPENED,
+    A.RD_OPENED = B.RD_OPENED,
+    A.FT_DONE = B.FT_DONE,
+    A.BP_DONE = B.BP_DONE,
+    A.PMR_DONE = B.PMR_DONE,
+    A.FT_COUNT = B.FT_COUNT,
+    A.RIB_LOGIN_COUNT = B.RIB_LOGIN_COUNT,
+    A.RIB_RAISED_SR = B.RIB_RAISED_SR,
+    A.R_CHEQUE_BOOK_REQUEST = B.CHEQUE_BOOK_REQUEST,
+    A.MY_MONEY = B.MY_MONEY,
+    A.IWISH = B.IWISH,
+    A.MY_MONEY_ACTIVATION_DATE = B.MY_MONEY_ACTIVATION_DATE,
+    a.shopping_active = b.shopping_active from
+    MCCM.RIB_CHANNEL_ATTRIBUTE as B
+    where A.UCIC_CODE = B.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.LAST_LOGIN = B.LAST_LOGIN_DATE,
+    A.REFEREENAME = B.REFEREENAME,
+    A.REFEREEMOBILENO = B.REFEREEMOBILENO,
+    A.USER_ID = B.USER_ID,
+    A.DEVICESTATUS = B.DEVICESTATUS,
+    A.DEVICEACTIVATIONDATE = B.DEVICEACTIVATIONDATE,
+    A.NO_OF_LOGINS = B.NO_OF_LOGINS,
+    A.I_CHEQUE_BOOK_REQUEST = B.CHEQUE_BOOK_REQUEST,
+    A.LOG_DATE = B.LOG_DATE from
+    MCCM.IMOBILE_CHANNEL_ATTRIBUTE as B
+    where A.UCIC_CODE = B.UCIC;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  -----------------------------------------
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.ANNUAL_SALARY_OR_TURNOVER = B.ANNUAL_SALARY_OR_TURNOVER,
+    A.HAVE_KIDS = B.HAVE_KIDS,
+    A.SOCIAL_MEDIA_ACTIVE = B.SOCIAL_MEDIA_ACTIVE,
+    A.SENTIMENT_GREVIENCES = B.SENTIMENT_GREVIENCES,
+    A.DORMANT_DEMAT_ACCOUNT = B.DORMANT_DEMAT_ACCOUNT,
+    A.FOREX_ACTIVE = B.FOREX_ACTIVE,
+    A.TRAVEL_INSURANCE_ACTIVE = B.TRAVEL_INSURANCE_ACTIVE,
+    A.TRAVEL_CARD_ACTIVE = B.TRAVEL_CARD_ACTIVE,
+    A.ECOMMERECE_ACTIVE = B.ECOMMERECE_ACTIVE,
+    A.PREF_MERCHANT_SHOPPING = B.PREF_MERCHANT_SHOPPING,
+    A.PREF_MERCHANT_DINNING = B.PREF_MERCHANT_DINNING from
+    MCCM.UCIC_ATTRIBUTE as B
+    where A.UCIC_CODE = B.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  ----------------------------------------------------------------------------------------------
+  select B.*
+    into #MAIN_T_ARTICLE_MASTER
+    from(select A.*,RANK() over(partition by ACCOUNT_NO order by DATA_DATE desc) as ROW_NUM
+        from RECONP.MAIN_T_ARTICLE_MASTER as A where TXN_Status in( 100.0,120.0,110.0 ) 
+        and Status in( 590.0,530.0 ) ) as B where B.ROW_NUM = 1;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.DELIVERABLE_IN_TRANSIT = B.SHIPMENT_STATUS from
+    RECONP.MAIN_T_STATUS_DISPLAY_MASTER as B,#MAIN_T_ARTICLE_MASTER as C
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.Status = C.Status
+    and B.Txn_Status = C.Txn_Status
+    and B.TXN_Status in( 100.0,120.0,110.0 ) 
+    and B.Status in( 590.0,530.0 ) ;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.PARTICULARS = B.PRODUCT_NAME from
+    RECONP.MAIN_T_PRODUCT_MASTER as B,#MAIN_T_ARTICLE_MASTER as C
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.PRODUCT_CODE = C.PRODUCT_CODE
+    and C.TXN_Status in( 100.0,120.0,110.0 ) 
+    and C.Status in( 590.0,530.0 ) ;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.TRACKING_NO = B.WBN from
+    RECONP.MAIN_T_WBN as B,#MAIN_T_ARTICLE_MASTER as C
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.WBN_ID = C.WBN_ID
+    and C.TXN_Status in( 100.0,120.0,110.0 ) 
+    and C.Status in( 590.0,530.0 ) ;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.FAILURE_REASON = E.UNDELIVERYREASON from
+    RECONP.MAIN_T_WBN as B,#MAIN_T_ARTICLE_MASTER as C,RECONP.MAIN_T_WBN_RTO_STATUS_REASON_MASTER as D,RECONP.MAIN_T_WBN_STATUS_REASON as E
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.WBN_ID = C.WBN_ID
+    and B.WBN_STATUS_REASON = D.REASON_GIVEN_BY_COURIERS
+    and D.STATUS_REASON_CODE = E.STATUS_REASON_CODE
+    and C.TXN_Status in( 100.0,120.0,110.0 ) 
+    and C.Status in( 590.0,530.0 ) 
+    and A.DELIVERABLE_IN_TRANSIT = 'RTO Acknowledged';
+  commit work;
+  select B.*
+    into #T401_FCRM_INCIDENTS_STATIC
+    from(select ACCOUNTNUMBER,INCIDENTID,SRNO,SRTYPE,SUBSRTYPE,CREATEDDATE,CHANNEL,PRODUCTLINE,
+        RANK() over(partition by ACCOUNTNUMBER order by CREATEDDATE desc) as ROW_NUM
+        from EDW.T401_FCRM_INCIDENTS_STATIC) as B where B.ROW_NUM = 1;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.INCIDENT_NO = B.INCIDENTID,
+    A.SRNO = B.SRNO,
+    A.SRTYPE = B.SRTYPE,
+    A.SR_CATEGORY = B.SUBSRTYPE,
+    A.SR_LOG_DATE = B.CREATEDDATE,
+    A.SR_DUE_DATE = C.DUEDATE,
+    A.SR_STATUS = C.STATUS,
+    A.SR_CHANNEL = B.CHANNEL,
+    A.SR_PRODUCT_LINE = B.PRODUCTLINE from
+    #T401_FCRM_INCIDENTS_STATIC as B,EDW.T402_FCRM_INCIDENTS_DYNAMIC as C
+    where A.SOURCE_ACCOUNT_NBR = B.ACCOUNTNUMBER
+    and B.SRNO = C.SRNO
+    and C.STATUS = 'OPEN';
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  ------------------------------------------------------------------------------------------------------
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID,
+    A.ERV_CUSTOMER_FLAG = B.ERV_CUSTOMER_FLAG,
+    A.NEW_MOB_NO_REG = B.NEW_MOB_NO_REG,
+    A.UPDATE_MOB_NO_REG = B.UPDATE_MOB_NO_REG,
+    A.OLD_REGISTERED_MOBILE_NO = B.OLD_REGISTERED_MOBILE_NO from
+    MCCM.CUSTOMER_MASTER as B
+    where A.UCIC_CODE = B.UCIC_CODE;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.BRANCH_SOLID = B.BRANCH_SOLID,
+    A.BRANCH_LOCATION = B.BRANCH_LOCATION,
+    A.DD = B.DD from
+    mccm.BRANCH_CHANNEL_ATTRIBUTE as B
+    where A.source_account_nbr = B.source_account_nbr;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.POCKETS_ACTIVE = 'Y' from
+    MCCM.XID_MAPPING as B
+    where B.SOURCE_SYSTEM = 'POCKET' and A.USER_ID = B.USER_ID;
+  update reconp.UACI_ACCTNO_PROFILE2 as A
+    set A.mobile_number = (case when R_MOBILE is null then(case when CUR_MOBILENUMBER is null then
+        (case when PER_MOBILENUMBER is null then(case when BUS_MOBILENUMBER is null then
+            (case when MOBILENUMBER is null then null else MOBILENUMBER end) else BUS_MOBILENUMBER end)
+        else PER_MOBILENUMBER
+        end)
+      else CUR_MOBILENUMBER
+      end)
+    else R_MOBILE
+    end),A.emailid = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end),dnc_ndnc = (case when trim(dnc) = 'Y' or trim(NDNC) = 'Y' then 'Y' else 'N' end) from
+    mccm.cust_contact_master as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  insert into MCCM.UACI_SAN_PROFILE_TABLE
+    --insert into reconp.UACI_ACCTNO_PROFILE2
+    select card_number,UCIC_CODE,SOURCE_SYSTEM_CODE,USERID,ACTIVATION_DATE,FIRST_LOGIN_DATE,LAST_LOGIN_DATE,FD_OPENED,RD_OPENED,FT_DONE,BP_DONE,
+      PMR_DONE,FT_COUNT,RIB_LOGIN_COUNT,RIB_RAISED_SR,CHEQUE_BOOK_REQUEST,MY_MONEY,IWISH,MY_MONEY_ACTIVATION_DATE,null,null,null,TITLE,FULL_NAME,
+      BIRTH_DATE,GENDER,AGE,OCCUPATION,MARRIED,IMOBILE_ACTIVE,INTERNET_ACTIVE,ATM_ACTIVE,POS_ACTIVE,BRANCH_ACTIVE,LIABILITY_ACCT_HOLDER,CARD_ACCT_HOLDER,
+      DEMAT_ACCT_HOLDER,LOAN_ACCT_HOLDER,MOBILE_ACCT_HOLDER,OTHER_ACCT_HOLDER,SERVICE_REQUEST_OPEN,DELIVERABLE_IN_TRANSIT,ACCOUNT_OPEN_REQUEST,
+      LAST_CALLCENTER_CONTACT_DATE,SERVICE_SEGMENT,INCOME_SEGMENT,CREDIT_SCORE,DNC_NDNC,DELINQUENT_CUSTOMER,FRAUD_CUSTOMER_FLAG,AS_OF_DATE,
+      ANNUAL_SALARY_OR_TURNOVER,HAVE_KIDS,SOCIAL_MEDIA_ACTIVE,SENTIMENT_GREVIENCES,BLOCKED_CREDIT_CARD,DORMANT_DEMAT_ACCOUNT,EMAILID,MOBILE_NUMBER,
+      FOREX_ACTIVE,TRAVEL_INSURANCE_ACTIVE,TRAVEL_CARD_ACTIVE,ECOMMERECE_ACTIVE,PREF_MERCHANT_SHOPPING,PREF_MERCHANT_DINNING,DEVICETYPE,BROWSED_TIME,
+      BROWSED_SECTION,LAST_LOGIN,REFEREENAME,REFEREEMOBILENO,USER_ID,DEVICESTATUS,DEVICEACTIVATIONDATE,NO_OF_LOGINS,CHEQUE_BOOK_REQUEST_IMB_CHNL,
+      LOG_DATE,PARTICULARS,TRACKING_NO,DELIVERY_DUE_DATE,INCIDENT_NO,SRNO,SRTYPE,SR_CATEGORY,SR_LOG_DATE,SR_DUE_DATE,SR_STATUS,SR_CHANNEL,SR_PRODUCT_LINE,
+      FAILURE_REASON,SOURCE_PARTY_ID,ERV_CUSTOMER_FLAG,NEW_MOB_NO_REG,UPDATE_MOB_NO_REG,OLD_REGISTERED_MOBILE_NO,null,null,null,null,null,POCKETS_ACTIVE,
+      SHOPPING_ACTIVE,MAREKTING_FIELD1,MAREKTING_FIELD2,MAREKTING_FIELD3,MAREKTING_FIELD4,MAREKTING_FIELD5,MAREKTING_FIELD6,MAREKTING_FIELD7,MAREKTING_FIELD8,
+      MAREKTING_FIELD9,MAREKTING_FIELD10
+      from MCCM.UACI_CARDNO_PROFILE where SOURCE_SYSTEM_CODE not in( 30 ) ;
+  commit work;
+  truncate table MCCM.UACI_SAN_PROFILE_TABLE;
+  commit work;
+  insert into MCCM.UACI_SAN_PROFILE_TABLE
+    select * from reconp.UACI_ACCTNO_PROFILE2;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work
+--drop table reconp.UACI_ACCTNO_PROFILE2;
+--commit work
+end

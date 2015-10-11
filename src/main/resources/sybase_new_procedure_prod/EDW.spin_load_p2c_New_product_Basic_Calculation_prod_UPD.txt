@@ -1,0 +1,34 @@
+create procedure EDW.spin_load_p2c_New_product_Basic_Calculation_prod_UPD()
+on exception resume
+begin
+  drop table P2C.OTHLIAB_Basic_calculation_UPD;
+  select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,PROFESSION_TYPE,CITY,STATE,CATEGORY,ZONE,NET_SALARY_PER_MONTH,LAST_SALARY_MONTH,SEP_SENP,
+    ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,DAY_END_BALANCE,ACCT_CRNCY_CODE,CUST_CONST,CUST_STAT_CODE,OTHER_PRODUCT_IDENIFIER,ACCOUNT_SUMMARY_DATE,INCOME_VALIDATED_FLG,
+    DATE_CREATED,DATE_MODIFIED,REMOVAL_FLG,LIAB_PRODUCT,Deposit_Amount,PROF_QUALIFICATION,SOURCE_PARTY_ID,
+    case when net_salary_per_month is not null and net_salary_per_month > 0 then
+      (case when(cast(Last_salary_month as date)+365) >= Date_created then net_salary_per_month
+      else net_salary_per_month*power(1.09,(months(cast(last_salary_month as date),date_created)/12))
+      end)*12/.8
+    end as hh_income,
+    -1 as product_segment,
+    -1 as income_segment,
+    (case when LIAB_PRODUCT in( 'SFD' ) and cust_const in( 'R5','R6','R7','R12' ) and Deposit_Amount <= 500000 then 1
+    when LIAB_PRODUCT in( 'SFD' ) and cust_const in( 'R5','R6','R7','R12' ) and Deposit_Amount > 500000 then 4
+    when LIAB_PRODUCT in( 'SFD' ) and(Deposit_Amount < 0 or Deposit_Amount is null) then-1
+    when LIAB_PRODUCT in( 'SFD' ) and Deposit_Amount <= 500000 then 1
+    when LIAB_PRODUCT in( 'SFD' ) and Deposit_Amount <= 1500000 then 3
+    when LIAB_PRODUCT in( 'SFD' ) and Deposit_Amount <= 2500000 then 4
+    when LIAB_PRODUCT in( 'SFD' ) and Deposit_Amount > 2500000 then 5
+    else-1
+    end) as imputed_segment,
+    /*select imputed_segment, count() from #OTHLIAB_Basic_calculation where cust_const in ('R5', 'R6', 'R7' , 'R12') and LIAB_PRODUCT = 'SFD' group by imputed_segment;
+select count(), incomesegment from final1 where source_account_nbr in (select distinct source_account_nbr from #OTHLIAB_Basic_calculation where cust_const in ('R5', 'R6', 'R7' , 'R12') 
+and LIAB_PRODUCT = 'SFD') group by incomesegment;*/
+    case when LIAB_PRODUCT in( 'SFD' ) and ifnull(imputed_segment,0,imputed_segment) > 0 then imputed_segment else null end as Acct_Segment,
+    case when LIAB_PRODUCT in( 'SFD' ) and ifnull(imputed_segment,0,imputed_segment) > 0 then 'ISFD_FD1' else null end as Acct_rule
+    into P2C.OTHLIAB_Basic_calculation_UPD
+    from p2c.LIABILTY_OTHER_PRODUCT_INCR_n_heena_UPD; --5954522 row(s) affected
+  commit work;
+  create hg index HGIDX_P2C_NEWDEV_262 on P2C.OTHLIAB_Basic_calculation_UPD(account_nbr asc);
+  commit work
+end

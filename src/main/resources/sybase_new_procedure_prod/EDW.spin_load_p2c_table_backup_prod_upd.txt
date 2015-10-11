@@ -1,0 +1,24 @@
+create procedure EDW.spin_load_p2c_table_backup_prod_upd()
+on exception resume
+begin
+  truncate table P2C.p2c_sa_backup_n_heena_UPD;
+  insert into P2C.p2c_sa_backup_n_heena_UPD(select * from P2C.p2c_sa_n_heena_UPD);
+  truncate table P2C.p2c_ca_backup_n_heena_UPD;
+  insert into P2C.p2c_ca_backup_n_heena_UPD(select * from P2C.p2c_Ca_n_heena_UPD);
+  commit work;
+  truncate table P2C.p2c_cards_backup_n_heena_UPD;
+  insert into P2C.p2c_cards_backup_n_heena_UPD(select * from P2C.p2c_CARDS_n_heena_UPD);
+  truncate table P2C.p2c_loans_backup_n_heena_UPD;
+  insert into P2C.p2c_loans_backup_n_heena_UPD(select * from P2C.p2c_LOANS_n_heena_UPD);
+  truncate table P2C.p2c_Other_Liability_backup_n_heena_UPD;
+  insert into P2C.p2c_Other_Liability_backup_n_heena_UPD(select * from P2C.p2c_Other_Liability_Product_n_heena_UPD);
+  truncate table P2C.p2c_DEMAT_backup_n_heena_UPD;
+  insert into P2C.p2c_DEMAT_backup_n_heena_UPD(select * from P2C.p2c_DEMAT_n_heena_UPD);
+  commit work;
+  truncate table P2C.p2c_base_data19_hist_backup_UPD;
+  insert into P2C.p2c_base_data19_hist_backup_UPD(select * from p2c.p2c_base_data19_UPD);
+  commit work;
+  truncate table p2c.P2C_Customer_Segment_Backup_N_Heena_upd;
+  insert into p2c.P2C_Customer_Segment_Backup_N_Heena_upd(select * from p2c.P2C_Customer_Segment_Final_N_Heena_upd);
+  commit work
+end

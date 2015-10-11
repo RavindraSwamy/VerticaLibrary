@@ -1,0 +1,699 @@
+create procedure edw.RIB_CHANNEL_ATTRIBUTE_NEW()
+begin
+  drop table RECONP.UCIC_LINKAGE;
+  commit work;
+  select a.UCIC_VALUE as UCIC_CODE,
+    SOURCE_PARTY_ID
+    into RECONP.UCIC_LINKAGE
+    from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as a
+      ,(select UCIC_LINKAGE.UCIC_VALUE as UCIC_CODE,max(account_open_date) as max_acct_opn_dt
+        from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+        where source_system_code = 30 and product_type = 'SA' and ACCOUNT_CLOSE_DATE is null and ACC_HOLDER = 'Main Holder' group by UCIC_VALUE) as b
+    where a.ucic_value = b.ucic_code and a.account_open_date = b.max_acct_opn_dt
+    and a.source_system_code = 30 and a.product_type = 'SA' and a.ACCOUNT_CLOSE_DATE is null and a.ACC_HOLDER = 'Main Holder';
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into RECONP.UCIC_LINKAGE
+    select a.UCIC_VALUE as UCIC_CODE,SOURCE_PARTY_ID from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as a
+        ,(select UCIC_LINKAGE.UCIC_VALUE as UCIC_CODE,max(account_open_date) as max_acct_opn_dt
+          from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+          where source_system_code = 30 and product_type = 'SA' and ACCOUNT_CLOSE_DATE is null and ACC_HOLDER is null group by UCIC_VALUE) as b
+      where a.ucic_value = b.ucic_code and a.account_open_date = b.max_acct_opn_dt
+      and a.source_system_code = 30 and a.product_type = 'SA' and a.ACCOUNT_CLOSE_DATE is null and ACC_HOLDER is null
+      and not a.ucic_value = any(select ucic_code from RECONP.UCIC_LINKAGE);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  alter table RECONP.UCIC_LINKAGE add
+    LINKED_USERID varchar(40) null;
+  alter table RECONP.UCIC_LINKAGE add
+    FED_ID varchar(50) null;
+  alter table RECONP.UCIC_LINKAGE add
+    ACTIVATION_DATE date null;
+  alter table RECONP.UCIC_LINKAGE add
+    OLD_NET_USER_ID varchar(40) null;
+  alter table RECONP.UCIC_LINKAGE add
+    FIRST_LOGIN_DATE date null;
+  alter table RECONP.UCIC_LINKAGE add
+    LAST_LOGIN_DATE date null;
+  alter table RECONP.UCIC_LINKAGE add
+    FD_OPENED varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    RD_OPENED varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    FT_DONE varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    BP_DONE varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    PMR_DONE varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    FT_COUNT integer null;
+  alter table RECONP.UCIC_LINKAGE add
+    RIB_LOGIN_COUNT integer null;
+  alter table RECONP.UCIC_LINKAGE add
+    RIB_RAISED_SR varchar(20) null;
+  alter table RECONP.UCIC_LINKAGE add
+    CHEQUE_BOOK_REQUEST varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    MY_MONEY varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    IWISH varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    MY_MONEY_ACTIVATION_DATE date null;
+  alter table RECONP.UCIC_LINKAGE add
+    ACCOUNT_CLOSE_DATE date null;
+  alter table RECONP.UCIC_LINKAGE add
+    SHOPPING_ACTIVE varchar(5) null;
+  alter table RECONP.UCIC_LINKAGE add
+    INTERNET_ACTIVE varchar(5) null;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  create hg index hg_idx_usrid on RECONP.UCIC_LINKAGE(LINKED_USERID);
+  create hg index hg_idx_src_act_nbr on RECONP.UCIC_LINKAGE(SOURCE_PARTY_ID);
+  create hg index hg_idx_ucic_code on RECONP.UCIC_LINKAGE(UCIC_CODE);
+  create hg index hg_idx_old_ntuser on RECONP.UCIC_LINKAGE(OLD_NET_USER_ID);
+  create date index dt_idx_act_date on RECONP.UCIC_LINKAGE(ACTIVATION_DATE);
+  create date index dt_idx_fst_lgin_dt on RECONP.UCIC_LINKAGE(FIRST_LOGIN_DATE);
+  create date index dt_idx_lst_lgin_dt on RECONP.UCIC_LINKAGE(LAST_LOGIN_DATE);
+  commit work;
+  select distinct ACCOUNT_NUMBER as SOURCE_ACCOUNT_NBR,
+    UBP_USER_ID as USER_ID,
+    PMT_STAT as PAYMENT_STATUS,
+    INSTANCE_PMT_DT,
+    PAYEE_NAME,
+    PAYEE_TYPE,
+    (case when PAYEE_TYPE = 'N' then
+      'FUND TRANSFER- WITHIN ICICI BANK'
+    when PAYEE_TYPE = 'M' then
+      'SHOPPING MALL'
+    when PAYEE_NAME in( 'RBI-NEFT','RBI-EFT' ) then
+      'FUND TRANSFER- OUTSIDE ICICI BANK'
+    when PAYEE_NAME = 'PREPAID MOBILE RECHARGE' then
+      'PMR'
+    when PAYEE_NAME = 'ICICI BANK CREDIT CARDS' then
+      'ICICI CREDIT CARD PAYMENT'
+    when PAYEE_NAME = 'VISA MONEY TRANSFER' then
+      'VISA MONEY TRANSFER'
+    when PAYEE_NAME = 'MONEY ORDER TRANSFER' then
+      'MONEY ORDER'
+    when PAYEE_NAME = 'RTGS' then
+      'RTGS'
+    when PAYEE_NAME = 'MONEY MANAGER' then
+      'MM FEES'
+    else 'BILL PAY'
+    end) as TRANSACTION_TYPE
+    into #PMT_BASE
+    from EDW.T09531_REAL_TIME_PAYMENT
+    where R_CRE_ID like 'BWY/%'
+    and PMT_STAT = 'S'
+    and LENGTH(ACCOUNT_NUMBER) = 12
+    and SUBSTR(ACCOUNT_NUMBER,5,2) in( '01','02' ) 
+    and 1 = 2;
+  commit work;
+  create hg index hg_idx_usrid on EDW.#PMT_BASE(USER_ID);
+  create hg index hg_idx_src_act_nbr on EDW.#PMT_BASE(SOURCE_ACCOUNT_NBR);
+  create lf index lf_idx_trntype on EDW.#PMT_BASE(TRANSACTION_TYPE);
+  create lf index lf_idx_pmtstat on EDW.#PMT_BASE(PAYMENT_STATUS);
+  create lf index lf_idx_paytype on EDW.#PMT_BASE(PAYEE_TYPE);
+  create date index dt_idx_act_date on EDW.#PMT_BASE(INSTANCE_PMT_DT);
+  commit work;
+  insert into #PMT_BASE
+    select distinct ACCOUNT_NUMBER as SOURCE_ACCOUNT_NBR,
+      UBP_USER_ID as USER_ID,
+      PMT_STAT as PAYMENT_STATUS,
+      INSTANCE_PMT_DT,
+      PAYEE_NAME,
+      PAYEE_TYPE,
+      (case when PAYEE_TYPE = 'N' then
+        'FUND TRANSFER- WITHIN ICICI BANK'
+      when PAYEE_TYPE = 'M' then
+        'SHOPPING MALL'
+      when PAYEE_NAME in( 'RBI-NEFT','RBI-EFT' ) then
+        'FUND TRANSFER- OUTSIDE ICICI BANK'
+      when PAYEE_NAME = 'PREPAID MOBILE RECHARGE' then
+        'PMR'
+      when PAYEE_NAME = 'ICICI BANK CREDIT CARDS' then
+        'ICICI CREDIT CARD PAYMENT'
+      when PAYEE_NAME = 'VISA MONEY TRANSFER' then
+        'VISA MONEY TRANSFER'
+      when PAYEE_NAME = 'MONEY ORDER TRANSFER' then
+        'MONEY ORDER'
+      when PAYEE_NAME = 'RTGS' then
+        'RTGS'
+      when PAYEE_NAME = 'MONEY MANAGER' then
+        'MM FEES'
+      else 'BILL PAY'
+      end) as TRANSACTION_TYPE
+      from EDW.T09531_REAL_TIME_PAYMENT
+      where R_CRE_ID like 'BWY/%'
+      and PMT_STAT = 'S'
+      and LENGTH(ACCOUNT_NUMBER) = 12
+      and SUBSTR(ACCOUNT_NUMBER,5,2) in( '01','02' ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set old_net_user_id = T09315.old_net_user_id from
+    T09315_CAR_ACCOUNTS as T09315
+    where UCIC_LINKAGE.source_PARTY_ID = T09315.CUSTOMER_ID
+    and T09315.source_system_code = '30';
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.LINKED_USERID = D0122.linked_user_id from
+    D0122_CAR_CUST_LINKAGE as D0122
+    where UCIC_LINKAGE.source_PARTY_ID = D0122.CUSTOMER_ID and D0122.SOURCE_FEED_IDENTIFIER = '2';
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.LINKED_USERID = D0122.user_id from
+    D0122_CAR_CUST_LINKAGE as D0122
+    where UCIC_LINKAGE.source_PARTY_ID = D0122.CUSTOMER_ID and UCIC_LINKAGE.LINKED_USERID is null and D0122.SOURCE_FEED_IDENTIFIER = '2';
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set FED_ID = cast(CARTBL.cc_ref_no as varchar) from
+    reconp.CARTBL_CUSTOMERS_FINAL as CARTBL
+    where UCIC_LINKAGE.LINKED_USERID = CARTBL.cc_net_user_id;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set FED_ID = cast(CARTBL.cc_ref_no as varchar) from
+    reconp.CARTBL_CUSTOMERS_FINAL as CARTBL
+    where UCIC_LINKAGE.OLD_NET_user_id = CARTBL.cc_net_user_id and UCIC_LINKAGE.FED_ID is null;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.ACTIVATION_DATE = T09522.FIRST_LOGIN_DATE,
+    UCIC_LINKAGE.FIRST_LOGIN_DATE = T09522.FIRST_LOGIN_DATE,
+    UCIC_LINKAGE.LAST_LOGIN_DATE = T09522.LAST_LOGIN_DATE from
+    (select min(FIRST_LOGIN_DATE) as FIRST_LOGIN_DATE,max(LAST_LOGIN_DATE) as LAST_LOGIN_DATE,USER_ID
+      from(select * from T09522_LOGIN_MIS union all
+        select * from T09522_LOGIN_MIS_11X_MIG) as x group by USER_ID) as T09522
+    where UCIC_LINKAGE.LINKED_USERID = T09522.USER_ID and UCIC_LINKAGE.Activation_date is null;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.ACTIVATION_DATE = T09522.FIRST_LOGIN_DATE,
+    UCIC_LINKAGE.FIRST_LOGIN_DATE = T09522.FIRST_LOGIN_DATE,
+    UCIC_LINKAGE.LAST_LOGIN_DATE = T09522.LAST_LOGIN_DATE from
+    (select min(FIRST_LOGIN_DATE) as FIRST_LOGIN_DATE,max(LAST_LOGIN_DATE) as LAST_LOGIN_DATE,USER_ID
+      from(select * from T09522_LOGIN_MIS union all
+        select * from T09522_LOGIN_MIS_11X_MIG) as x group by USER_ID) as T09522
+    where UCIC_LINKAGE.OLD_NET_user_id = T09522.USER_ID and UCIC_LINKAGE.Activation_date is null;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  -------------------------------------------------FD & RD OPEN Via Internert
+  select TRIM(ACCOUNTNUMBER) as ACCOUNT,
+    TRIM(CUSTID) as CUSTID into #FD_RD
+    from edw.T401_FCRM_INCIDENTS_STATIC as s,edw.T402_FCRM_INCIDENTS_DYNAMIC as D
+    where S.SRNO = D.SRNO
+    and srtype like '%FD%'
+    and(subsrtype like '%open%FD%' or subsrtype like '%fd%open%' or subsrtype like '%Create%'
+    or subsrtype like '%NEW%FD%'
+    or subsrtype like '%fd%NEW%'
+    or subsrtype like '%open%rd%'
+    or subsrtype like '%rd%open%'
+    or subsrtype like '%new%rd%'
+    or subsrtype like '%rd%new%'
+    or subsrtype like '%fd%link%'
+    or subsrtype like '%link%fd%')
+    and TRIM(CHANNEL) in( 'FAI' ) union
+  --AND (ENDDATE >= '2015-08-01' and ENDDATE <='2015-08-31') -------------------------------change date AND SUBSTR(ACCOUNT,5,2) IN ('01','02','05','06','51', '55', '60', '65', '52', '68') AND substr(fd_account,5,2) IN('10','12','14','15','16','31','35','40','25','13','20','26','30')
+  select TRIM(ACCOUNTNUMBER) as ACCOUNT,
+    TRIM(CUSTID) as CUSTID
+    from edw.T401_FCRM_INCIDENTS_STATIC_qk as s,edw.T402_FCRM_INCIDENTS_DYNAMIC_qk as D
+    where S.SRNO = D.SRNO
+    and srtype like '%FD%'
+    and(subsrtype like '%open%FD%'
+    or subsrtype like '%fd%open%'
+    or subsrtype like '%Create%'
+    or subsrtype like '%NEW%FD%'
+    or subsrtype like '%fd%NEW%'
+    or subsrtype like '%open%rd%'
+    or subsrtype like '%rd%open%'
+    or subsrtype like '%new%rd%'
+    or subsrtype like '%rd%new%'
+    or subsrtype like '%fd%link%'
+    or subsrtype like '%link%fd%')
+    and TRIM(CHANNEL) in( 'FAI' ) ;
+  commit work;
+  -------------------------------------------------FD & RD OPEN Via Mdot
+  select TRIM(ACCOUNTNUMBER) as ACCOUNT,
+    TRIM(CUSTID) as CUSTID into #FD_RD_MDOT
+    from edw.T401_FCRM_INCIDENTS_STATIC as s,edw.T402_FCRM_INCIDENTS_DYNAMIC as D
+    where S.SRNO = D.SRNO
+    and srtype like '%FD%'
+    and(subsrtype like '%open%FD%' or subsrtype like '%fd%open%' or subsrtype like '%Create%'
+    or subsrtype like '%NEW%FD%'
+    or subsrtype like '%fd%NEW%'
+    or subsrtype like '%open%rd%'
+    or subsrtype like '%rd%open%'
+    or subsrtype like '%new%rd%'
+    or subsrtype like '%rd%new%'
+    or subsrtype like '%fd%link%'
+    or subsrtype like '%link%fd%')
+    and TRIM(CHANNEL) in( 'FAIMIB' ) union
+  --AND (ENDDATE >= '2015-08-01' and ENDDATE <='2015-08-31') -------------------------------change date AND SUBSTR(ACCOUNT,5,2) IN ('01','02','05','06','51', '55', '60', '65', '52', '68') AND substr(fd_account,5,2) IN('10','12','14','15','16','31','35','40','25','13','20','26','30')
+  select TRIM(ACCOUNTNUMBER) as ACCOUNT,
+    TRIM(CUSTID) as CUSTID
+    from edw.T401_FCRM_INCIDENTS_STATIC_qk as s,edw.T402_FCRM_INCIDENTS_DYNAMIC_qk as D
+    where S.SRNO = D.SRNO
+    and srtype like '%FD%'
+    and(subsrtype like '%open%FD%'
+    or subsrtype like '%fd%open%'
+    or subsrtype like '%Create%'
+    or subsrtype like '%NEW%FD%'
+    or subsrtype like '%fd%NEW%'
+    or subsrtype like '%open%rd%'
+    or subsrtype like '%rd%open%'
+    or subsrtype like '%new%rd%'
+    or subsrtype like '%rd%new%'
+    or subsrtype like '%fd%link%'
+    or subsrtype like '%link%fd%')
+    and TRIM(CHANNEL) in( 'FAIMIB' ) ;
+  commit work;
+  --AND (ENDDATE >= '2015-08-01' and ENDDATE <= '2015-08-31')-------------------------------change date AND SUBSTR(ACCOUNT,5,2) IN ('01','02','05','06','51', '55', '60', '65', '52', '68') AND substr(fd_account,5,2) IN ('10','12','14','15','16','31','35','40','25','13','20','26','30');
+  update RECONP.UCIC_LINKAGE as A
+    set A.FD_OPENED = 'Y' from
+    #FD_RD as B
+    where A.LINKED_USERID = B.CUSTID;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.FD_OPENED = 'Y' from
+    #FD_RD as B
+    where A.OLD_NET_USER_ID = B.CUSTID;
+  commit work;
+  --------------------------------------
+  update RECONP.UCIC_LINKAGE as A
+    set A.FD_OPENED = 'Y' from
+    #FD_RD_MDOT as B
+    where A.LINKED_USERID = B.CUSTID;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.FD_OPENED = 'Y' from
+    #FD_RD_MDOT as B
+    where A.OLD_NET_USER_ID = B.CUSTID;
+  commit work;
+  update RECONP.UCIC_LINKAGE
+    set FD_OPENED = 'N'
+    where FD_OPENED is null;
+  /*
+update RECONP.UCIC_LINKAGE
+set FD_OPENED = (case when PRODUCT_TYPE = 'FD' then 'Y' else 'N' end)
+from RECONP.UCIC_LINKAGE as UCIC_LINKAGE left outer join
+P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as P2C_UCIC
+on UCIC_LINKAGE.UCIC_CODE = P2C_UCIC.UCIC_VALUE
+and UCIC_LINKAGE.source_party_id = P2C_UCIC.source_party_id
+where P2C_UCIC.source_system_code = 30
+and P2C_UCIC.product_type='FD'
+and P2C_UCIC.ACCOUNT_CLOSE_DATE is null
+and ISNULL(P2C_UCIC.ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ; ----------We need to check FD_OPENED via internet . This is not the code to open FD via internet so plz change the code and consider FCRM table as per MCCM data model excel.
+if sqlstate <> '00000' then
+return
+end if;
+commit work;
+update RECONP.UCIC_LINKAGE
+set FD_OPENED='N'
+where FD_OPENED is null;
+*/
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  /*
+update RECONP.UCIC_LINKAGE
+set RD_OPENED = (case when PRODUCT_TYPE = 'RD' then 'Y' else 'N' end)
+from RECONP.UCIC_LINKAGE as UCIC_LINKAGE left outer join
+P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as P2C_UCIC
+on UCIC_LINKAGE.UCIC_CODE = P2C_UCIC.UCIC_VALUE
+and UCIC_LINKAGE.source_party_id = P2C_UCIC.source_party_id
+where P2C_UCIC.source_system_code = 30
+and P2C_UCIC.product_type='RD'
+and P2C_UCIC.ACCOUNT_CLOSE_DATE is null
+and ISNULL(P2C_UCIC.ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ;---------- We need to check RD_OPENED via internet . This is not the code to open RD via internet so plz change the code and consider FCRM as per MCCM data model excel.
+if sqlstate <> '00000' then
+return
+end if;
+commit work;
+*/
+  update RECONP.UCIC_LINKAGE as A
+    set A.RD_OPENED = 'Y' from
+    #FD_RD as B
+    where A.LINKED_USERID = B.CUSTID;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.RD_OPENED = 'Y' from
+    #FD_RD as B
+    where A.OLD_NET_USER_ID = B.CUSTID;
+  commit work;
+  --------------------------------------
+  update RECONP.UCIC_LINKAGE as A
+    set A.RD_OPENED = 'Y' from
+    #FD_RD_MDOT as B
+    where A.LINKED_USERID = B.CUSTID;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.RD_OPENED = 'Y' from
+    #FD_RD_MDOT as B
+    where A.OLD_NET_USER_ID = B.CUSTID;
+  commit work;
+  update RECONP.UCIC_LINKAGE
+    set RD_OPENED = 'N'
+    where RD_OPENED is null;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.FT_DONE = C.FT_DONE from
+    (select case when COUNT >= 1 then 'Y' else 'N' end as FT_DONE,
+      a.SOURCE_ACCOUNT_NBR,
+      b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE like 'FUND TRANSFER%' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 30 and ISNULL(ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.PMR_DONE = C.PMR_DONE from
+    (select case when COUNT >= 1 then 'Y' else 'N' end as PMR_DONE,a.SOURCE_ACCOUNT_NBR,b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE = 'PMR' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 30 and ISNULL(ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.BP_DONE = C.BP_DONE from
+    (select case when COUNT >= 1 then 'Y' else 'N' end as BP_DONE,a.SOURCE_ACCOUNT_NBR,b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE = 'BILL PAY' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 30 and ISNULL(ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set A.FT_COUNT = C.COUNT from
+    (select COUNT,a.SOURCE_ACCOUNT_NBR,b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE like 'FUND TRANSFER%' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 30 and ISNULL(ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.RIB_LOGIN_COUNT = T09522.cnt from
+    (select user_id,sum(cnt) as cnt
+      from(select user_id,count() as cnt from T09529_Login_History as a,RECONP.UCIC_LINKAGE as UCIC_LINKAGE where a.user_id = UCIC_LINKAGE.LINKED_USERID group by user_id union
+        select user_id,count() as cnt from T09529_LOGIN_HISTORY_11X_MIG as b,RECONP.UCIC_LINKAGE as UCIC_LINKAGE where b.user_id = UCIC_LINKAGE.LINKED_USERID group by user_id) as x
+      group by user_id) as T09522
+    where UCIC_LINKAGE.LINKED_USERID = T09522.user_id;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.RIB_LOGIN_COUNT = T09522.cnt from
+    (select user_id,sum(cnt) as cnt
+      -- joining should be using old_net_user_id bcz you have already done the same at linked_userid level in the above query
+      from(select user_id,count() as cnt from T09529_Login_History as a,RECONP.UCIC_LINKAGE as UCIC_LINKAGE where a.user_id = UCIC_LINKAGE.old_net_user_id group by user_id union
+        select user_id,count() as cnt from T09529_LOGIN_HISTORY_11X_MIG as b,RECONP.UCIC_LINKAGE as UCIC_LINKAGE where b.user_id = UCIC_LINKAGE.old_net_user_id group by user_id) as x -- joining should be using old_net_user_id bcz you have already done the same at linked_userid level in the above query
+      group by user_id) as T09522
+    where UCIC_LINKAGE.old_net_user_id = T09522.user_id and UCIC_LINKAGE.RIB_LOGIN_COUNT is null;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select accountnumber,MAX(date_created) as DATE_CREATED into #FCRM_INCIDENTS_STATIC12
+    from EDW.T401_FCRM_INCIDENTS_STATIC
+    group by accountnumber;
+  commit work;
+  select A.accountnumber,srno,B.SOURCE_PARTY_ID into #FCRM_INCIDENTS_STATIC12345
+    from #FCRM_INCIDENTS_STATIC12 as A left outer join EDW.T401_FCRM_INCIDENTS_STATIC as C
+      on A.accountnumber = C.accountnumber
+      left outer join P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+      on B.source_account_nbr = A.accountnumber
+    where A.date_created = C.date_created and channel = 'fai' and ISNULL(ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.RIB_RAISED_SR = A.srno from #FCRM_INCIDENTS_STATIC12345 as A
+    where A.SOURCE_PARTY_ID = UCIC_LINKAGE.SOURCE_PARTY_ID;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.CHEQUE_BOOK_REQUEST = C.CHEQUE_BOOK_REQUEST from
+    (select case when T401.accountnumber is not null then 'Y' else 'N' end as CHEQUE_BOOK_REQUEST,T401.accountnumber,B.SOURCE_PARTY_ID
+      from EDW.T401_FCRM_INCIDENTS_STATIC as T401,(select SOURCE_ACCOUNT_NBR,SOURCE_PARTY_ID from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ISNULL(ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ) as B
+      where B.source_account_nbr = T401.accountnumber
+      and channel = 'fai' and srtype = 'INTERNET/MOBILE BANKING') as C
+    where UCIC_LINKAGE.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.CHEQUE_BOOK_REQUEST = 'N'
+    where UCIC_LINKAGE.CHEQUE_BOOK_REQUEST is null;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.MY_MONEY = 'Y' from
+    edw.DWH_MM_SUBSCRIPTION as B
+    where UCIC_LINKAGE.LINKED_USERID = cast(B.USERID as varchar) and B.SUBSCRIPTION_FLAG = 'Y';
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.MY_MONEY = 'Y' from
+    edw.DWH_MM_SUBSCRIPTION as B
+    where UCIC_LINKAGE.old_net_user_id = cast(B.USERID as varchar) and B.SUBSCRIPTION_FLAG = 'Y' and UCIC_LINKAGE.MY_MONEY is null;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select SOURCE_ACCOUNT_NBR,account_open_date,account_nbr,source_system_code,
+    cast(null as varchar(25)) as ucic_code
+    into #abc from edw.t0300_account where substr(SOURCE_ACCOUNT_NBR,5,2) = '24'
+    and SCHEME_CODE = '30ICIVR' and account_close_date is null;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  create hg index idx_ucic on EDW.#abc(ucic_code);
+  commit work;
+  update #abc as a
+    set a.ucic_code = b.ucic_value from
+    p2c.UCIC_LINKAGE_TABLE_UPDATED_FINAL as b
+    where a.SOURCE_ACCOUNT_NBR = b.SOURCE_ACCOUNT_NBR
+    and b.source_system_code = 30
+    and ISNULL(ACC_HOLDER,'Others') in( 'Main Holder','Others' ) ;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.IWISH = (case when b.ucic_code is not null then 'Y' else 'N' end) from
+    RECONP.UCIC_LINKAGE as UCIC_LINKAGE left outer join #abc as B
+    on UCIC_LINKAGE.UCIC_CODE = b.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.MY_MONEY_ACTIVATION_DATE = b.SUBSCRIPTION_DATE from
+    RECONP.UCIC_LINKAGE as UCIC_LINKAGE left outer join edw.DWH_MM_SUBSCRIPTION as B
+    on UCIC_LINKAGE.LINKED_USERID = cast(B.USERID as varchar) where UCIC_LINKAGE.MY_MONEY = 'Y';
+  commit work;
+  update RECONP.UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.MY_MONEY_ACTIVATION_DATE = b.SUBSCRIPTION_DATE from
+    RECONP.UCIC_LINKAGE as UCIC_LINKAGE left outer join edw.DWH_MM_SUBSCRIPTION as B
+    on UCIC_LINKAGE.old_net_user_id = cast(B.USERID as varchar) where UCIC_LINKAGE.MY_MONEY = 'Y'
+    and UCIC_LINKAGE.MY_MONEY_ACTIVATION_DATE is null; --- Plz put filter where UCIC_LINKAGE.MY_MONEY_ACTIVATION_DATE is null
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select UCIC_CODE,SOURCE_PARTY_ID,LINKED_USERID,FED_ID,date(getdate()) as ASOF_DATE,date(dateadd(month,1,getdate())) as EXPIRY_REVIEW_DATE,cast(null as integer) as SCORE,1 as seq_no
+    into #Base_RIB_Channel
+    from RECONP.UCIC_LINKAGE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  create hg index hg_idx_src_act on EDW.#Base_RIB_Channel(SOURCE_PARTY_ID);
+  commit work;
+  select(case when payee_type = 'N' then
+      'Fund Transfer'
+    when payee_type = 'M' then
+      'Shopping Mall'
+    when Payee_Name in( 'RBI-NEFT','RBI-EFT' ) then
+      'Fund Transfer'
+    when Payee_Name = 'PREPAID MOBILE RECHARGE' then
+      'PMR'
+    when Payee_Name = 'ICICI BANK CREDIT CARDS' then
+      'ICICI credit card Payment'
+    when Payee_Name in( 'VISA MONEY TRANSFER','Pay Any Visa Credit Card' ) then
+      'VISA MONEY TRANSFER'
+    when Payee_Name = 'MONEY ORDER TRANSFER' then
+      'Money Order'
+    when Payee_Name = 'RTGS' then
+      'Fund Transfer'
+    when Payee_Name = 'MONEY MANAGER' then
+      'MM Fees'
+    else 'Bill Pay'
+    end) as TxnType,ubp_user_ID as user_ID,account_number,amount_transacted,pmt_stat,instance_pmt_dt as INSTANCE_PMT_DATE
+    into #txn_base_REAL_TIME_PAYMENT
+    from edw.T09531_real_time_payment
+    where R_CRE_ID like 'BWY/%' and pmt_stat = 'S';
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set INTERNET_ACTIVE = 'Y' from
+    #txn_base_REAL_TIME_PAYMENT as B
+    where A.LINKED_USERID = B.USER_ID;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set INTERNET_ACTIVE = 'Y' from
+    #txn_base_REAL_TIME_PAYMENT as B
+    where A.old_net_user_id = B.USER_ID
+    and A.INTERNET_ACTIVE is null; -- Plz put filter where INTERNET_ACTIVE is null
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select UBP_USER_ID as USER_ID,
+    payee_name as Payee_Name,
+    consumer_CD as consumer_cd,
+    amount_transacted as Transaction_amt,
+    dateformat(INSTANCE_PMT_Dt,'yyyy-mm-dd') as INSTANCE_PMT_DATE
+    into #master_merchant
+    from edw.T09531_real_time_payment
+    where r_cre_ID like 'BWY/%'
+    and Pmt_stat = 'S'
+    and Payee_Name in( 'BILL JUNCTION PAYMENT LIMITED','C.C AVENUES PVT LTD','C.C. AVENUES','C.C.AVENUES','ABCpayments.com','INDIAIDEAS.COM LTD','TECHPROCESS PREPAID\x0A\x0A\x0AMOBILE RECHARGE','TECHPROCESS SOLUTIONS LIMITED','ATOM TECH BROKERS','ATOM TECHNOLOGIES LTD','E-BILLING SOLUTIONS PVT LTD','CITRUS PAYMENT SOLUTIONS','TIMES\x0A\x0AOF \x0AMONEY LTD','IBIBO','TIMES OF MONEY','ESSECOM PRIVATE LIMITED','Bill Desk','BPC - INDIAIDEAS.COM LTD','INDIAIIDEAS.COM LTD','BILL DESK PREPAID MOBILE\x0A\x0ARECHARGE','INDIAIDEAS \x0A.COM LIMITED','BPC - Bill Desk','PAYTM MOBILE SOLUTIONS PVT LTD','FLIPKART INTERNET PVT LTD','PayU India','FLIPKART.COM','INDIAIDEAS .COM\x0A\x0ALIMITED_DONATION','ZAAK EPAYMENT \x0ASERVICES PVT LTD','AIRPAY PAYMENT SERVICES PVT LTD','EMVANTAGE PAYMENTS PVT. LTD','FLIPKART PAYMENT GATEWAY\x0A\x0ASERVICES','C.C. AVENUES_DONATION','CC AVENUES_ \x0AB2B','CC AVENUES_GOVT','PAYU INDIA_WAP','CC AVENUES B2B','INDIAIDEAS.COM VODAFONE MPESA','ATOM\x0A\x0ATECHNOLOGIES','EAZYPAYICICIBANK' ) ;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set SHOPPING_ACTIVE = 'Y' from
+    #master_merchant as B
+    where A.linked_userid = B.USER_ID;
+  commit work;
+  update RECONP.UCIC_LINKAGE as A
+    set SHOPPING_ACTIVE = 'Y' from
+    #master_merchant as B
+    where A.old_net_user_id = B.USER_ID
+    and A.SHOPPING_ACTIVE is null; -- Plz put filter where SHOPPING_ACTIVE is null
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select A.*,ACCOUNT_OPEN_DATE into #BASE_STAGE1 from RECONP.UCIC_LINKAGE as A
+      ,(select MIN(ACCOUNT_OPEN_DATE) as ACCOUNT_OPEN_DATE,UCIC_VALUE from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+        where ACCOUNT_CLOSE_DATE is null group by UCIC_VALUE) as B
+    where A.UCIC_code = B.UCIC_VALUE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select *
+    into #BASE_STAGE2
+    from(select A.*,ROW_NUMBER() over(partition by LINKED_USERID order by ACCOUNT_OPEN_DATE asc) as ROWNUM
+        from #BASE_STAGE1 as A) as B where B.ROWNUM = 1;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  truncate table RECONP.UCIC_LINKAGE;
+  commit work;
+  insert into RECONP.UCIC_LINKAGE
+    select UCIC_CODE,
+      SOURCE_PARTY_ID,
+      linked_userid,
+      FED_ID,
+      ACTIVATION_DATE,
+      OLD_NET_USER_ID,
+      FIRST_LOGIN_DATE,
+      LAST_LOGIN_DATE,
+      FD_OPENED,
+      RD_OPENED,
+      FT_DONE,
+      BP_DONE,
+      PMR_DONE,
+      FT_COUNT,
+      RIB_LOGIN_COUNT,
+      RIB_RAISED_SR,
+      CHEQUE_BOOK_REQUEST,
+      MY_MONEY,
+      IWISH,
+      MY_MONEY_ACTIVATION_DATE,
+      ACCOUNT_CLOSE_DATE,
+      SHOPPING_ACTIVE,
+      INTERNET_ACTIVE
+      from #BASE_STAGE2;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  truncate table MCCM.RIB_CHANNEL_ATTRIBUTE;
+  commit work;
+  insert into MCCM.RIB_CHANNEL_ATTRIBUTE
+    select distinct
+      UCIC_CODE,
+      linked_userid,
+      FED_ID,
+      ACTIVATION_DATE,
+      OLD_NET_USER_ID,
+      FIRST_LOGIN_DATE,
+      LAST_LOGIN_DATE,
+      FD_OPENED,
+      RD_OPENED,
+      FT_DONE,
+      BP_DONE,
+      PMR_DONE,
+      FT_COUNT,
+      RIB_LOGIN_COUNT,
+      RIB_RAISED_SR,
+      CHEQUE_BOOK_REQUEST,
+      MY_MONEY,
+      IWISH,
+      MY_MONEY_ACTIVATION_DATE,
+      ACCOUNT_CLOSE_DATE,
+      GETDATE() as AS_OF_DATE,
+      date(dateadd(month,1,getdate())) as EXPIRY_REVIEW_DATE,
+      cast(null as integer) as SCORE,
+      SHOPPING_ACTIVE,
+      INTERNET_ACTIVE
+      from RECONP.UCIC_LINKAGE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work
+end

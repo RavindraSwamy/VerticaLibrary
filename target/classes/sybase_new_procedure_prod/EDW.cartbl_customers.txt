@@ -1,0 +1,108 @@
+create procedure edw.cartbl_customers()
+begin
+  truncate table RECONP.cartbl_lookup;
+  commit work;
+  set temporary option DATE_ORDER = 'MDY';
+  load into table RECONP.cartbl_lookup( CL_ACTIVE_REF_NO '|^|',CL_ACTIVE_HOLDING '|^|',CL_LINKED_REF_NO '|^|',CL_LINKED_HOLDING '|^|',CL_USER_ID '|^|',CL_LAST_UPD_DT '|^|',CL_MAKER_ID '\x0A' ) using file --RECONP.TEMP_cartbl_lookup  --RECONP.cartbl_lookup
+    '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/sq_cartbl_lookup11.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/sq_cartbl_lookup11.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/sq_cartbl_lookup11.out.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  truncate table RECONP.CARTBL_CUSTOMERS_3;
+  load into table RECONP.CARTBL_CUSTOMERS_3( CC_REF_NO '|^|',CC_FSID '|^|',CC_CUST_ID '|^|',CC_HOLDING '|^|',CC_NAME '|^|',CUSTOMER_SEGMENT '|^|',CC_NET_USER_ID '|^|',STATUS '|^|',CC_LAST_UPDT_DT '|^|',CC_CREATED_DT '|^|',CC_OLD_NET_USER_ID '|^|',DATE_CREATED '|^|',DATE_MODIFIED '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/cartbl_customers_file.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/cartbl_customers_file1.msg' row log '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/cartbl_customers_file1.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  load into table RECONP.CARTBL_CUSTOMERS_3( CC_REF_NO '|^|',CC_FSID '|^|',CC_CUST_ID '|^|',CC_HOLDING '|^|',CC_NAME '|^|',CUSTOMER_SEGMENT '|^|',CC_NET_USER_ID '|^|',STATUS '|^|',CC_LAST_UPDT_DT '|^|',CC_CREATED_DT '|^|',CC_OLD_NET_USER_ID '|^|',DATE_CREATED '|^|',DATE_MODIFIED '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/cartbl_customers_file_new.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/cartbl_customers_file1.msg' row log '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/cartbl_customers_file1.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  truncate table RECONP.S_CARTBL_CUSTOMERS_FINAL;
+  /*
+INSERT INTO RECONP.S_CARTBL_CUSTOMERS_FINAL
+SELECT
+DISTINCT CC_REF_NO,CAST(NULL AS INTEGER) AS CL_ACTIVE_REF_NO,CC_NAME,CC_NET_USER_ID ,CC_OLD_NET_USER_ID,CC_CUST_ID,
+case when CC_FSID=2 then 30 when CC_FSID=10 then 51 when CC_FSID=3 then 20 when CC_FSID=7 then 80
+when CC_FSID=21 then 53 when CC_FSID=22 then 52 end source_system_code,HOLDING
+from RECONP.CARTBL_CUSTOMERS_2 LEFT OUTER JOIN  RECONP.cartbl_lookup
+ON CARTBL_CUSTOMERS_2.CC_REF_NO = cartbl_lookup.CL_ACTIVE_REF_NO
+where cc_holding=1 and status='A' ;
+COMMIT;
+*/
+  insert into RECONP.S_CARTBL_CUSTOMERS_FINAL
+    select distinct CC_REF_NO,null as CL_ACTIVE_REF_NO,CC_NAME,CC_NET_USER_ID,CC_OLD_NET_USER_ID,CC_CUST_ID,
+      case when CC_FSID = 2 then 30
+      when CC_FSID = 10 then 51
+      when CC_FSID = 3 then 20
+      when CC_FSID = 7 then 80
+      when CC_FSID = 21 then 53
+      when CC_FSID = 22 then 52
+      when CC_FSID = 24 then 140
+      when CC_FSID = 35 then 90
+      when CC_FSID = 62 then 35
+      when CC_FSID = 63 then 20
+      when CC_FSID = 69 then 75
+      when CC_FSID = 71 then 30 end as source_system_code,
+      CC_HOLDING
+      from RECONP.CARTBL_CUSTOMERS_3
+      where cc_holding = 1 and status = 'A'
+      and cc_holding = 1 and status = 'A'
+      and(CC_NET_USER_ID <> 'NA' or CC_OLD_NET_USER_ID <> 'NA');
+  commit work;
+  create table #UPS_CARTBL_CUSTOMERS_FINAL(
+    cc_ref_no numeric(10) null,
+    SYB_cc_ref_no numeric(10) null,
+    holding integer null,
+    SYB_holding integer null,
+    );
+  delete from RECONP.S_CARTBL_CUSTOMERS_FINAL as A from
+    RECONP.S_CARTBL_CUSTOMERS_FINAL as A
+    ,(select MAX(ROWID(S_CARTBL_CUSTOMERS_FINAL)) as ROW_ID,
+      cc_ref_no,
+      holding from RECONP.S_CARTBL_CUSTOMERS_FINAL
+      group by cc_ref_no,
+      holding) as B
+    where A.cc_ref_no = B.cc_ref_no
+    and A.holding = B.holding
+    and ROWID(A) <> B.ROW_ID;
+  commit work;
+  update RECONP.CARTBL_CUSTOMERS_FINAL as CARTBL_CUSTOMERS_FINAL
+    set CARTBL_CUSTOMERS_FINAL.CC_REF_NO = S_CARTBL_CUSTOMERS_FINAL.CC_REF_NO,
+    CARTBL_CUSTOMERS_FINAL.CL_ACTIVE_REF_NO = S_CARTBL_CUSTOMERS_FINAL.CL_ACTIVE_REF_NO,
+    CARTBL_CUSTOMERS_FINAL.CC_NAME = S_CARTBL_CUSTOMERS_FINAL.CC_NAME,
+    CARTBL_CUSTOMERS_FINAL.CC_NET_USER_ID = S_CARTBL_CUSTOMERS_FINAL.CC_NET_USER_ID,
+    CARTBL_CUSTOMERS_FINAL.CC_OLD_NET_USER_ID = S_CARTBL_CUSTOMERS_FINAL.CC_OLD_NET_USER_ID,
+    CARTBL_CUSTOMERS_FINAL.CC_CUST_ID = S_CARTBL_CUSTOMERS_FINAL.CC_CUST_ID,
+    CARTBL_CUSTOMERS_FINAL.SOURCE_SYSTEM_CODE = S_CARTBL_CUSTOMERS_FINAL.SOURCE_SYSTEM_CODE,
+    CARTBL_CUSTOMERS_FINAL.HOLDING = S_CARTBL_CUSTOMERS_FINAL.HOLDING from
+    RECONP.CARTBL_CUSTOMERS_FINAL as CARTBL_CUSTOMERS_FINAL,RECONP.S_CARTBL_CUSTOMERS_FINAL as S_CARTBL_CUSTOMERS_FINAL
+    where CARTBL_CUSTOMERS_FINAL.CC_REF_NO = S_CARTBL_CUSTOMERS_FINAL.CC_REF_NO
+    and CARTBL_CUSTOMERS_FINAL.HOLDING = S_CARTBL_CUSTOMERS_FINAL.HOLDING;
+  insert into #UPS_CARTBL_CUSTOMERS_FINAL
+    select S_CARTBL_CUSTOMERS_FINAL.cc_ref_no,
+      CARTBL_CUSTOMERS_FINAL.cc_ref_no as SYB_cc_ref_no,
+      S_CARTBL_CUSTOMERS_FINAL.holding,
+      CARTBL_CUSTOMERS_FINAL.holding as SYB_holding
+      from RECONP.S_CARTBL_CUSTOMERS_FINAL left outer join RECONP.CARTBL_CUSTOMERS_FINAL
+        on S_CARTBL_CUSTOMERS_FINAL.cc_ref_no = CARTBL_CUSTOMERS_FINAL.cc_ref_no
+        and S_CARTBL_CUSTOMERS_FINAL.holding = CARTBL_CUSTOMERS_FINAL.holding;
+  insert into RECONP.CARTBL_CUSTOMERS_FINAL
+    ( CC_REF_NO,
+    CL_ACTIVE_REF_NO,
+    CC_NAME,
+    CC_NET_USER_ID,
+    CC_OLD_NET_USER_ID,
+    CC_CUST_ID,
+    SOURCE_SYSTEM_CODE,
+    HOLDING ) 
+    select S_CARTBL_CUSTOMERS_FINAL.CC_REF_NO,
+      S_CARTBL_CUSTOMERS_FINAL.CL_ACTIVE_REF_NO,
+      S_CARTBL_CUSTOMERS_FINAL.CC_NAME,
+      S_CARTBL_CUSTOMERS_FINAL.CC_NET_USER_ID,
+      S_CARTBL_CUSTOMERS_FINAL.CC_OLD_NET_USER_ID,
+      S_CARTBL_CUSTOMERS_FINAL.CC_CUST_ID,
+      S_CARTBL_CUSTOMERS_FINAL.SOURCE_SYSTEM_CODE,
+      S_CARTBL_CUSTOMERS_FINAL.HOLDING
+      from RECONP.S_CARTBL_CUSTOMERS_FINAL,#UPS_CARTBL_CUSTOMERS_FINAL
+      where S_CARTBL_CUSTOMERS_FINAL.CC_REF_NO = #UPS_CARTBL_CUSTOMERS_FINAL.CC_REF_NO
+      and #UPS_CARTBL_CUSTOMERS_FINAL.SYB_CC_REF_NO is null
+      and S_CARTBL_CUSTOMERS_FINAL.holding = #UPS_CARTBL_CUSTOMERS_FINAL.holding
+      and #UPS_CARTBL_CUSTOMERS_FINAL.SYB_holding is null;
+  commit work
+end

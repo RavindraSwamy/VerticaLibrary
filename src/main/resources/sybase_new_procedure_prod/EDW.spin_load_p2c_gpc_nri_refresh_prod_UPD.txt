@@ -1,0 +1,446 @@
+create procedure EDW.spin_load_p2c_gpc_nri_refresh_prod_UPD()
+on exception resume
+begin
+  drop index p2c.P2C_UCIC_TABLE.UHG_P2C_UCIC_LINKAGE_UCIC;
+  drop index p2c.P2C_UCIC_TABLE.UHG_P2C_UCIC_LINKAGE_SAN;
+  drop index p2c.P2C_UCIC_TABLE.UHG_P2C_UCIC_LINKAGE_AAN;
+  drop index p2c.P2C_UCIC_TABLE.UHG_P2C_UCIC_LINKAGE_SSC;
+  commit work;
+  truncate table P2C.P2C_UCIC_TABLE;
+  ------------------- CARD
+  insert into P2C.P2C_UCIC_TABLE
+    select distinct U.UCIC_VALUE,P.UNIQUE_ID,P.account_nbr,P.source_account_nbr,P.Source_party_ID,P.source_system_code
+      from reconp.P2C_LINKAGE_TABLE as P
+        left outer join P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as U
+        on P.ACCOUNT_NBR = U.ACCOUNT_NBR
+        and P.source_system_code = U.source_system_code
+        and P.SOURCE_PARTY_ID = U.SOURCE_PARTY_ID
+        -- AND U.ACC_HOLDER <> 'ADDON'
+        --AND M.CARD_FLAG <> 'ADDON'
+        and U.source_system_code = 20
+      where P.source_system_code = 20; --9855720 row(s) inserted
+  commit work;
+  update P2C.P2C_UCIC_TABLE as P
+    set P.UCIC_VALUE = U.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as U
+    where P.ACCOUNT_NBR = U.ACCOUNT_NBR
+    and P.source_system_code = U.source_system_code
+    and P.UCIC_VALUE is null
+    and P.source_system_code = 20
+    and U.ACC_HOLDER <> 'ADDON';
+  --29203 row(s) updated
+  commit work;
+  -------------------------------------------- Liability 
+  -- DELETE FROM P2C.P2C_UCIC_TABLE WHERE source_system_code IN (30)
+  --,51,52,53
+  insert into P2C.P2C_UCIC_TABLE
+    select distinct U.UCIC_VALUE,P.UNIQUE_ID,P.account_nbr,P.source_account_nbr,P.Source_party_ID,P.source_system_code
+      from reconp.P2C_LINKAGE_TABLE as P
+        left outer join P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as U
+        on P.ACCOUNT_NBR = U.ACCOUNT_NBR
+        and P.source_system_code = U.source_system_code
+        and P.SOURCE_PARTY_ID = U.SOURCE_PARTY_ID
+        and U.source_system_code = 30
+        and(U.ACC_HOLDER in( 'Main Holder','Others','PRIMARY' ) or U.ACC_HOLDER is null)
+      where P.source_system_code = 30;
+  --11 76 44 045 row(s) inserted
+  -- 11 76 79 871 row(s) deleted
+  --117740469 row(s) inserted
+  --- SELECT COUNT(1) FROM P2C.P2C_UCIC_TABLE WHERE source_system_code =30 AND UCIC_VALUE IS NULL --91
+  commit work;
+  --------------------------------------------  DEMAT
+  -- DELETE FROM P2C.P2C_UCIC_TABLE WHERE source_system_code IN (80)
+  --,51,52,53
+  insert into P2C.P2C_UCIC_TABLE
+    select distinct U.UCIC_VALUE,P.UNIQUE_ID,P.account_nbr,P.source_account_nbr,P.Source_party_ID,P.source_system_code
+      from reconp.P2C_LINKAGE_TABLE as P
+        ,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as U
+      where P.ACCOUNT_NBR = U.ACCOUNT_NBR
+      and P.source_system_code = U.source_system_code
+      --AND P.SOURCE_PARTY_ID=U.SOURCE_PARTY_ID
+      and U.source_system_code = 80
+      and P.source_system_code = 80;
+  --149581346 row(s) affected
+  --- SELECT COUNT(1) FROM P2C.P2C_UCIC_TABLE WHERE source_system_code =80 AND UCIC_VALUE IS NULL --0
+  commit work;
+  -------------------------------------------- LOAN 
+  -- DELETE FROM P2C.P2C_UCIC_TABLE WHERE source_system_code IN (51,52,53)
+  --,51,52,53
+  insert into P2C.P2C_UCIC_TABLE
+    select distinct U.UCIC_VALUE,P.UNIQUE_ID,P.account_nbr,P.source_account_nbr,P.Source_party_ID,P.source_system_code
+      from reconp.P2C_LINKAGE_TABLE as P
+        left outer join P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as U
+        on P.ACCOUNT_NBR = U.ACCOUNT_NBR
+        and P.source_system_code = U.source_system_code
+        --AND P.SOURCE_PARTY_ID=U.SOURCE_PARTY_ID
+        and U.source_system_code in( 51,52,53 ) 
+        and U.Source_party_id not like 'COB%'
+      where P.source_system_code in( 51,52,53 ) ;
+  --28273497 row(s) inserted
+  --- SELECT COUNT(1) FROM P2C.P2C_UCIC_TABLE WHERE source_system_code IN (51,52,53) AND UCIC_VALUE IS NULL --91
+  commit work;
+  -------------------------------- missing ucic but avail unique id
+  select distinct UNIQUE_ID,UCIC_VALUE into #Null_UCIC_VALUE from p2c.P2c_ucic_table where UCIC_VALUE is null; ---1 03 192 row(s) affected
+  commit work;
+  select * into #FULL_UNIQEID_BASE from p2c.P2c_ucic_table where UNIQUE_ID = any(select distinct UNIQUE_ID from #Null_UCIC_VALUE where UNIQUE_ID is not null); ---1 03 898 row(s) affected
+  commit work;
+  -- SELECT DISTINCT  UNIQUE_ID FROM #FULL_UNIQEID_BASE  WHERE UCIC_VALUE IS nOT NULL  --37
+  update p2c.P2c_ucic_table as U
+    set U.UCIC_VALUE = N.UCIC_VALUE from
+    #FULL_UNIQEID_BASE as N
+    where U.UNIQUE_ID = N.UNIQUE_ID
+    and U.UCIC_VALUE is null;
+  --103238 row(s) updated
+  commit work;
+  update p2c.P2c_ucic_table as U
+    set U.UCIC_VALUE = N.UNIQUE_ID from
+    RECONP.p2c_Linkage_table as N
+    where U.UNIQUE_ID = N.UNIQUE_ID
+    and U.UCIC_VALUE is null;
+  --103232 row(s) updated
+  commit work;
+  /*
+
+INSERT INTO P2C.P2C_UCIC_TABLE
+SELECT DISTINCT U.UCIC_VALUE ,P.UNIQUE_ID, U.account_nbr, U.source_account_nbr, U.Source_party_ID, U.source_system_code 
+FROM P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL U
+LEFT OUTER JOIN
+reconp.P2C_LINKAGE_TABLE P
+ON U.SOURCE_ACCOUNT_NBR=P.SOURCE_ACCOUNT_NBR
+AND U.source_system_code=P.source_system_code
+WHERE     
+U.source_system_code IN (30,51,52,53,80)
+AND P.source_system_code IN (30,51,52,53,80)
+AND U.Source_party_id not like 'COB%'
+
+AND not exists (select 1 from EDW.FINNONE_CO_APPLICANT_DETAILS as A   where A.AGREEMENTNO = U.SOURCE_ACCOUNT_NBR AND  A.CO_Source_party_ID = U.Source_party_ID
+and A.SOURCE_SYSTEM_CODE = U.SOURCE_SYSTEM_CODE and A.SOURCE_SYSTEM_CODE in( 51,52,53 ) )
+and not exists (select 1 FROM  P2C.UCIC_SECONDARY_ACCOUNT_HOLDER A where ACCT_POA_AS_REC_TYPE <> 'Main Holder' AND U.SOURCE_SYSTEM_CODE=30 
+AND A.SOURCE_ACCOUNT_NBR = U.SOURCE_ACCOUNT_NBR AND  A.SECONDARY_CUST_ID = U.Source_party_ID  and A.SOURCE_SYSTEM_CODE = U.SOURCE_SYSTEM_CODE )
+--and(U.ACC_HOLDER in( 'Main Holder','Others','PRIMARY' ) or U.ACC_HOLDER is null)  ----
+; ----149478157 row(s) inserted
+
+*/
+  -- 15 75 13 207 row(s) affected
+  commit work;
+  create hg index UHG_P2C_UCIC_LINKAGE_UCIC on P2C.P2C_UCIC_TABLE(UCIC_VALUE);
+  create hg index UHG_P2C_UCIC_LINKAGE_SAN on P2C.P2C_UCIC_TABLE(SOURCE_ACCOUNT_NBR);
+  create hg index UHG_P2C_UCIC_LINKAGE_AAN on P2C.P2C_UCIC_TABLE(ACCOUNT_NBR);
+  create lf index UHG_P2C_UCIC_LINKAGE_SSC on P2C.P2C_UCIC_TABLE(SOURCE_SYSTEM_CODE);
+  commit work;
+  /*
+SELECT SOURCE_SYSTEM_CODE ,COUNT(1)cnt ,COUNT(SOURCE_ACCOUNT_NBR)CNT_ACCT,COUNT(DISTINCT SOURCE_ACCOUNT_NBR)DIST_CNT_ACCT FROM P2C.P2C_UCIC_TABLE GROUP BY SOURCE_SYSTEM_CODE ORDER BY SOURCE_SYSTEM_CODE 
+SELECT COUNT(SOURCE_ACCOUNT_NBR)CNT_ACCT,COUNT(DISTINCT SOURCE_ACCOUNT_NBR)DIST_CNT_ACCT FROM P2C.P2C_UCIC_TABLE
+
+SELECT SOURCE_SYSTEM_CODE ,COUNT(1)cnt ,COUNT(SOURCE_ACCOUNT_NBR)CNT_ACCT,COUNT(DISTINCT SOURCE_ACCOUNT_NBR)DIST_CNT_ACCT FROM reconp.P2C_LINKAGE_TABLE GROUP BY SOURCE_SYSTEM_CODE ORDER BY SOURCE_SYSTEM_CODE 
+SP_IQINDEX P2C_UCIC_TABLE
+--and(U.ACC_HOLDER in( 'Main Holder','Others','PRIMARY' ) or U.ACC_HOLDER is null) 
+AND U.Source_party_id not like 'COB%'  -- 14 74 75 825
+AND U.source_system_code IN (20,30,51,52,53) --143928243 row(s) inserted
+;
+*/
+  /* Gpc-NRI Backup*/
+  truncate table p2c.P2C_GPC_N_HEENA_BACKUP_UPD;
+  insert into p2c.P2C_GPC_N_HEENA_BACKUP_UPD(select * from p2c.P2C_GPC_N_HEENA_UPD);
+  commit work;
+  /*Create Unique ID, account_nbr base*/
+  select UCIC_VALUE,
+    unique_id,
+    account_nbr,
+    source_Account_nbr
+    into #temp_base
+    from P2C.P2C_UCIC_TABLE; ---157306471 row(s) affected
+  delete from #temp_base
+    where source_account_nbr = any(select source_account_nbr from EDW.T0300_ACCOUNT where account_close_date is not null and source_system_code = 30); ---7 91 45 239 row(s) deleted
+  commit work;
+  /* Create the GPCD , IPB , NRI base*/
+  /*Liability*/
+  select SOURCE_ACCOUNT_NBR,
+    Cust_ID,
+    B2.CUST_STAT_CODE,
+    GL_SUB_HEAD_CODE,
+    B2.CUST_CONST,
+    B2.CUST_NRE_FLG as NRI_FLG,QUANTAM_OPTIMA,
+    case when substr(B2.cust_const,1,1) in( 'R','E','Q','A','B' ) then 'RTL'
+    -- WHEN GL_SUB_HEAD_CODE IN ('05040','08040','20040') and NRI_FLG ='N' then  'RTL'
+    when GL_SUB_HEAD_CODE in( '05091','05092','05093','05094','05095','350505','30505' ) then 'ICICI'
+    when B2.CUST_STAT_CODE = 'DUMMY' then 'DUMMY'
+    when NRI_FLG = 'Y' and substr(GL_SUB_HEAD_CODE,1,3) <> '050' then 'RTL' else 'NA' end as RTL_NONRTL
+    into #Temp_1
+    from edw.T09311_LIABILITY_ACCOUNT_ADDON as B1
+      ,EDW.T09310_liability_customer_addon as B2
+    where TRIM(B1.SOURCE_PARTY_ID) = TRIM(B2.SOURCE_PARTY_ID)
+    and ACCT_OWNERSHIP <> 'O'
+    and isnull(B2.CUST_stat_code,'NULL') not in( 'DUMMY','CORBA' ) ; -- 112077816 row(s) affected
+  commit work;
+  --2
+  delete from #Temp_1
+    where source_account_nbr = any(select source_account_nbr from EDW.T0300_ACCOUNT where account_close_date is not null and source_system_code = 30); --7 70 64 665 row(s) deleted
+  commit work;
+  select A.SOURCE_ACCOUNT_NBR,A.Cust_ID,A.CUST_STAT_CODE,A.GL_SUB_HEAD_CODE,A.CUST_CONST,A.NRI_FLG,A.QUANTAM_OPTIMA,A.RTL_NONRTL,
+    case when NRI_FLG = 'Y' and GL_SUB_HEAD_CODE = '05060' then 'NRI'
+    when RTL_NONRTL = 'RTL' and NRI_FLG = 'Y' and substr(GL_SUB_HEAD_CODE,1,3) <> '050' then 'NRI'
+    when RTL_NONRTL = 'RTL' and NRI_FLG = 'N' and GL_SUB_HEAD_CODE in( '05040','08040','20040' ) then 'NRI' else 'DOMESTIC' end as NRI_STATUS
+    into #temp_2
+    from #temp_1 as a; ---34966720 row(s) affected
+  drop table #temp_1; --4
+  commit work; ----5         
+  --------------------------------For GPC, execute following code-------------------------------------------
+  select A.SOURCE_ACCOUNT_NBR,A.Cust_ID,A.CUST_STAT_CODE,A.GL_SUB_HEAD_CODE,A.CUST_CONST,A.NRI_FLG,A.QUANTAM_OPTIMA,A.RTL_NONRTL,A.NRI_STATUS,
+    bb.ACCOUNT_NBR,
+    case when GL_SUB_HEAD_CODE in( '05091','05092','05093','05094','05095','350505','30505' ) then 'ICICI'
+    when CUST_STAT_CODE = 'DUMMY' then 'DUMMY'
+    when NRI_STATUS = 'NRI' and CUST_STAT_CODE in( 'HNIM','HNIS' ) then 'IPB' --'HNIC'
+    when NRI_STATUS = 'NRI' then 'NRI RETAIL'
+    when RTL_NONRTL = 'RTL' and substr(CUST_STAT_CODE,1,1) in( '1','2','3','X','P' ) then 'SAL'
+    when RTL_NONRTL = 'RTL' and CUST_STAT_CODE in( 'STF','ESTF' ) then 'SAL'
+    when RTL_NONRTL = 'RTL' and CUST_STAT_CODE in( 'HNIPB','HNIPS','HNIPT','HNISS','KIDEP','HNIGC','GCUMM','HNIPP','HNITA' ) then 'GPCD'
+    when RTL_NONRTL = 'RTL'
+    and(substr(TRIM(CUST_STAT_CODE),1,3) = 'HNI' or CUST_STAT_CODE in( 'KIDEW','HNW','HNIC','KIDWM' ) ) then 'WEALTH' else 'NA' end as SEGMENT,
+    bb.SOURCE_SYSTEM_CODE into #Final_2
+    from #temp_2 as A
+      ,edw.t0300_account as BB
+    where trim(a.source_account_nbr) = bb.source_account_nbr and source_system_Code = 30 and account_close_date is null
+    and SEGMENT in( 'GPCD','IPB' ) ; ---42682 row(s) affected
+  commit work;
+  ---6
+  select A.SOURCE_ACCOUNT_NBR,A.Cust_ID,A.CUST_STAT_CODE,A.GL_SUB_HEAD_CODE,A.CUST_CONST,A.NRI_FLG,A.QUANTAM_OPTIMA,A.RTL_NONRTL,A.NRI_STATUS,
+    bb.ACCOUNT_NBR,
+    case when GL_SUB_HEAD_CODE in( '05091','05092','05093','05094','05095','350505','30505' ) then 'ICICI'
+    when CUST_STAT_CODE = 'DUMMY' then 'DUMMY'
+    when NRI_STATUS = 'NRI' and CUST_STAT_CODE in( 'HNIM','HNIS' ) then 'IPB' --'HNIC'
+    when NRI_STATUS = 'NRI' then 'NRI RETAIL'
+    when RTL_NONRTL = 'RTL' and substr(CUST_STAT_CODE,1,1) in( '1','2','3','X','P' ) then 'SAL'
+    when RTL_NONRTL = 'RTL' and CUST_STAT_CODE in( 'STF','ESTF' ) then 'SAL'
+    when RTL_NONRTL = 'RTL' and CUST_STAT_CODE in( 'HNIPB','HNIPS','HNIPT','HNISS','KIDEP','HNIGC','GCUMM','HNIPP','HNITA' ) then 'GPCD'
+    when RTL_NONRTL = 'RTL'
+    and(substr(TRIM(CUST_STAT_CODE),1,3) = 'HNI' or CUST_STAT_CODE in( 'KIDEW','HNW','HNIC','KIDWM' ) ) then 'WEALTH' else 'NA' end as SEGMENT,
+    bb.SOURCE_SYSTEM_CODE into #HNI1
+    from #temp_2 as A
+      ,edw.t0300_account as BB
+    where trim(a.source_account_nbr) = bb.source_account_nbr and source_system_Code = 30
+    and SEGMENT = 'WEALTH'; --898402 row(s) affected
+  commit work;
+  ---7
+  delete from #temp_2
+    where source_account_nbr = any(select source_account_nbr from EDW.T0300_ACCOUNT where account_close_date is not null and source_system_code = 30); --0 row(s) deleted
+  commit work;
+  /*Cards*/
+  select distinct account_nbr into #b_code
+    from edw.T09338_Account_Block as P
+    where P.Acct_Block_End_Date is null
+    and Account_Block_Code = 'A'; --384 row(s) affected
+  commit work;
+  ---8
+  select distinct account_nbr into #logo_
+    from edw.t0300_account as A
+    where A.source_system_code = 20 and Product_ID = 109555; ---177 row(s) affected
+  commit work;
+  ---9
+  select * into #Cards
+    from(select account_nbr from #b_code union
+      select account_nbr from #logo_) as AA; --515 row(s) affected
+  commit work;
+  --10
+  /*consolidate all GPC unique_id*/
+  select * into #gpc_uid
+    --11
+    /*Get all the relationships of GPC uids*/
+    --12
+    /*Select only required columns*/
+    /*All columns starting with uid_ are at unique_id level....Please remeber this while querying :-) */
+    ----------------For NRI execute following code  after ***---------------------------
+    --select a.*,
+    --bb.ACCOUNT_NBR,
+    --case
+    --when GL_SUB_HEAD_CODE in ('05091','05092','05093','05094','05095','350505','30505') then 'ICICI'
+    --when  CUST_STAT_CODE = 'DUMMY' then 'DUMMY'
+    --when NRI_STATUS = 'NRI'  AND CUST_STAT_CODE IN ('HNIM', 'HNIS') then 'IPB' --'HNIC'
+    --when NRI_STATUS = 'NRI' then 'NRI RETAIL'
+    --when RTL_NONRTL = 'RTL' and substr(CUST_STAT_CODE,1,1) in ('1','2','3','X','P') then 'SAL'
+    --when RTL_NONRTL = 'RTL' and CUST_STAT_CODE IN ('STF','ESTF') then 'SAL'
+    --when RTL_NONRTL = 'RTL' and CUST_STAT_CODE IN ('HNIPB', 'HNIPS', 'HNIPT','HNISS','KIDEP','HNIGC','GCUMM','HNIPP','HNITA') then 'GPCD'
+    --when RTL_NONRTL = 'RTL' and 
+    --(substr(TRIM(CUST_STAT_CODE),1,3) = 'HNI' or CUST_STAT_CODE in ('KIDEW','HNW','HNIC','KIDWM') ) then 'WEALTH'
+    --else 'NA' end 	SEGMENT,
+    --CASE    WHEN SUBSTR(BB.SOURCE_ACCOUNT_NBR,5,2)IN ('01','02')  THEN 'SAVING'    
+    --WHEN SUBSTR(BB.SOURCE_ACCOUNT_NBR,5,2) IN ('05','06', '51', '55', '60', '65', '52', '68') THEN 'CURRENT'    
+    --WHEN SUBSTR(BB.SOURCE_ACCOUNT_NBR,5,2)='25'                                               THEN 'RD'    
+    --WHEN SUBSTR(BB.SOURCE_ACCOUNT_NBR,5,2) IN ('10','12','14','15','16','31','35','40','61')                 
+    -- AND (QUANTAM_OPTIMA IS NULL  OR QUANTAM_OPTIMA='')      then 'FD'   ELSE 'QO' END product_FLAG   ,
+    --BB.ACCOUNT_OPEN_DATE,
+    --BB.ACCOUNT_CLOSE_DATE,
+    --bb.SOURCE_SYSTEM_CODE into #Final_3
+    --from 
+    --#temp_2 A ,
+    --edw.t0300_account BB
+    --where trim(a.source_account_nbr) = bb.source_account_nbr and source_system_Code=30
+    --and SEGMENT ='NRI RETAIL'
+    --and product_FLAG ='SAVING' and BB.ACCOUNT_CLOSE_DATE is null;
+    --select 
+    --ACCOUNT_NBR,
+    --source_system_code,
+    --source_account_nbr,
+    --Cust_ID AS SOURCE_PARTY_ID,
+    --CUST_STAT_CODE,
+    --GL_SUB_HEAD_CODE,
+    --CUST_CONST,
+    --ACCOUNT_OPEN_DATE,
+    --ACCOUNT_CLOSE_DATE,
+    --'NRI' incomesegment,
+    --'NRI' servicesegment, 
+    --today() date_created into #p2c_NRI_v1
+    --from #Final_3;
+    --TRUNCATE TABLE p2c.p2c_NRI_N_HEENA;
+    --INSERT INTO p2c.p2c_NRI_N_HEENA
+    --select distinct * from #p2c_NRI_v1;
+    --COMMIT;
+    --delete from p2c.p2c_NRI_N_HEENA
+    --where source_account_nbr in (select source_account_nbr from EDW.T0300_ACCOUNT where account_close_date is not null);
+    --commit;
+    from(select distinct
+        case when UCIC_VALUE is not null then a.UCIC_VALUE
+        else
+          'A' || cast(b.account_nbr as varchar)
+        end as UCIC_VALUE from #cards as B
+          left outer join #temp_base as A on b.account_nbr = a.account_nbr union
+      select distinct case when a.UCIC_VALUE is not null then a.UCIC_VALUE
+        else 'A' || cast(b.account_nbr as varchar)
+        end as UCIC_VALUE
+        from #Final_2 as B left outer join #temp_base as A on b.account_nbr = a.account_nbr) as BB; --9824 row(s) affected
+  commit work;
+  -- SELECT COUNT(1) from #gpc_uid where substr(UCIC_VALUE,1,1) = 'A'
+  select *
+    into #start_GPC
+    -- SELECT COUNT(1) FROM
+    from(select A.UCIC_VALUE,A.unique_id,A.account_nbr,A.source_Account_nbr
+        from #temp_base as A,#gpc_uid as B where A.UCIC_VALUE = B.UCIC_VALUE union all
+      select 'A' || cast(t0300.account_nbr as varchar) as UCIC_VALUE,
+        'A' || cast(t0300.account_nbr as varchar) as unique_id,
+        t0300.account_nbr,
+        t0300.source_account_nbr
+        from edw.t0300_account as t0300
+          ,(select cast(substr(UCIC_VALUE,2) as integer) as acno from #gpc_uid where substr(UCIC_VALUE,1,1) = 'A') as BB
+        where t0300.account_nbr = BB.acno) as CC; ---58882 row(s) affected
+  commit work;
+  ----------------------------------------------------------------------------------------
+  select A.UCIC_VALUE,
+    A.Unique_ID,
+    A.Source_Account_Nbr,
+    A.Account_Nbr,
+    T.Source_System_code,
+    T.ACCOUNT_OPEN_DATE,
+    T.ACCOUNT_CLOSE_DATE,'' as FSID,'GPC' as incomeSegment,'GPC' as servicesegment,'GPC' as gpid_segment
+    into #start_GPC2
+    from #start_GPC as A,edw.t0300_account as T where a.account_nbr = t.account_nbr
+    and(T.source_system_code in( 20,50,51,52,53 ) 
+    or(t.source_system_code = 30 and substr(T.source_account_nbr,5,2) in( '01','02','05','06','51','55','60','65','52','68' ) ))
+    and T.source_system_code in( 20,30,50,51,52,53 ) ; ---23077 row(s) affected
+  commit work;
+  -- SELECT TOP 10 * FROM  #start_GPC2;
+  select A.UCIC_VALUE,A.Unique_ID,A.Source_Account_Nbr,A.Account_Nbr,A.Source_System_code,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.FSID,A.incomeSegment,A.servicesegment,A.gpid_segment,
+    B.CAccounts_NumberX as card_nbr into #start_gpc3
+    from #start_GPC2 as A
+      left outer join EDW.T093083_CREDIT_CARD_CUST_DETAILS as B
+      on A.account_nbr = b.account_nbr; ---23219 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.Unique_ID,A.Source_Account_Nbr,A.Account_Nbr,A.Source_System_code,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.FSID,A.incomeSegment,A.servicesegment,A.gpid_segment,A.CARD_NBR,
+    B.cust_id
+    into #start_gpc4
+    from #start_GPC3 as A
+      left outer join #temp_2 as B
+      on A.source_account_nbr = b.source_account_nbr; ---23219 row(s) affected
+  commit work;
+  -- DROP TABLE #crazy1
+  select UCIC_VALUE, --unique_id,
+    max(case when segment = 'GPCD' then 1 else 0 end) as GPCD_,
+    max(case when segment = 'IPB' then 1 else 0 end) as IPB_
+    into #crazy1
+    from #Final_2 as A
+      ,#start_GPC as B
+    where A.source_account_nbr = B.source_account_nbr
+    group by UCIC_VALUE; --9498 row(s) affected
+  commit work;
+  select UCIC_VALUE,count() as CNT into #crazy2 from #HNI1 as A
+      ,#start_GPC as B where A.source_account_nbr = B.source_account_nbr
+    group by UCIC_VALUE; ---123 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.Unique_ID,A.Source_Account_Nbr,A.Account_Nbr,A.Source_System_code,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.FSID,
+    A.incomeSegment,A.servicesegment,A.gpid_segment,A.CARD_NBR,A.cust_id,
+    isnull(GPCD_,0) as GPCD_flag,
+    isnull(IPB_,0) as IPB_flag
+    into #UAT1
+    from #start_gpc4 as A
+      left outer join #crazy1 as B
+      on A.UCIC_VALUE = B.UCIC_VALUE; --23219 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.Unique_ID,A.Source_Account_Nbr,A.Account_Nbr,A.Source_System_code,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.FSID,
+    A.incomeSegment,A.servicesegment,A.gpid_segment,A.CARD_NBR,A.cust_id,A.GPCD_flag,A.IPB_flag,
+    case when B.account_nbr is not null then 1 else 0 end as Block_code_A_flag
+    into #UAT2
+    from #UAT1 as A left outer join #b_code as B on a.account_nbr = B.account_nbr; --23219 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.Unique_ID,A.Source_Account_Nbr,A.Account_Nbr,A.Source_System_code,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.FSID,
+    A.incomeSegment,A.servicesegment,A.gpid_segment,A.CARD_NBR,A.cust_id,A.GPCD_flag,A.IPB_flag,A.Block_code_A_flag,
+    case when B.account_nbr is not null then 1 else 0 end as Logo_flag
+    into #UAT3
+    from #UAT2 as A
+      left outer join #logo_ as B
+      on a.account_nbr = B.account_nbr; --- 23219 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.Unique_ID,A.Source_Account_Nbr,A.Account_Nbr,A.Source_System_code,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.FSID,
+    A.incomeSegment,A.servicesegment,A.gpid_segment,A.CARD_NBR,A.cust_id,A.GPCD_flag,A.IPB_flag,A.Block_code_A_flag,A.Logo_flag,
+    case when B.UCIC_VALUE is not null then 1 else 0 end as Wealth_flag
+    into #UAT4
+    from #UAT3 as A
+      left outer join #crazy2 as B
+      on A.UCIC_VALUE = B.UCIC_VALUE; --23219 row(s) affected
+  commit work;
+  select UCIC_VALUE,max(GPCD_flag) as GPCD,max(IPB_flag) as IPB,max(Block_code_A_flag) as Block_code_A,
+    max(Logo_flag) as Logo,max(Wealth_flag) as Wealth
+    into #chk
+    from #UAT4
+    group by UCIC_VALUE; --- 9699 row(s) affected
+  commit work;
+  select UCIC_VALUE,GPCD,IPB,Block_code_A,Logo,Wealth
+    into #Final_
+    from #chk
+    where not UCIC_VALUE = any(select UCIC_VALUE from #chk where isnull(Wealth,0) = 1 and(isnull(GPCD,0)+isnull(IPB,0)) = 0 and(isnull(Block_code_A,0)+isnull(Logo,0)) > 0);
+  --9672 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.Unique_ID,A.Source_Account_Nbr,A.Account_Nbr,A.Source_System_code,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.FSID,
+    A.incomeSegment,A.servicesegment,A.gpid_segment,A.CARD_NBR,A.cust_id,
+    B.GPCD as uid_level_GPCD,
+    B.IPB as uid_level_IPB,
+    B.Block_code_A as uid_level_Block_code_A,
+    B.logo as uid_level_logo,
+    B.Wealth as uid_level_wealth
+    into #GPC_Final_V1
+    from #start_gpc4 as A
+      ,#Final_ as B
+    where A.UCIC_VALUE = B.UCIC_VALUE; ---23055 row(s) affected
+  commit work;
+  -- SELECT * FROM #GPC_Final_V1
+  truncate table p2c.P2C_GPC_N_HEENA_UPD;
+  insert into p2c.P2C_GPC_N_HEENA_UPD( UCIC_VALUE,Source_Account_Nbr,Unique_ID,Account_Nbr,Source_System_code,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,
+    FSID,incomeSegment,servicesegment,gpid_segment,card_nbr,cust_id,uid_level_GPCD,uid_level_IPB,uid_level_Block_code_A,uid_level_logo,uid_level_wealth ) 
+    select distinct UCIC_VALUE,Source_Account_Nbr,Unique_ID,Account_Nbr,Source_System_code,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,FSID,
+      incomeSegment,servicesegment,gpid_segment,CARD_NBR,cust_id,uid_level_GPCD,uid_level_IPB,uid_level_Block_code_A,uid_level_logo,uid_level_wealth
+      from #GPC_Final_V1; --22934 row(s) inserted
+  commit work;
+  delete from p2c.P2C_GPC_N_HEENA_UPD
+    where Account_Nbr = any(select Account_Nbr from EDW.T0300_ACCOUNT where account_close_date is not null); --2416 row(s) deleted
+  commit work;
+  /*
+SELECT * FROM p2c.P2C_GPC_N_HEENA_UPD where UCIC_VALUE IS NULL
+UCIC_VALUE,Source_Account_Nbr,Unique_ID,Account_Nbr,Source_System_code,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,FSID,incomeSegment,servicesegment,gpid_segment,card_nbr,cust_id,uid_level_GPCD,uid_level_IPB,uid_level_Block_code_A,uid_level_logo,uid_level_wealth
+'0000000050651342','G50651342','018301009485',179640099,30,'2013-10-28',,' ','GPC','GPC','GPC',,'533746207',1,0,0,0,0
+COMMIT;
+
+SELECT COUNT(1) FROM P2C.P2C_UCIC_TABLE-- 15 88 91 707
+
+*/
+  if sqlstate <> '00000' then
+    return
+  end if
+end

@@ -1,0 +1,545 @@
+create procedure EDW.CUST_CONTACT_MASTER_FINAL_NEW()
+begin
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(PerPhone2,10)
+    and DNC_CHANNEL = 'PHONE';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(PerPhone1,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(PER_MOBILENUMBER,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(MobileNumber,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(MailPhone2,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(MailPhone1,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(MAIL_MOBILENUMBER,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(CurPhone2,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(CurPhone1,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(CUR_MOBILENUMBER,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(BusPhone2,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(BusPhone1,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(BUS_MOBILENUMBER,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(R_MOBILE,10)
+    and DNC_CHANNEL = 'PHONE' and A.DNC = 'N';
+  commit work;
+  /*new code*/
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(PerPhone2,10);
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(PerPhone2,10);
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(PerPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(PerPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(PER_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(PER_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MobileNumber,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MobileNumber,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MailPhone2,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MailPhone2,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MailPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MailPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MAIL_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(MAIL_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(CurPhone2,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(CurPhone2,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(CurPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(CurPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(CUR_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(CUR_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(BusPhone2,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(BusPhone2,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(BusPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(BusPhone1,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(BUS_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(BUS_MOBILENUMBER,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(R_MOBILE,10)
+    and A.NDNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226_UAT as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(R_MOBILE,10)
+    and A.NDNC = 'N';
+  commit work;
+  /*end new code*/
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(PerPhone2,10);
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(PerPhone1,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(PER_MOBILENUMBER,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(MobileNumber,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(MailPhone2,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(MailPhone1,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(MAIL_MOBILENUMBER,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(CurPhone2,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(CurPhone1,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(CUR_MOBILENUMBER,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(BusPhone2,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(BusPhone1,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(BUS_MOBILENUMBER,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(R_MOBILE,10)
+    and A.PHONE_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where UPPER(DNC_CHANNEL_DETAILS) = UPPER(PER_EADDRESS)
+    and B.DNC_CHANNEL = 'EMAIL';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where UPPER(DNC_CHANNEL_DETAILS) = UPPER(MAIL_EADDRESS)
+    and B.DNC_CHANNEL = 'EMAIL' and A.EMAIL_DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where UPPER(DNC_CHANNEL_DETAILS) = UPPER(Eaddress)
+    and B.DNC_CHANNEL = 'EMAIL' and A.EMAIL_DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where UPPER(DNC_CHANNEL_DETAILS) = UPPER(CUR_EADDRESS)
+    and B.DNC_CHANNEL = 'EMAIL' and A.EMAIL_DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where UPPER(DNC_CHANNEL_DETAILS) = UPPER(BUS_EADDRESS)
+    and B.DNC_CHANNEL = 'EMAIL' and A.EMAIL_DNC = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(PerPhone2,10);
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(PerPhone1,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(PER_MOBILENUMBER,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(MobileNumber,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(MailPhone2,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(MailPhone1,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(MAIL_MOBILENUMBER,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(CurPhone2,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(CurPhone1,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(CUR_MOBILENUMBER,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(BusPhone2,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(BusPhone1,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(BUS_MOBILENUMBER,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(R_MOBILE,10)
+    and A.EMAIL_ESCALATION = 'N';
+  commit work;
+  select A.SRC_ACCOUNT_NBR,B.UCIC_VALUE
+    into #IRIT_CUSTOMERS_DATA
+    from CAMP.NO_CALL_LIST_KS0616 as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SRC_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  create hg index IDX_UCIC_CODE on EDW.#IRIT_CUSTOMERS_DATA(UCIC_VALUE);
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.IRIT_SMS = (case when B.UCIC_VALUE is not null then 'Y' else 'N' end) from
+    #IRIT_CUSTOMERS_DATA as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.IRIT_EMAIL = (case when B.UCIC_VALUE is not null then 'Y' else 'N' end) from
+    #IRIT_CUSTOMERS_DATA as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select A.SOURCE_ACCOUNT_NBR,UCIC_VALUE
+    into #TEMP
+    from CAMP.MASTER_EXCLUDE as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.MASTER_EXCLUDE = 'Y' from
+    #TEMP as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select A.SOURCE_ACCOUNT_NBR,UCIC_VALUE
+    into #TEMP1
+    from(select * from CAMP.MASTER_EXCLUDE where HOUSEWIFE = 1) as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.MASTER_EXCLUDE_HOUSE_WIFE = 'Y' from
+    #TEMP1 as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.STAFF_FLAG = C.STAFF_FLAG from
+    (select case when B.CUST_STAT_CODE in( 'STF',
+      'STFF',
+      'PSTF',
+      '1STF',
+      '2STF',
+      '3STF',
+      'XSTF',
+      'ESTF',
+      'SBRSL',
+      'HNIST',
+      'HNIPT' ) then 'Y' else 'N' end as STAFF_FLAG,UCIC_VALUE
+      from EDW.T09311_LIABILITY_ACCOUNT_ADDON as A,(select * from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 30) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.UCIC_CODE = C.UCIC_VALUE;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.INCOME_SEGMENT = C.INCOMESEGMENT from
+    (select A.INCOMESEGMENT,B.UCIC_VALUE from P2C.P2C_CUSTOMER_SEGMENT_FINAL_N_HEENA as A,(select SOURCE_ACCOUNT_NBR,UCIC_VALUE from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.UCIC_CODE = C.UCIC_VALUE;
+  commit work;
+  select user_ID,max(modified_date) as pull_date
+    into #pull_base
+    from edw.t09525_mobile_pull_reg
+    where del_flag = 'N'
+    and substr(Mobile_Nbr,1,1) = '9'
+    group by user_ID;
+  commit work;
+  select *,cast(null as varchar(50)) as mobile_nbr,cast(null as varchar(50)) as source_party_id
+    into #pull_base_final
+    from #pull_base;
+  commit work;
+  update #pull_base_final as a
+    set source_party_id = trim(b.CUSTOMER_ID) from
+    edw.D0122_CAR_CUST_LINKAGE as b
+    where a.USER_ID = b.user_id;
+  commit work;
+  update #pull_base_final as a
+    set source_party_id = trim(b.CUSTOMER_ID) from
+    edw.D0122_CAR_CUST_LINKAGE as b
+    where a.source_party_id is null
+    and a.user_id = b.user_id;
+  commit work;
+  update #pull_base_final as a
+    set a.mobile_nbr = b.mobile_nbr from
+    edw.t09525_mobile_pull_reg as b
+    where trim(a.user_ID) = trim(b.user_ID)
+    and a.pull_date = b.modified_date;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set Mobile_pull_Reg_Mobile_number = B.mobile_nbr,
+    Mobile_pull_reg_Modified_date = b.pull_date from
+    #pull_base_final as B
+    where A.SOURCE_PARTY_ID = B.source_party_id
+    and a.source_system_code = 30;
+  commit work
+end

@@ -1,0 +1,96 @@
+create procedure edw.Aml_Cmg_10x_Updation()
+begin
+  ------***updating s-table values with main tables ****------
+  ---------------updating Main cmg table with only S_cmg fileds---------------
+  update reconp.AML_CMG_10X_UAT as a
+    set a.ENTITY_CRE_FLG = b.ENTITY_CRE_FLG,
+    a.DEL_FLG = b.DEL_FLG,
+    a.CUST_TITLE_CODE = b.CUST_TITLE_CODE,
+    a.CUST_NAME = b.CUST_NAME,
+    a.CUST_SEX = b.CUST_SEX,
+    a.CUST_OCCP_CODE = b.CUST_OCCP_CODE,
+    a.CUST_COMMU_CODE = b.CUST_COMMU_CODE,
+    a.CUST_RATING_CODE = b.CUST_RATING_CODE,
+    a.CUST_INTROD_CUST_ID = b.CUST_INTROD_CUST_ID,
+    a.INTROD_TITLE_CODE = b.INTROD_TITLE_CODE,
+    a.CUST_INTROD_NAME = b.CUST_INTROD_NAME,
+    a.CUST_INTROD_STAT_CODE = b.CUST_INTROD_STAT_CODE,
+    a.CUST_TYPE_CODE = b.CUST_TYPE_CODE,
+    a.CUST_EMP_ID = b.CUST_EMP_ID,
+    a.CUST_STAT_CODE = b.CUST_STAT_CODE,
+    a.CUST_STAT_CHG_DATE = b.CUST_STAT_CHG_DATE,
+    a.CUST_CONST = b.CUST_CONST,
+    a.CUST_MINOR_FLG = b.CUST_MINOR_FLG,
+    a.CUST_NRE_FLG = b.CUST_NRE_FLG,
+    a.LCHG_TIME = b.LCHG_TIME,
+    a.RCRE_TIME = b.RCRE_TIME,
+    a.DATE_OF_BIRTH = b.DATE_OF_BIRTH,
+    a.PAN_GIR_NUM = b.PAN_GIR_NUM,
+    a.PSPRT_NUM = b.PSPRT_NUM,
+    a.PSPRT_ISSU_DATE = b.PSPRT_ISSU_DATE,
+    a.PSPRT_DET = b.PSPRT_DET,
+    a.PSPRT_EXP_DATE = b.PSPRT_EXP_DATE,
+    a.CRNCY_CODE = b.CRNCY_CODE,
+    a.EMAIL_ID = b.EMAIL_ID,
+    a.PRIMARY_SOL_ID = b.PRIMARY_SOL_ID,
+    a.DSA_ID = b.DSA_ID,
+    a.CUST_OPN_DATE = b.CUST_OPN_DATE from
+    reconp.S_AML_CMG_10x as b
+    where A.CUST_ID = b.cust_id;
+  commit work;
+  ----------- Updating Permanent Email
+  update reconp.AML_CMG_10X_UAT as a
+    set a.CUST_PERM_EMAIL_ID = b.EMAIL from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'HOMEEML';
+  commit work;
+  ----------------------------------**updating the Cmg from ADDRESS,PHONEEMAIL for Employee ****---------------
+  ---- updating Working Address Details for Retails Customers
+  update reconp.AML_CMG_10X_UAT as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    RECONP.S_ADDRESS_10X_UAT as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Work'
+    --and cust_const != 'C%'
+    and b.CORP_ID is null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  ---- updating Working Address Details for Corporate Customers
+  update reconp.AML_CMG_10X_UAT as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    RECONP.S_ADDRESS_10X_UAT as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Head Office'
+    --and cust_const = 'C%'
+    and b.CORP_ID is not null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  -- CUST_FREE_TEXT is pending to be updated
+  --- Updating Employee Phone Num1
+  update reconp.AML_CMG_10X_UAT as a
+    set a.CUST_EMP_PHONE_NUM_1 = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'WORKPH1';
+  commit work;
+  --- Updating Employee Email Id
+  update reconp.AML_CMG_10X_UAT as a
+    set a.CUST_EMP_EMAIL_ID = b.EMAIL from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'WORKEML';
+  commit work
+end

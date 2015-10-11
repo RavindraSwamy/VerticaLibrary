@@ -1,0 +1,224 @@
+create procedure EDW.spin_load_p2c_service_segment_Calculation_prod_UPD()
+on exception resume
+begin
+  drop table p2c.P2c_base_data19_income_base_n_heena_UPD;
+  commit work;
+  select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,Profession,hh_income,Acct_Segment,Acct_rule,date_created,date_modified,
+    Turnover,Product,Cust_id,card_nbr,segment_code_12digit,profession_Code,C_profession,C_segment,c_account_nbr,c_source_account_nbr,
+    Cust_Segment,Cust_Rule,ACCOUNT_SEGMENT,customer_profession,CUSTOMER_SEGMENT,incomeSegment,
+    case when Cust_Segment = 7 then 'GPC'
+    when Cust_Segment = 5 and product = 'CA' then 'CE'
+    when Cust_Segment = 5 then 'WS'
+    when Cust_Segment = 4 then 'TS'
+    when Cust_Segment = 3 then 'GS'
+    when Cust_Segment in( 1,2 ) then 'GB' else 'GB' end as serviceSegment,
+    cast(null as varchar) as SERV_Rule
+    into p2c.P2c_base_data19_income_base_n_heena_UPD
+    from p2c.insert_income_segment_n_heena_UPD;
+  commit work; -- 5 79 59 826 row(s) affected
+  /*
+SELECT COUNT(1) FROM  p2c.P2c_base_data19_income_base_n_heena_UPD
+
+SELECT SOURCE_SYSTEM_CODE ,ACCOUNT_NBR,COUNT(1)cnt 
+INTO #DIST_CHECK
+FROM p2c.insert_income_segment_n_heena_UPD 
+GROUP BY  SOURCE_SYSTEM_CODE ,ACCOUNT_NBR HAVING COUNT(1)>1--0
+
+SELECT top 10 * FROM p2c.insert_income_segment_n_heena_UPD
+UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,Profession,hh_income,Acct_Segment,Acct_rule,date_created,date_modified,Turnover,Product,Cust_id,card_nbr,segment_code_12digit,profession_Code,C_profession,C_segment,c_account_nbr,c_source_account_nbr,Cust_Segment,Cust_Rule,ACCOUNT_SEGMENT,customer_profession,CUSTOMER_SEGMENT,incomeSegment
+'0000000000522354','G522354',976291962,'003701513151',30,'2005-01-06','SAL',,1,'ISA1','2015-05-13','2015-05-13',,'SA','505161369',' ',1,4,4,1,976291962,'003701513151',1,'ISA1','MASS MARKET   ','SAL     ','MASS MARKET   ','GB '
+
+*/
+  create hg index HGIDX_P2C_NEWDEV_1 on p2c.P2c_base_data19_income_base_n_heena_UPD(account_nbr asc);
+  commit work;
+  update p2c.P2c_base_data19_income_base_n_heena_UPD as ser
+    set serviceSegment = 'WS' from
+    p2c.P2c_base_data19_income_base_n_heena_UPD as ser,EDW.T09311_liability_account_addon as AA
+    where ser.Cust_Segment = 5
+    and ser.product = 'CA'
+    and ser.SOURCE_ACCOUNT_NBR = AA.SOURCE_ACCOUNT_NBR
+    and ser.SOURCE_SYSTEM_CODE = 30
+    and AA.customer_type = 'WEALTH'
+    and ser.serviceSegment = 'CE'; --7397 row(s) updated
+  commit work;
+  select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.ACCOUNT_OPEN_DATE,
+    A.Profession,A.hh_income,A.Acct_Segment,A.Acct_rule,A.Turnover,A.Product,A.Cust_id,A.card_nbr,A.segment_code_12digit,
+    A.profession_Code,A.C_profession,A.C_segment,A.c_account_nbr,A.c_source_account_nbr,A.Cust_Segment,A.Cust_Rule,
+    A.ACCOUNT_SEGMENT,A.customer_profession,A.CUSTOMER_SEGMENT,A.incomeSegment,A.serviceSegment,A.date_created,
+    A.date_modified
+    into #TO_INSERT
+    from p2c.P2c_base_data19_income_base_n_heena_UPD as A left outer join p2c.p2c_base_data19_UPD as B
+      on A.account_nbr = B.account_nbr
+    where B.account_nbr is null; -- 5 79 59 826 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.ACCOUNT_OPEN_DATE,
+    A.Profession,A.hh_income,A.Acct_Segment,A.Acct_rule,A.Turnover,A.Product,A.Cust_id,A.card_nbr,A.segment_code_12digit,
+    A.profession_Code,A.C_profession,A.C_segment,A.c_account_nbr,A.c_source_account_nbr,A.Cust_Segment,A.Cust_Rule,
+    A.ACCOUNT_SEGMENT,A.customer_profession,A.CUSTOMER_SEGMENT,A.incomeSegment,A.serviceSegment,A.date_created,
+    A.date_modified
+    into #TO_UPSERT from p2c.P2c_base_data19_income_base_n_heena_UPD as A left outer join p2c.p2c_base_data19_UPD as B
+      on A.account_nbr = B.account_nbr
+    where B.account_nbr is not null; --0
+  commit work;
+  create hg index HGIDX_P2C_NEWDEV_2 on #TO_INSERT(account_nbr asc);
+  create hg index HGIDX_P2C_NEWDEV_3 on #TO_UPSERT(account_nbr asc);
+  commit work;
+  delete from P2C.p2c_SA_n_heena_UPD where account_nbr
+     = any(select account_nbr from #TO_INSERT);
+  insert into P2C.p2c_SA_n_heena_UPD(
+    select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.PROFESSION_TYPE,A.CITY,A.STATE,A.CATEGORY,A.ZONE,
+      A.NET_SALARY_PER_MONTH,A.LAST_SALARY_MONTH,A.SEP_SENP,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,
+      A.DAY_END_BALANCE,A.ACCT_CRNCY_CODE,A.CUST_CONST,A.CUST_STAT_CODE,A.OTHER_PRODUCT_IDENIFIER,A.MAB,A.QAB,A.TRV,
+      A.ACCOUNT_SUMMARY_DATE,A.INCOME_VALIDATED_FLG,A.DATE_CREATED,A.REMOVAL_FLG,A.product_segment,A.hh_income,A.income_segment,
+      A.imputed_segment,A.acct_segment,A.acct_rule,A.DATE_MODIFIED
+      from p2c.sa_basic_calculation_UPD as A,#TO_INSERT as B where A.account_nbr = B.account_nbr); --25310508 row(s) inserted
+  delete from P2C.p2c_CA_n_heena_UPD where account_nbr
+     = any(select account_nbr from #TO_INSERT);
+  insert into P2C.p2c_CA_n_heena_UPD(
+    select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.PROFESSION_TYPE,A.CITY,A.STATE,A.CATEGORY,A.ZONE,
+      A.NET_SALARY_PER_MONTH,A.LAST_SALARY_MONTH,A.SEP_SENP,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.DAY_END_BALANCE,
+      A.ACCT_CRNCY_CODE,A.CUST_CONST,A.CUST_STAT_CODE,A.OTHER_PRODUCT_IDENIFIER,A.MAB,A.QAB,A.TRV,A.ACCOUNT_SUMMARY_DATE,
+      A.INCOME_VALIDATED_FLG,A.DATE_CREATED,A.REMOVAL_FLG,A.product_segment,A.Income_segment,cast(null as numeric) as Turnover,
+      A.imputed_segment,
+      A.Acct_Segment,A.Acct_rule,A.DATE_MODIFIED
+      from p2c.ca_basic_calculation_UPD as A,#TO_INSERT as B where A.account_nbr = B.account_nbr); --2241754 row(s) inserted
+  commit work;
+  delete from P2C.p2c_LOANS_n_heena_UPD where account_nbr
+     = any(select account_nbr from #TO_INSERT); --0
+  insert into P2C.p2c_LOANS_n_heena_UPD(
+    select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.CITY,A.STATE,A.CATEGORY,A.ZONE,A.SEP_SENP,
+      A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.SALARY,A.NET_ANNUAL_INCOME,A.GROSS_ANNUAL_INCOME,A.SANC_AMT,A.PROMOTION_DESC,
+      A.FINAL_PROFISSION,A.PRODUCT_INCOME_VALIDATION,A.DATE_CREATED,A.LOAN_PRODUCT,A.hh_income,A.Income_Segment,
+      A.imputed_segment,A.Acct_Segment,A.Acct_rule,A.DATE_MODIFIED,A.Assetcost from p2c.loans_basic_calculation_UPD as A,#TO_INSERT as B
+      where A.account_nbr = B.account_nbr); --1 31 37 866 row(s) inserted
+  commit work;
+  delete from P2C.p2c_CARDS_n_heena_UPD where account_nbr
+     = any(select account_nbr from #TO_INSERT);
+  insert into P2C.p2c_CARDS_n_heena_UPD(
+    select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.PRIMARY_CARD_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.LOGO,A.PROFESSION_TYPE,A.SEP_SENP,
+      A.CITY,A.STATE,A.CATEGORY,A.ZONE,A.SALARY,A.GROSS_SALARY,NET_SALARY,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,
+      A.SURROGATE_CLUB,A.CREDIT_LIMIT,A.INCOME_VALIDATED_FLAG,A.DATE_CREATED,A.product_segment,A.hh_income,
+      A.Income_Segment,A.imputed_segment,A.Acct_Segment,A.Acct_rule,A.DATE_MODIFIED
+      from p2c.cards_basic_calculation_UPD as A,#TO_INSERT as B
+      where A.account_nbr = B.account_nbr); --90 33 144 row(s) inserted
+  commit work;
+  delete from p2c.p2c_Other_Liability_Product_n_heena_UPD where account_nbr
+     = any(select account_nbr from #TO_INSERT);
+  insert into p2c.p2c_Other_Liability_Product_n_heena_UPD(
+    select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.PROFESSION_TYPE,A.CITY,A.STATE,A.CATEGORY,A.ZONE,
+      A.NET_SALARY_PER_MONTH,A.LAST_SALARY_MONTH,A.SEP_SENP,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.DAY_END_BALANCE,
+      A.ACCT_CRNCY_CODE,A.CUST_CONST,A.CUST_STAT_CODE,A.OTHER_PRODUCT_IDENIFIER,A.ACCOUNT_SUMMARY_DATE,A.INCOME_VALIDATED_FLG,
+      A.DATE_CREATED,A.DATE_MODIFIED,A.REMOVAL_FLG,A.LIAB_PRODUCT,A.Deposit_Amount,A.PROF_QUALIFICATION,A.SOURCE_PARTY_ID,
+      A.hh_income,A.product_segment,A.income_segment,A.imputed_segment,A.Acct_Segment,A.Acct_rule
+      from p2c.OTHLIAB_Basic_calculation_UPD as A,#TO_INSERT as B where A.account_nbr = B.account_nbr); -- 59 54 522 row(s) inserted
+  commit work;
+  delete from P2C.p2c_DEMAT_n_heena_UPD where account_nbr
+     = any(select account_nbr from #TO_INSERT); --0
+  insert into P2C.p2c_DEMAT_n_heena_UPD(
+    select B.UCIC_VALUE,B.unique_id,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.CUST_ID,A.CITY,A.STATE,A.CATEGORY,
+      A.ZONE,A.ACCOUNT_OPEN_DATE,A.ACCOUNT_CLOSE_DATE,A.SALARY,A.NET_ANNUAL_INCOME,A.GROSS_ANNUAL_INCOME,
+      A.Daily_Rate_Date,A.Investment_Value,null as PROFISSION,today() as DATE_CREATED,
+      A.ACCOUNT_TYPE_CODE,A.product_Segment,A.hh_income,A.Income_Segment,A.imputed_segment,A.Acct_Segment,A.Acct_rule,today() as DATE_MODIFIED
+      from p2c.DEMAT_basic_calculation_UPD as A,#TO_INSERT as B where A.account_nbr = B.account_nbr); --2282038 row(s) inserted
+  commit work;
+  delete from p2c.p2c_base_data19_UPD where account_nbr
+     = any(select account_nbr from #TO_INSERT);
+  insert into p2c.p2c_base_data19_UPD select * from #TO_INSERT; --57959826 row(s) inserted
+  commit work;
+  delete from p2c.p2c_base_data19_UPD where account_nbr
+     = any(select account_nbr from #TO_UPSERT); --0
+  insert into p2c.p2c_base_data19_UPD
+    select * from #TO_UPSERT; --0
+  commit work;
+  select A.* into #SA_Update
+    from p2c.sa_basic_calculation_UPD as A
+      ,#TO_UPSERT as B
+    where A.account_nbr = B.account_nbr;
+  select A.* into #CA_Update
+    from p2c.ca_basic_calculation_UPD as A
+      ,#TO_UPSERT as B
+    where A.account_nbr = B.account_nbr;
+  select A.* into #Cards_Update
+    from p2c.cards_basic_calculation_UPD as A
+      ,#TO_UPSERT as B
+    where A.account_nbr = B.account_nbr;
+  select A.* into #New_Product_Update
+    from p2c.OTHLIAB_Basic_calculation_UPD as A
+      ,#TO_UPSERT as B
+    where A.account_nbr = B.account_nbr;
+  select A.* into #Demat
+    from p2c.DEMAT_basic_calculation_UPD as A
+      ,#TO_UPSERT as B
+    where A.account_nbr = B.account_nbr;
+  commit work;
+  create hg index HGIDX_TEMP_DEB_X1 on #SA_Update(account_nbr asc);
+  create hg index HGIDX_TEMP_DEB_X2 on #CA_Update(account_nbr asc);
+  create hg index HGIDX_TEMP_DEB_X3 on #Cards_Update(account_nbr asc);
+  create hg index HGIDX_TEMP_DEB_X4 on #New_Product_Update(account_nbr asc);
+  create hg index HGIDX_TEMP_DEB_X5 on #Demat(account_nbr asc);
+  commit work;
+  update P2C.p2c_SA_n_heena_UPD as A
+    set A.UCIC_VALUE = B.UCIC_VALUE,
+    A.unique_id = B.unique_id,
+    A.cust_stat_code = B.cust_stat_code,
+    A.product_Segment = B.product_Segment,
+    A.Income_Segment = B.Income_Segment,
+    A.imputed_segment = B.imputed_segment,
+    A.Acct_Segment = B.Acct_Segment,
+    A.Acct_rule = B.Acct_rule,
+    A.date_modified = B.date_modified from
+    #SA_Update as B
+    where A.account_nbr = B.account_nbr;
+  update P2C.p2c_CA_n_heena_UPD as A
+    set A.UCIC_VALUE = B.UCIC_VALUE,
+    A.unique_id = B.unique_id,
+    A.cust_stat_code = B.cust_stat_code,
+    A.product_Segment = B.product_Segment,
+    A.Income_Segment = B.Income_Segment,
+    A.imputed_segment = B.imputed_segment,
+    A.Acct_Segment = B.Acct_Segment,
+    A.Acct_rule = B.Acct_rule,
+    A.date_modified = B.date_modified from
+    #CA_Update as B
+    where A.account_nbr = B.account_nbr;
+  update P2C.p2c_CARDS_n_heena_UPD as A
+    set A.UCIC_VALUE = B.UCIC_VALUE,
+    A.unique_id = B.unique_id,
+    A.logo = B.logo,
+    A.product_Segment = B.product_Segment,
+    A.Income_Segment = B.Income_Segment,
+    A.imputed_segment = B.imputed_segment,
+    A.Acct_Segment = B.Acct_Segment,
+    A.Acct_rule = B.Acct_rule,
+    A.date_modified = B.date_modified from
+    #Cards_Update as B
+    where A.account_nbr = B.account_nbr;
+  -- SELECT TOP 10 * FROM P2C.p2c_CARDS_n_heena
+  commit work;
+  update p2c.p2c_Other_Liability_Product_n_heena_UPD as A
+    set A.UCIC_VALUE = B.UCIC_VALUE,
+    A.unique_id = B.unique_id,
+    A.cust_stat_code = B.cust_stat_code,
+    A.product_Segment = B.product_Segment,
+    A.Income_Segment = B.Income_Segment,
+    A.imputed_segment = B.imputed_segment,
+    A.Acct_Segment = B.Acct_Segment,
+    A.Acct_rule = B.Acct_rule,
+    A.date_modified = B.date_modified from
+    #New_Product_Update as B
+    where A.account_nbr = B.account_nbr;
+  update P2C.p2c_DEMAT_n_heena_UPD as A
+    set A.UCIC_VALUE = B.UCIC_VALUE,
+    A.unique_id = B.unique_id,
+    A.product_Segment = B.product_Segment,
+    A.Income_Segment = B.Income_Segment,
+    A.imputed_segment = B.imputed_segment,
+    A.Acct_Segment = B.Acct_Segment,
+    A.Acct_rule = B.Acct_rule,
+    A.date_modified = B.date_modified,
+    A.investment_value = B.investment_value,
+    A.daily_rate_date = B.daily_rate_date from
+    #Demat as B
+    where A.account_nbr = B.account_nbr;
+  commit work
+end

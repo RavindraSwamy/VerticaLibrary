@@ -1,0 +1,173 @@
+create procedure EDW.spin_load_p2c_demat_base_incr_prod_UPD()
+on exception resume
+begin
+  declare V$$EDATE date;
+  declare V$$SDATE date;
+  declare V$$Daily_Rate_Date date;
+  declare V$$SR smallint;
+  declare V$$remark varchar(50);
+  declare V$$Last_Day_Curr_Mon date;
+  select max(sr) into V$$SR from edw.P2C_BASE_PARAM_N_DEB_UPD where start_date is not null
+    and end_date is not null;
+  select Start_Date into V$$SDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select End_Date into V$$EDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Last_Day_Curr_Mon into V$$Last_Day_Curr_Mon from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Run_Comment into V$$remark from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select max(Daily_Rate_Date) into V$$Daily_Rate_Date from EDW.T09564_DEMAT_HOLDING_DETAILS;
+  /*
+-- select max(Daily_Rate_Date)   from EDW.T09564_DEMAT_HOLDING_DETAILS; --V$$Daily_Rate_Date --2015-04-30
+select DISTINCT  Daily_Rate_Date  from EDW.T09564_DEMAT_HOLDING_DETAILS where Daily_Rate_Date between '2015-03-01' AND '2015-04-30'
+only month end date , data available
+Daily_Rate_Date
+'2015-03-31'
+'2015-04-30'
+SELECT  *   from EDW.T09564_DEMAT_HOLDING_DETAILS WHERE ACCOUNT_NBR =3138977 --142.541666
+SELECT  DATEADD(MM,-5,CAST('2015-04-30' AS DATE)) --2014-10-31 00:00:00.000000 AS per given query
+COMMIT;
+SELECT COUNT(1) FROM --DROP TABLE 
+#DEMAT_VALUE
+*/
+  if(V$$remark = 'OK TO PROCESS') then
+    -------------------Changes FY-15-16 aaditya: Demat investment value should be sum on the basis of UCIC_VALUE and for last 6 month avg data of account.
+    select * into #DEMAT_VALUE
+      --  CAST('2015-04-30' AS DATE) as Daily_Rate_Date,  --V$$Daily_Rate_Date
+      --'2015-05-23'--V$$Daily_Rate_Date
+      from(select a.Account_nbr,
+          (AVG(a.Value_at_Market_Price)) as Investment_Value
+          from EDW.T09564_DEMAT_HOLDING_DETAILS as a
+          where a.Daily_Rate_Date between DATEADD(mm,-5,cast(V$$Daily_Rate_Date as date)) and V$$Daily_Rate_Date
+          and a.Value_at_Market_Price > 0
+          and a.account_nbr is not null
+          group by a.Account_nbr) as X; --,exclude  a.Daily_Rate_Date --11 82 000 row(s) affected
+    commit work;
+    -------------------END Changes FY-15-16 aaditya:
+    create hg index HGIDX_DEMAT_ACCT_P2C on #DEMAT_VALUE(ACCOUNT_NBR asc);
+    commit work;
+    select * into #t0300
+      --V$$Daily_Rate_Date '2015-05-23' --DMAT.Daily_Rate_Date,
+      from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+          T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+          T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+          T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+          T0300.ACCOUNT_TYPE_CODE,
+          T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+          cast(V$$Daily_Rate_Date as date) as Daily_Rate_Date,
+          (case when DMAT.Investment_Value is null then 0 else DMAT.Investment_Value end) as Investment_Value
+          from edw.T0300_Account as T0300 left outer join #DEMAT_VALUE as DMAT
+            on T0300.ACCOUNT_NBR = DMAT.ACCOUNT_NBR
+          where T0300.source_system_code = 80) as x; --35 62 261 row(s) affected
+    commit work;
+    -- select * into #DEMAT_INCR_SEGMNT_DUMP_n_p2c_MITS
+    -- from
+    -- (select
+    -- a.*
+    -- from P2C.P2C_MISSING_ACCOUNTS_N_HEENA DD, #DEMAT_VALUE a  
+    -- WHERE DD.ACCOUNT_NBR = a.account_nbr
+    -- AND DD.SOURCE_SYSTEM_CODE IN (80)
+    -- AND DD.IDENTIFIER = 'GPC') x;
+    -- commit;
+    --select * into #p2c_demat
+    --from
+    --(
+    --select
+    --T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+    --T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+    --T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+    --T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+    --T0300.ACCOUNT_TYPE_CODE,
+    --T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+    --DMAT.Daily_Rate_Date,
+    --DMAT.Investment_Value
+    --from #DEMAT_INCR_SEGMNT_DUMP_n_p2c_MITS DMAT left outer join edw.T0300_Account T0300
+    --where
+    --DMAT.ACCOUNT_NBR=T0300.ACCOUNT_NBR
+    --) x;
+    --commit;
+    create hg index Hg_IDX_temo_t0300_1 on #t0300(ACCOUNT_OPEN_DATE asc);
+    create hg index Hg_IDX_temo_t0300_2 on #t0300(account_nbr asc);
+    commit work;
+    if(V$$EDATE <> V$$Last_Day_Curr_Mon) then
+      select * into #p2c_demat from #t0300 where ACCOUNT_OPEN_DATE between V$$SDATE and V$$EDATE; --'2015-04-25' AND '2015-05-23' --V$$SDATE and V$$EDATE
+      commit work;
+      select * into #gpid_change
+        --and A.Unique_ID <> B.Unique_ID
+        --and substring(A.Unique_ID,1,1) = 'G'
+        from(select a.account_nbr,a.SOURCE_ACCOUNT_NBR,a.source_system_code
+            from P2c.P2C_UCIC_TABLE as A,p2c.p2c_base_data19_UPD as B
+            where A.Account_NBR = B.Account_NBR
+            and B.source_system_code = 80
+            and A.UCIC_VALUE <> B.UCIC_VALUE) as x;
+      commit work;
+      insert into #p2c_demat
+        select a.*
+          from #t0300 as a,#gpid_change as b
+          where a.ACCOUNT_NBR = b.ACCOUNT_NBR; --0 row(s) inserted
+      commit work;
+      insert into #p2c_demat
+        select * from #t0300
+          where ACCOUNT_OPEN_DATE <= V$$SDATE --'2015-04-25'--V$$SDATE
+          and not account_nbr = any(select account_nbr from p2c.p2c_base_data19_UPD where source_system_code = 80); --3551233 row(s) inserted
+      commit work;
+      insert into #p2c_demat
+        select A.* from #t0300 as A,P2C.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as B
+          where A.account_nbr = B.account_nbr and B.source_system_code = 80; --9834 row(s) inserted
+      commit work
+    end if;
+    if(V$$EDATE = V$$Last_Day_Curr_Mon) then
+      -- DROP TABLE #p2c_demat
+      select * into #p2c_demat from #t0300 where ACCOUNT_OPEN_DATE <= V$$EDATE and ACCOUNT_CLOSE_DATE is null; --V$$EDATE   '2015-05-23' --22 83 136 row(s) affected
+      commit work
+    end if;
+    drop table p2c.DEMAT_INCR_SEGMNT_BASE_UPD;
+    select distinct
+      ACCOUNT_NBR,
+      SOURCE_SYSTEM_CODE,
+      SOURCE_ACCOUNT_NBR,
+      ACCOUNT_OPEN_DATE,
+      ACCOUNT_TYPE_CODE,
+      ACCOUNT_CLOSE_DATE,
+      Daily_Rate_Date,
+      Investment_Value
+      into p2c.DEMAT_INCR_SEGMNT_BASE_UPD
+      from #p2c_demat; --22 83 136 row(s) affected
+    commit work;
+    drop table p2c.DEMAT_INCR_SEGMNT_BASE_SRC_UPD;
+    select * into p2c.DEMAT_INCR_SEGMNT_BASE_SRC_UPD
+      -- select count(1)
+      from(select PLT.UCIC_VALUE,PLT.UNIQUE_ID,
+          CSBR.*
+          from p2c.DEMAT_INCR_SEGMNT_BASE_UPD as CSBR,P2c.p2c_UCIC_table as PLT
+          where CSBR.account_nbr = PLT.account_nbr
+          and CSBR.source_system_code = PLT.source_system_code) as x; --3554246
+    commit work;
+    -------------------Changes FY-15-16 aaditya: Demat investment value should be sum on the basis of UCIC_VALUE and for last 6 month avg investment value of account.
+    -- DROP TABLE #Inv_UCIC
+    select UCIC_VALUE,SUM(ISNULL(Investment_Value,0)) as Investment_Value into #Inv_UCIC
+      from p2c.DEMAT_INCR_SEGMNT_BASE_SRC_UPD group by UCIC_VALUE; -- 22 11 562 row(s) affected
+    commit work;
+    update p2c.DEMAT_INCR_SEGMNT_BASE_SRC_UPD as P
+      set P.Investment_Value = ISNULL(U.Investment_Value,0) from
+      #Inv_UCIC as U
+      where P.UCIC_VALUE = U.UCIC_VALUE;
+    --2282038 row(s) affected
+    commit work;
+    ------------ END CHANGES P2C Upgrade FY15-16
+    drop table p2c.DEMAT_INCR_SEGMNT_BASE_SRC_1_UPD;
+    select * into p2c.DEMAT_INCR_SEGMNT_BASE_SRC_1_UPD
+      -- select count(1)
+      --2282038 row(s) affected
+      from(select BASE.*,B0328.source_party_id,BASIC_QUALIFICATION,PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,
+          GROSS_ANNUAL_INCOME
+          from p2c.DEMAT_INCR_SEGMNT_BASE_SRC_UPD as BASE left outer join edw.B0328_party_account as B0328
+            on BASE.SOURCE_ACCOUNT_NBR = B0328.SOURCE_ACCOUNT_NBR
+            and BASE.source_system_code = B0328.source_system_code
+            left outer join EDW.T0111_SOURCE_CUSTOMER_DETAILS as T0111
+            on TRIM(B0328.SOURCE_PARTY_ID) = TRIM(T0111.SOURCE_PARTY_ID)
+            and B0328.source_system_code = T0111.source_system_code
+            and T0111.source_system_code = 80) as x;
+    commit work;
+    if sqlstate <> '00000' then
+      return
+    end if
+  end if
+end

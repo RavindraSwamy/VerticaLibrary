@@ -1,0 +1,110 @@
+create procedure EDW.sp_lg_get_ddl_tables_MODIFIED( 
+  in p_user_name char(128) default null,
+  in p_table_name char(128) default null ) 
+-- Retrieves the list fo CREATE TABLE statements.
+begin
+  if(p_user_name is null and p_table_name is not null) or(p_user_name is not null and p_table_name is null) then
+    raiserror 24001 'Input parameters are wrong. Only passing of all parameters is supported'
+  end if;
+  select 1 as order_num,
+    TRIM(up.user_name) as user_name,
+    TRIM(t.table_name) as table_name,cast('create '
+     || case when table_type = 'GBL TEMP' then ' global temporary ' else '' end || 'table '
+     || up.user_name || '.'
+     || t.table_name || char(10) || '('
+     || char(10)
+     || list(c.column_name || ' '
+     || case when c.user_type is null then
+      d.domain_name
+       || case when d.domain_name in( 'numeric','decimal' ) then '(' || c.width || ',' || c.scale || ')'
+      when d.domain_name in( 'char','varchar','float','binary','varbinary' ) then '(' || c.width || ')' else '' end
+    else
+      (select type_name from SYS.SYSUSERTYPE as ut where ut.type_id = c.user_type)
+    end
+     || case when c.nulls = 'Y' then ' null' else ' not null' end
+     || case when c.default = 'autoincrement' then ' identity'
+    when c.default is not null then ' default ' || c.default else '' end
+     || ' IQ UNIQUE('
+     || icl.approx_unique_count || ')',','
+     || char(10) order by c.column_id asc)
+     || char(10) || ') IN ' || f.dbspace_name
+     || case when t.table_type = 'GBL TEMP' then
+      case t.last_page
+      when 0 then ' on commit preserve rows '
+      when 1 then ' on commit delete rows '
+      when 3 then ' not transactional ' end
+    else
+      /*
+union all
+select 2 order_num,
+up.user_name,
+t.table_name,
+'comment on table ' || up.user_name || '.' || t.table_name ||
+' is ''' || t.remarks || '''' || char(10) || 'go' ddl_text
+from SYS.SYSTABLE t,
+SYS.SYSUSERPERM up
+where t.creator = up.user_id
+and up.user_name not in ('SYS', 'PUBLIC', 'dbo', 'rs_systabgroup', 'SA_DEBUG')
+and t.table_type in ('BASE', 'GBL TEMP')
+and not ( up.user_name = 'DBA' and t.table_name in ( 'IQ_LOGIN_PER_SERVER', 'IQ_MPX_INFO', 'IQ_MPX_Q2W', 
+'IQ_MPX_SERVER_PROPERTIES', 'IQ_MPX_STATUS', 'IQ_MPX_VERSIONLIST', 
+'IQ_SYSTEM_LOGIN_INFO_TABLE', 'IQ_USER_LOGIN_INFO_TABLE', 
+'SYSOPTIONDEFAULTS'
+)
+)
+and t.remote_location is null
+and t.remarks is not null
+and (
+(p_user_name is null and p_table_name is null)
+or (p_user_name is not null and p_table_name is not null and up.user_name = p_user_name  and t.table_name = p_table_name)
+)
+union all
+select 3 order_num,
+up.user_name,
+t.table_name,
+'comment on column ' || up.user_name || '.' || t.table_name || '.' || c.column_name || 
+' is ''' || c.remarks || '''' || char(10) || 'go' ddl_text
+from SYS.SYSTABLE t,
+SYS.SYSUSERPERM up,
+SYS.SYSCOLUMN c
+where t.creator = up.user_id
+and t.table_id = c.table_id
+and up.user_name not in ('SYS', 'PUBLIC', 'dbo', 'rs_systabgroup', 'SA_DEBUG')
+and t.table_type in ('BASE', 'GBL TEMP')
+and not ( up.user_name = 'DBA' and t.table_name in ( 'IQ_LOGIN_PER_SERVER', 'IQ_MPX_INFO', 'IQ_MPX_Q2W', 
+'IQ_MPX_SERVER_PROPERTIES', 'IQ_MPX_STATUS', 'IQ_MPX_VERSIONLIST', 
+'IQ_SYSTEM_LOGIN_INFO_TABLE', 'IQ_USER_LOGIN_INFO_TABLE', 
+'SYSOPTIONDEFAULTS'
+)
+)
+and (
+(p_user_name is null and p_table_name is null)
+or (p_user_name is not null and p_table_name is not null and up.user_name = p_user_name  and t.table_name = p_table_name)
+)
+and t.remote_location is null
+and c.remarks is not null
+order by 1, 2, 3
+*/
+      ''
+    end || char(10) || 'go' as varchar(32767)) as ddl_text
+    from SYS.SYSTABLE as t
+      ,SYS.SYSUSERPERM as up
+      ,SYS.SYSFILE as f
+      ,SYS.SYSCOLUMN as c
+      ,SYS.SYSDOMAIN as d
+      ,SYS.SYSIQCOLUMN as icl
+    where t.creator = up.user_id
+    and t.file_id = f.file_id
+    and up.user_name not in( 'SYS','PUBLIC','dbo','rs_systabgroup','SA_DEBUG' ) 
+    and t.table_type in( 'BASE','GBL TEMP' ) 
+    and not(up.user_name = 'DBA' and t.table_name in( 'IQ_LOGIN_PER_SERVER','IQ_MPX_INFO','IQ_MPX_Q2W','IQ_MPX_SERVER_PROPERTIES','IQ_MPX_STATUS','IQ_MPX_VERSIONLIST','IQ_SYSTEM_LOGIN_INFO_TABLE','IQ_USER_LOGIN_INFO_TABLE','SYSOPTIONDEFAULTS' ) )
+    and t.remote_location is null
+    and t.table_id = c.table_id
+    and c.domain_id = d.domain_id
+    and c.table_id = icl.table_id
+    and c.column_id = icl.column_id
+    and((p_user_name is null and p_table_name is null)
+    or(p_user_name is not null and p_table_name is not null and up.user_name = p_user_name and t.table_name = p_table_name))
+    group by up.user_name,t.table_name,f.dbspace_name,t.table_type,t.last_page
+    order by 1 asc,2 asc,3 asc
+end

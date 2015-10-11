@@ -1,0 +1,15 @@
+create procedure RECONP.MAIN_ICI_LEAD_DUMP_INTRA_load()
+begin
+  commit work;
+  truncate table RECONP.MAIN_ICI_LEAD_DUMP_INTRA;
+  commit work;
+  load into table RECONP.MAIN_ICI_LEAD_DUMP_INTRA( LEADID '|~|',CREATEDON '|~|',BUSINESS_LINE '|~|',PRODUCTCATEGORYID '|~|',PRODUCTID '|~|',LAYOUTID '|~|',PRODUCT_SOURCE '|~|',opening_branch '|~|',CREATEDBY '|~|',OWNERCODE '|~|',STATUSCODE '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/DC/main_ici_lead_dump_intra.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/DC/main_ici_lead_dump_intra.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/DC/main_ici_lead_dump_intra.out.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  insert into RECONP.MAIN_ICI_LEAD_DUMP_INTRA_AUDIT
+    select 'MAIN_ICI_LEAD_DUMP_INTRA',@@rowcount,getdate();
+  commit work;
+  insert into RECONP.MAIN_ICI_LEAD_DUMP_INTRA_history
+    select * from RECONP.MAIN_ICI_LEAD_DUMP_INTRA;
+  commit work
+end

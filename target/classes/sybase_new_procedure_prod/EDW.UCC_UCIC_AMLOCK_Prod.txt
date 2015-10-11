@@ -1,0 +1,493 @@
+create procedure EDW.UCC_UCIC_AMLOCK_Prod()
+on exception resume
+begin
+  drop table RECONP.UCIC_AMLOCK_N_VIJAY_HIST;
+  select * into RECONP.UCIC_AMLOCK_N_VIJAY_HIST from RECONP.UCC_UCIC_AMLOCK_N_VIJAY;
+  commit work;
+  drop table RECONP.UCC_UCIC_AMLOCK_N_VIJAY;
+  commit work;
+  select case when L.SOURCE_SYSTEM_CODE = 20 then 'C'+L.SOURCE_ACCOUNT_NBR
+    when L.SOURCE_SYSTEM_CODE in( 51,52,53 ) then 'F'+L.SOURCE_ACCOUNT_NBR
+    else L.SOURCE_ACCOUNT_NBR
+    end as SOURCE_ACCOUNT_NBR,FULL_NAME,
+    case when L.SOURCE_SYSTEM_CODE = 20 then 'C'+L.SOURCE_PARTY_ID
+    when L.SOURCE_SYSTEM_CODE in( 51,52,53 ) then 'F'+L.SOURCE_PARTY_ID
+    else L.SOURCE_PARTY_ID
+    end as SOURCE_PARTY_ID,UCIC_VALUE as UCIC_UCC_CODE,
+    case when SOURCE_SYSTEM_CODE = 30 then 'Finacle'
+    when SOURCE_SYSTEM_CODE = 20 then 'CARD'
+    when SOURCE_SYSTEM_CODE = 80 then 'DEMAT'
+    when SOURCE_SYSTEM_CODE = 75 then 'AGRI'
+    when SOURCE_SYSTEM_CODE = 51 then 'LOAN_RAPG'
+    when SOURCE_SYSTEM_CODE = 52 then 'LOAN_BANK'
+    when SOURCE_SYSTEM_CODE = 53 then 'LOAN_HFC'
+    when SOURCE_SYSTEM_CODE = 90 then 'PREPAID CARD'
+    when SOURCE_SYSTEM_CODE = 76 then 'B2'
+    when SOURCE_SYSTEM_CODE = 301 then 'EBOR_DPSecure'
+    when SOURCE_SYSTEM_CODE = 302 then 'MoboMoney'
+    when SOURCE_SYSTEM_CODE = 303 then 'MPesa'
+    when SOURCE_SYSTEM_CODE = 304 then 'TravelCard_MultiCurr'
+    when SOURCE_SYSTEM_CODE = 305 then 'TravelCard_SingleCurrr' end as SOURCE_SYSTEM,
+    SCHM_TYPE as Product_type,
+    ACC_HOLDER as RELATION_TYPE,
+    TRIM(L.CUST_CONST) as CUST_CONST,
+    UCIC_VALUE,
+    L.ACCOUNT_NBR as DWH_ACCOUNT_NBR,
+    L.SOURCE_ACCOUNT_NBR as DWH_SOURCE_ACCOUNT_NBR,
+    L.SOURCE_SYSTEM_CODE,
+    L.SOURCE_PARTY_ID as DWH_SOURCE_PARTY_ID,
+    L.Product_type as DWH_Product_type,
+    L.RELATION_TYPE as DWH_RELATION_TYPE,
+    TRIM(SCHM_TYPE) as DWH_SCHEM_TYPE,
+    TRIM(L.CUST_CONST) as DWH_CUST_CONST,
+    TRIM(ACC_HOLDER) as DWH_ACC_HOLDER
+    into RECONP.UCC_UCIC_AMLOCK_N_VIJAY
+    from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as L
+    where DWH_SOURCE_ACCOUNT_NBR is not null; --20 39 19 290 row(s) affected
+  commit work;
+  create lf index LFIDX on RECONP.UCC_UCIC_AMLOCK_N_VIJAY(SOURCE_SYSTEM_CODE);
+  create hg index HGIDX_AMLOCK_DSAN on RECONP.UCC_UCIC_AMLOCK_N_VIJAY(DWH_SOURCE_ACCOUNT_NBR);
+  commit work;
+  -----------------------------  update product type  with  NULL caause   SOURCE_SYSTEM_CODE (302,303,304,305) not having product type in DWH.
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set Product_type = null from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where SOURCE_SYSTEM_CODE in( 302,303,304,305 ) ; ---1752063 row(s) updated
+  commit work;
+  -------------------------B2 Product type and cust const (UCIC table having  schm_typ,cust_const alredy exists)
+  /*
+UPDATE RECONP.UCC_UCIC_AMLOCK_N_VIJAY A
+SET A.PRODUCT_TYPE=E.schm_type,
+A.Cust_const= E.cust_const
+
+UPDATE RECONP.UCC_UCIC_AMLOCK_N_VIJAY A
+SET A.PRODUCT_TYPE=E.schm_type,
+A.Cust_const= E.cust_const
+FROM 
+RECONP.UCC_UCIC_AMLOCK_N_VIJAY A
+INNER JOIN finagri.T09300_ACCOUNT_ADDON_B2  E
+ON A.Dwh_source_account_NBR= E.source_account_nbr
+WHERE A.SOURCE_SYSTEM_CODE=76
+AND E.SOURCE_SYSTEM_CODE=76;  --268621 row(s) updated
+
+*/
+  --------------- b2 UCC not update cause no on corporate account find out
+  -------------------------Prepaid card Product type and cust const
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set A.PRODUCT_TYPE = null
+    --A.Cust_const= NULL
+    where A.SOURCE_SYSTEM_CODE = 90; -- 5889934 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set A.PRODUCT_TYPE = E.Product_code from
+    --  A.Cust_const= E.cust_const --- SELECT COUNT(1)
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    join EDW.MAIN_EPMS_CARD as E
+    on A.Dwh_source_account_NBR = E.CARD_NUMBER
+    where A.SOURCE_SYSTEM_CODE = 90; --5889934 row(s) updated
+  commit work;
+  --------------- END Prepaid card Product type and cust const not found in DWH
+  -------------------------EBOR DPSecure upadte Product type and cust const & UCC not avail for the system
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set A.PRODUCT_TYPE = null,
+    A.Cust_const = null
+    where A.SOURCE_SYSTEM_CODE = 301; --90444 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set A.PRODUCT_TYPE = E.ACCOUNT_TYPE_CODE,
+    A.Cust_const = E.SCHEME_CODE from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    join edw.T0300_ACCOUNT_EXTERNAL_SYSTEM as E
+    on A.Dwh_source_account_NBR = E.source_account_nbr
+    where A.SOURCE_SYSTEM_CODE = 301
+    and E.SOURCE_SYSTEM_CODE = 301; --90444 row(s) updated
+  commit work;
+  /*
+
+UPDATE RECONP.UCC_UCIC_AMLOCK_N_VIJAY l
+SET UCIC_UCC_CODE=	NULL;
+
+UPDATE RECONP.UCC_UCIC_AMLOCK_N_VIJAY l
+SET UCIC_UCC_CODE=	CASE WHEN (RIGHT(CUST_CONST,1)='1'or RIGHT(CUST_CONST,2)='13'   )	Then UCIC_VALUE
+ELSE  
+CASE WHEN CAR.CAM_ACCOUNT_NO IS NOT NULL Then 'U'+REPLICATE('0',15-LENGTH(TRIM(CAR.CAM_UCC)))+TRIM(CAR.CAM_UCC) END
+END
+FROM 
+RECONP.UCC_UCIC_AMLOCK_N_VIJAY  L,
+inner join reconp.T09320_CAR_CCIF_ACCOUNT CAR
+ON B.SOURCE_ACCOUNT_NBR=CAR.CAM_ACCOUNT_NO
+WHERE SOURCE_SYSTEM_CODE =76
+
+; --122260699 row(s) updated
+
+RECONP.UCC_UCIC_AMLOCK_N_VIJAY  L
+LEFT OUTER JOIN reconp.Temp_Cards_Custid_Base_UAT_N_SUR B
+ON L.DWH_SOURCE_ACCOUNT_NBR = B.CARD_NBR
+LEFT OUTER JOIN        reconp.T09320_CAR_CCIF_ACCOUNT CAR
+--ON B.SOURCE_ACCOUNT_NBR=CAR.CAM_ACCOUNT_NO
+ON B.cust_id=CAR.CAM_cust_id
+AND CAR.CAM_SYS_APP_CD=81
+WHERE L.SOURCE_ACCOUNT_NBR IS NOT  NULL
+AND  L.SOURCE_SYSTEM_CODE = 20
+
+*/
+  commit work;
+  ------------------------END  EBOR DPSecure upadtion of  Product type and cust const
+  -------------------------DEMAT upadte Product type and cust const & UCC  --
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set A.PRODUCT_TYPE = E.ACCOUNT_TYPE_CODE,
+    A.Cust_const = E.SCHEME_CODE from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    join edw.T0300_ACCOUNT as E
+    on A.Dwh_source_account_NBR = E.source_account_nbr
+    where A.SOURCE_SYSTEM_CODE = 80
+    and E.SOURCE_SYSTEM_CODE = 80; -- 3581116 row(s) updated
+  commit work;
+  /* AS PER MAIL UCC not avail of demate
+
+UPDATE RECONP.UCC_UCIC_AMLOCK_N_VIJAY l
+SET UCIC_UCC_CODE=	NULL;
+
+UPDATE RECONP.UCC_UCIC_AMLOCK_N_VIJAY l
+SET UCIC_UCC_CODE=	CASE WHEN (RIGHT(CUST_CONST,1)='1'or RIGHT(CUST_CONST,2)='13'   )	Then UCIC_VALUE
+ELSE  
+CASE WHEN CAR.CAM_ACCOUNT_NO IS NOT NULL Then 'U'+REPLICATE('0',15-LENGTH(TRIM(CAR.CAM_ACCOUNT_NO)))+TRIM(CAR.CAM_ACCOUNT_NO) END
+END
+FROM 
+RECONP.UCC_UCIC_AMLOCK_N_VIJAY  L,
+inner join reconp.T09320_CAR_CCIF_ACCOUNT CAR
+ON B.SOURCE_ACCOUNT_NBR=CAR.CAM_ACCOUNT_NO
+WHERE SOURCE_SYSTEM_CODE =80
+
+; --122260699 row(s) updated
+
+RECONP.UCC_UCIC_AMLOCK_N_VIJAY  L
+LEFT OUTER JOIN        reconp.T09320_CAR_CCIF_ACCOUNT CAR
+ON B.SOURCE_ACCOUNT_NBR=CAR.CAM_ACCOUNT_NO
+
+AND CAR.CAM_SYS_APP_CD=  --------------?????????????????????
+WHERE L.SOURCE_ACCOUNT_NBR IS NOT  NULL
+AND  L.SOURCE_SYSTEM_CODE = 80
+
+*/
+  commit work;
+  ------------------------END  DEMAT upadte Product type and cust const & UCC
+  --------------- Finacle UCC & NULL RELATION update
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY
+    set UCIC_UCC_CODE = null
+    where SOURCE_SYSTEM_CODE = 30; --118759944 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as L
+    set UCIC_UCC_CODE = case when(RIGHT(CUST_CONST,1) = '1' or RIGHT(CUST_CONST,2) = '13') then UCIC_VALUE end
+    where L.SOURCE_SYSTEM_CODE = 30; --118759944 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as L
+    set UCIC_UCC_CODE = case when CAR.CAM_UCC is not null then 'U'+REPLICATE('0',15-LENGTH(CAR.CAM_UCC))+CAR.CAM_UCC end from
+    -- SELECT COUNT(1)
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as L
+    ,(select cast(CAM_UCC as varchar(20)) as CAM_UCC,CAM_ACCOUNT_NO from reconp.T09320_CAR_CCIF_ACCOUNT where CAM_SYS_APP_CD = 1) as CAR
+    where L.SOURCE_SYSTEM_CODE = 30
+    and L.DWH_SOURCE_ACCOUNT_NBR = CAR.CAM_ACCOUNT_NO
+    and RIGHT(CUST_CONST,1) <> '1'
+    and RIGHT(CUST_CONST,2) <> '13'
+    and UCIC_UCC_CODE is null;
+  --5396638
+  --5334674 row(s) updated
+  commit work;
+  ---------- RELATION TYPE UPDATE (MAIN HOLDER AND JOINT HOLDER)
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    set relation_type = 'MAIN_HOLDER' from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    where A.SOURCE_SYSTEM_CODE = 30
+    and a.relation_type is null;
+  --40603733 row(s) updated
+  commit work;
+  /* Relation_type is  not null in P2C.UCIC_SECONDARY_ACCOUNT_HOLDER so no one joint holder is null populate.
+SELECT DISTINCT ACCT_POA_AS_REC_TYPE FROM P2C.UCIC_SECONDARY_ACCOUNT_HOLDER
+ACCT_POA_AS_REC_TYPE
+'Guarantor           '
+'Co-Obligant         '
+'Power of Attorney   '
+'Portfolio Stmt      '
+'Legal Hirer         '
+'Joint Holder        '
+'Letter of Authority '
+'Others              '
+'Main Holder         '
+'Authorised Signatory'
+'LHV Hirer           '
+*/
+  --------------- END Finacle UCC update
+  ----------------------- CARD PRODUCT AND CUST_CONST AND UCC  update 
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set PRODUCT_TYPE = null --SCHM_TYPE
+    where A.SOURCE_SYSTEM_CODE = 20; --21646179 row(s) updated
+  commit work;
+  ----------------  Manish PDF 
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set A.PRODUCT_TYPE = TRIM(P.Product_name)+'-'+TRIM(P.PRODUCT_DESC),
+    A.Cust_const = case when cast(P.Product_name as integer) in( 149,150,156,157,160,184,253,259,260,263,249,264,265,174,147,154,166,167,177,178,185,266,269,175,173,176,308,316,317,319,328,343,345,424,429 ) then
+      'Corporate'
+    when cast(P.Product_name as integer) in( 151,152,153,161,248,250,252,254,261,262,309,318,326,342,344,381,422 ) then
+      'Individual'
+    end from -- SELECT COUNT(1)
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    left outer join EDW.T0308_CARD as C
+    on A.DWH_SOURCE_ACCOUNT_NBR = C.CARD_NBR
+    left outer join edw.T0220_PRODUCT as P
+    on C.PRODUCT_ID = P.PRODUCT_ID
+    where A.SOURCE_SYSTEM_CODE = 20
+    and cast(P.Product_name as integer) in( 149,150,156,157,160,184,253,259,260,263,249,264,265,174,147,154,166,167,177,178,185,266,269,175,173,176,308,316,317,319,328,343,345,424,429,151,152,153,161,248,250,252,254,261,262,309,318,326,342,344,381,422 ) ; --corporate
+  -- indvisual
+  --406168 row(s) updated
+  commit work;
+  ----------------  Pani table
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set A.PRODUCT_TYPE = TRIM(P.Product_name)+'-'+TRIM(P.PRODUCT_DESC),
+    A.Cust_const = case when L.TYPE = 'COMMERCIAL' then 'Corporate'
+    when L.Type is not null then 'Individual'
+    else 'Not-Defined'
+    end from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    left outer join EDW.T0308_CARD as C
+    on A.DWH_SOURCE_ACCOUNT_NBR = C.CARD_NBR
+    left outer join edw.T0220_PRODUCT as P
+    on C.PRODUCT_ID = P.PRODUCT_ID
+    left outer join P2C.CARDS_LOGO_MASTER_20MAY2015 as L
+    on P.Product_name = cast(L.LOGO as varchar(30))
+    where A.SOURCE_SYSTEM_CODE = 20
+    and cast(P.Product_name as integer) not in( 149,150,156,157,160,184,253,259,260,263,249,264,265,174,147,154,166,167,177,178,185,266,269,175,173,176,308,316,317,319,328,343,345,424,429,151,152,153,161,248,250,252,254,261,262,309,318,326,342,344,381,422 ) ; --corporate
+  -- indvisual
+  -- 2 13 20 552 row(s) affected
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = null from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where A.SOURCE_SYSTEM_CODE = 20; --21726720 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as l
+    set UCIC_UCC_CODE = case when l.Cust_const = 'Corporate' then
+      case when CAR.CAM_UCC is not null then 'U'+REPLICATE('0',15-LENGTH(TRIM(CAR.CAM_UCC)))+TRIM(CAR.CAM_UCC) else null end
+    else UCIC_VALUE
+    end from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as L
+    left outer join reconp.Temp_Cards_Custid_Base_UAT_N_SUR as B
+    on L.DWH_SOURCE_ACCOUNT_NBR = B.CARD_NBR
+    left outer join(select CAM_cust_id,cast(CAM_UCC as varchar(20)) as CAM_UCC,CAM_ACCOUNT_NO from reconp.T09320_CAR_CCIF_ACCOUNT where CAM_SYS_APP_CD = 81) as CAR
+    --ON B.SOURCE_ACCOUNT_NBR=CAR.CAM_ACCOUNT_NO
+    on B.cust_id = CAR.CAM_cust_id
+    where L.SOURCE_ACCOUNT_NBR is not null
+    and L.SOURCE_SYSTEM_CODE = 20
+    and l.Cust_const = 'Corporate';
+  --512317 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = UCIC_VALUE from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where isnull(A.Cust_const,'Individual') <> 'Corporate'
+    and a.SOURCE_ACCOUNT_NBR is not null
+    and A.SOURCE_SYSTEM_CODE = 20
+    and UCIC_UCC_CODE is null; --21214403 row(s) updated
+  commit work;
+  -----------------------END  CARD PRODUCT AND CUST_CONST AND UCC update 
+  --------------------&&&&&&&&&&    lOAN CUST CONST & pRODUCT TYPE AND UCC,relation type UPDATE   &&&&&&&&&&&&&&&&&&----------------------
+  ----------------------------- loan pRODuCT_TYPE update
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY
+    set PRODUCT_TYPE = null
+    where source_SYSTEM_CODE in( 51,52,53 ) ; --34591644 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY
+    set Product_type
+     = case when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LP','JP' ) then 'Personal_Loan'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LA','LU','E7' ) then 'Auto_Loan'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LB' ) then 'ICICI_HL'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LH','NH' ) then 'HFC_HL'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LV','UV' ) then 'COMMERCIAL VEHICAL'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LT','BT' ) then 'TWO WHEELER'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LW' ) then 'THREE WHEELER'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LC','NC' ) then 'CONSUMER-DURABLE'
+    when SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2) in( 'LF','FF' ) then 'FARM-EQUIPEMENT'
+    else SUBSTR(DWH_SOURCE_ACCOUNT_NBR,1,2)
+    end from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY
+    where source_SYSTEM_CODE in( 51,52,53 ) ; --33807159 row(s) updated
+  commit work;
+  ---------------------- Relation type null update with (Main holder & joint holder)
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    set relation_type = 'CO_BORROWER' from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    where A.SOURCE_SYSTEM_CODE in( 51,52,53 ) 
+    and a.relation_type is null
+    and A.Source_party_id like 'FCOB%'; --2314497 row(s) updated
+  commit work;
+  /*  exists (select 1 from  EDW.FINNONE_CO_APPLICANT_DETAILS as B where A.SOURCE_PARTY_ID = 'F'+B.CO_SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+and A.DWH_SOURCE_ACCOUNT_NBR = B.AGREEMENTNO )    and 
+*/
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    set relation_type = 'MAIN_HOLDER' from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    where A.SOURCE_SYSTEM_CODE in( 51,52,53 ) 
+    and a.relation_type is null
+    and A.Source_party_id not like 'FCOB%'; --28121024 row(s) updated
+  commit work;
+  -----------------------------end  loan pRODuCT_TYPE update
+  --------------------------- RAPG (51) Cust_const & UCC update 
+  select a.agreementno as source_account_nbr,a.status,a.LESSEEID,51 as Source_SYSTEM_CODE,
+    (case d.employment_type when 'D' then ' STUDENT' when 'E' then 'SELF EMPLOYED NON PROFESSIONAL' when 'H' then 'HUF' when 'M' then 'MINOR' when 'N' then 'NON WORKING'
+    when 'O' then 'PENSIONER' when 'P' then 'SELF EMPLOYED PROFESSIONAL' when 'R' then 'RETIRED' when 'S' then 'SALARIED'
+    when 'T' then 'PART TIME' when 'W' then 'HOUSEWIFE' when 'A' then 'NRI -FOR HFC UW QTS' when 'G' then 'GENERAL' else 'OTHERS' end) as EMP_TYPE,
+    D.INDV_CORP_FLAG,
+    case when D.INDV_CORP_FLAG = 'I' and d.employment_type = 'S' then 'Corporate'
+    when D.INDV_CORP_FLAG = 'C' then 'Corporate'
+    when D.INDV_CORP_FLAG = 'I' then 'Individual' end as Loan_Customer_type
+    into #RAPG_Customer_type_Y_VIJAY -- SELECT COUNT(1)
+    from reconp.lea_agreement_dtl_rapg_full as a
+      left outer join reconp.nbfc_customer_m as d
+      on a.LESSEEID = d.CUSTOMERID;
+  --  where a.status <> 'CANCELLED'
+  -- 26759817 row(s) affected
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    set CUST_CONST = Loan_Customer_type from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    left outer join #RAPG_Customer_type_Y_VIJAY as H
+    on a.dwh_source_account_nbr = h.source_account_nbr
+    where A.source_SYSTEM_CODE = 51
+    and h.source_SYSTEM_CODE = 51;
+  --2 97 29 240 row(s) affected
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = null from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where A.SOURCE_ACCOUNT_NBR is not null
+    and A.SOURCE_SYSTEM_CODE = 51; --29729241 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = case when A.Cust_const = 'Corporate' then
+      case when CAR.CAM_UCC is not null then 'U'+REPLICATE('0',15-LENGTH(TRIM(CAR.CAM_UCC)))+TRIM(CAR.CAM_UCC) else null end
+    else UCIC_VALUE
+    end from --SELECT COUNT(1)
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    -- LEFT OUTER JOIN        reconp.T09320_CAR_CCIF_ACCOUNT CAR
+    join(select cast(CAM_UCC as varchar(20)) as CAM_UCC,CAM_ACCOUNT_NO from reconp.T09320_CAR_CCIF_ACCOUNT where CAM_SYS_APP_CD = 21) as CAR
+    on A.dwh_SOURCE_ACCOUNT_NBR = CAR.CAM_ACCOUNT_NO
+    --       AND CAR.CAM_SYS_APP_CD= 21  -- finnone 
+    where A.SOURCE_SYSTEM_CODE = 51
+    and A.Cust_const = 'Corporate'; --1256547 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = UCIC_VALUE from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where isnull(A.Cust_const,'Individual') <> 'Corporate'
+    and A.SOURCE_SYSTEM_CODE = 51
+    and UCIC_UCC_CODE is null; -- 23179106 row(s) updated
+  -------------------------------------END RAPG Cust_const update 
+  --------------------------- BANk (52) Cust_const & UCC update 
+  select a.agreementno as source_account_nbr,a.status,a.LESSEEID,52 as Source_SYSTEM_CODE,
+    (case d.employment_type when 'D' then ' STUDENT' when 'E' then 'SELF EMPLOYED NON PROFESSIONAL' when 'H' then 'HUF' when 'M' then 'MINOR' when 'N' then 'NON WORKING'
+    when 'O' then 'PENSIONER' when 'P' then 'SELF EMPLOYED PROFESSIONAL' when 'R' then 'RETIRED' when 'S' then 'SALARIED'
+    when 'T' then 'PART TIME' when 'W' then 'HOUSEWIFE' when 'A' then 'NRI -FOR HFC UW QTS' when 'G' then 'GENERAL' else 'OTHERS' end) as EMP_TYPE,
+    D.INDV_CORP_FLAG,
+    case when D.INDV_CORP_FLAG = 'I' and d.employment_type = 'S' then 'Corporate'
+    when D.INDV_CORP_FLAG = 'C' then 'Corporate'
+    when D.INDV_CORP_FLAG = 'I' then 'Individual' end as Loan_Customer_type
+    into #BANK_Customer_type_Y_VIJAY
+    from reconp.lea_agreement_dtl_bank_full as a
+      left outer join reconp.nbfc_customer_m as d
+      on a.LESSEEID = d.CUSTOMERID;
+  --  where a.status <> 'CANCELLED'
+  --1901557 row(s) affected
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    set CUST_CONST = Loan_Customer_type from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    left outer join #BANK_Customer_type_Y_VIJAY as H
+    on a.dwh_source_account_nbr = h.source_account_nbr
+    where A.source_SYSTEM_CODE = 52
+    and h.source_SYSTEM_CODE = 52;
+  -- 3771557 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = null from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where A.SOURCE_ACCOUNT_NBR is not null
+    and A.SOURCE_SYSTEM_CODE = 52; --3806020 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = case when A.Cust_const = 'Corporate' then
+      case when CAR.CAM_UCC is not null then 'U'+REPLICATE('0',15-LENGTH(TRIM(CAR.CAM_UCC)))+TRIM(CAR.CAM_UCC) else null end
+    else UCIC_VALUE
+    end from --SELECT COUNT(1)
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    -- LEFT OUTER JOIN        reconp.T09320_CAR_CCIF_ACCOUNT CAR
+    join(select cast(CAM_UCC as varchar(20)) as CAM_UCC,CAM_ACCOUNT_NO from reconp.T09320_CAR_CCIF_ACCOUNT where CAM_SYS_APP_CD = 21) as CAR
+    on A.dwh_SOURCE_ACCOUNT_NBR = CAR.CAM_ACCOUNT_NO
+    --    AND CAR.CAM_SYS_APP_CD= 21
+    where A.SOURCE_SYSTEM_CODE = 52
+    and A.Cust_const = 'Corporate'; --25198 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = UCIC_VALUE from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where isnull(A.Cust_const,'Individual') <> 'Corporate'
+    and A.SOURCE_SYSTEM_CODE = 52
+    and UCIC_UCC_CODE is null; --819848 row(s) updated
+  commit work;
+  -------------------------------------END BANk Cust_const update 
+  --------------------------- HFC (53) Cust_const & UCC update 
+  --  INSERT INTO RECONP.HFC_Customer_type_Y_VIJAY
+  select a.agreementno as source_account_nbr,a.status,a.LESSEEID,53 as Source_SYSTEM_CODE,
+    (case d.employment_type when 'D' then ' STUDENT' when 'E' then 'SELF EMPLOYED NON PROFESSIONAL' when 'H' then 'HUF' when 'M' then 'MINOR' when 'N' then 'NON WORKING'
+    when 'O' then 'PENSIONER' when 'P' then 'SELF EMPLOYED PROFESSIONAL' when 'R' then 'RETIRED' when 'S' then 'SALARIED'
+    when 'T' then 'PART TIME' when 'W' then 'HOUSEWIFE' when 'A' then 'NRI -FOR HFC UW QTS' when 'G' then 'GENERAL' else 'OTHERS' end) as EMP_TYPE,
+    D.INDV_CORP_FLAG,
+    case when D.INDV_CORP_FLAG = 'I' and d.employment_type = 'S' then 'Corporate'
+    when D.INDV_CORP_FLAG = 'C' then 'Corporate'
+    when D.INDV_CORP_FLAG = 'I' then 'Individual' end as Loan_Customer_type
+    into #HFC_Customer_type_Y_VIJAY -- SELECT COUNT(1)
+    from reconp.lea_agreement_dtl_hfc_full as a
+      left outer join reconp.nbfc_customer_m as d
+      on a.LESSEEID = d.CUSTOMERID;
+  --  where a.status <> 'CANCELLED'
+  -- 93 525 row(s) affected
+  commit work;
+  -- SELECT COUNT(1) FROM #HFC_Customer_type_Y_VIJAY   -- 93057                   
+  -- SELECT COUNT(1) FROM RECONP.UCC_UCIC_AMLOCK_N_VIJAY  A WHERE A.SOURCE_SYSTEM_CODE = 53 AND SOURCE_ACCOUNT_NBR IS NOT  NULL  -- 2 76 230
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as a
+    set CUST_CONST = Loan_Customer_type from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    left outer join #HFC_Customer_type_Y_VIJAY as H
+    on a.dwh_source_account_nbr = h.source_account_nbr
+    where A.source_SYSTEM_CODE = 53
+    and h.source_SYSTEM_CODE = 53;
+  --1 95 743 row(s) affected
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = null from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where A.SOURCE_ACCOUNT_NBR is not null
+    and A.SOURCE_SYSTEM_CODE = 53; --271898 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = case when A.Cust_const = 'Corporate' then
+      case when CAR.CAM_UCC is not null then 'U'+REPLICATE('0',15-LENGTH(TRIM(CAR.CAM_UCC)))+TRIM(CAR.CAM_UCC) else null end
+    else UCIC_VALUE
+    end from --SELECT COUNT(1)
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    -- LEFT OUTER JOIN        reconp.T09320_CAR_CCIF_ACCOUNT CAR
+    join(select cast(CAM_UCC as varchar(20)) as CAM_UCC,CAM_ACCOUNT_NO from reconp.T09320_CAR_CCIF_ACCOUNT where CAM_SYS_APP_CD = 21) as CAR
+    on A.dwh_SOURCE_ACCOUNT_NBR = CAR.CAM_ACCOUNT_NO
+    --   AND CAR.CAM_SYS_APP_CD= 21  -- finnone 
+    where A.SOURCE_SYSTEM_CODE = 53
+    and A.Cust_const = 'Corporate'; --2467 row(s) updated
+  commit work;
+  update RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    set UCIC_UCC_CODE = UCIC_VALUE from
+    RECONP.UCC_UCIC_AMLOCK_N_VIJAY as A
+    where isnull(A.Cust_const,'Individual') <> 'Corporate'
+    and A.SOURCE_SYSTEM_CODE = 53
+    and UCIC_UCC_CODE is null; --133952 row(s) updated
+  commit work;
+  -------------------------------------END HFC Cust_const update 
+  commit work
+end

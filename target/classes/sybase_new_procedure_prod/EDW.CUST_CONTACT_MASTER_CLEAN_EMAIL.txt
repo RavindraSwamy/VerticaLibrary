@@ -1,0 +1,598 @@
+create procedure EDW.CUST_CONTACT_MASTER_CLEAN_EMAIL()
+begin
+  truncate table MCCM.CUST_CONTACT_MASTER_PAN_DATA;
+  commit work;
+  insert into MCCM.CUST_CONTACT_MASTER_PAN_DATA
+    select cast(null as varchar(30)) as UCIC_CODE,
+      A.SOURCE_PARTY_ID,
+      A.SOURCE_SYSTEM_CODE,
+      A.CLEAN_EMAIL as PHONE_EMAIL,
+      'CLEAN_EMAIL' as IDENTIFIER,
+      cast('N' as varchar(5)) as DNC,
+      cast('N' as varchar(5)) as NDNC,
+      cast('N' as varchar(5)) as PHONE_ESCALATION,
+      cast('N' as varchar(5)) as EMAIL_DNC,
+      cast('N' as varchar(5)) as EMAIL_ESCALATION,
+      DATE(GETDATE()) as AS_OF_DATE,
+      cast('N' as varchar(5)) as IRIT_SMS,
+      cast('N' as varchar(5)) as IRIT_EMAIL,
+      'EDW.T0117_CUSTOMER_PAN_EMAIL_DETAILS' as SOURCE_TABLE_NAME,
+      A.DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      cast(null as varchar(5)) as MASTER_EXCLUDE,
+      cast(null as varchar(5)) as MASTER_EXCLUDE_HOUSE_WIFE,
+      cast(null as varchar(5)) as STAFF_FLAG,
+      cast(null as varchar(8)) as INCOME_SEGMENT
+      --INTO MCCM.CUST_CONTACT_MASTER_PAN_DATA
+      from EDW.T0117_CUSTOMER_PAN_EMAIL_DETAILS as A;
+  --CREATE HG INDEX IDX_UCIC_CODE ON MCCM.CUST_CONTACT_MASTER_PAN_DATA(UCIC_CODE);
+  commit work;
+  select A.UCIC_VALUE,A.SOURCE_PARTY_ID,A.SOURCE_SYSTEM_CODE into #UCIC_VALE
+    from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as A,EDW.T0117_CUSTOMER_PAN_EMAIL_DETAILS as B where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_PAN_DATA as A
+    set A.UCIC_CODE = B.UCIC_VALUE from
+    #UCIC_VALE as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into MCCM.CUST_CONTACT_MASTER_PAN_DATA
+    select cast(null as varchar(30)) as UCIC_CODE,
+      A.SOURCE_PARTY_ID,
+      A.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+      A.CIFT_CLEAN_EMAIL as PHONE_EMAIL,
+      'R_EMAIL' as IDENTIFIER,
+      cast('N' as varchar(5)) as DNC,
+      cast('N' as varchar(5)) as NDNC,
+      cast('N' as varchar(5)) as PHONE_ESCALATION,
+      cast('N' as varchar(5)) as EMAIL_DNC,
+      cast('N' as varchar(5)) as EMAIL_ESCALATION,
+      DATE(GETDATE()) as AS_OF_DATE,
+      cast('N' as varchar(5)) as IRIT_SMS,
+      cast('N' as varchar(5)) as IRIT_EMAIL,
+      'EDW.T0117_CUSTOMER_PAN_EMAIL_DETAILS' as SOURCE_TABLE_NAME,
+      A.DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      cast(null as varchar(5)) as MASTER_EXCLUDE,
+      cast(null as varchar(5)) as MASTER_EXCLUDE_HOUSE_WIFE,
+      cast(null as varchar(5)) as STAFF_FLAG,
+      cast(null as varchar(8)) as INCOME_SEGMENT
+      --INTO MCCM.CUST_CONTACT_MASTER_MOBILE_ALERT_REG_DATA_TEMP
+      from EDW.T0117_CUSTOMER_PAN_EMAIL_DETAILS as A where SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_PAN_DATA as A
+    set A.UCIC_CODE = B.UCIC_VALUE from
+    #UCIC_VALE as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  delete from MCCM.CUST_CONTACT_MASTER_PAN_DATA where IDENTIFIER in( 'CLEAN_EMAIL','R_EMAIL' ) and PHONE_EMAIL is null;
+  commit work;
+  --delete from MCCM.CUST_CONTACT_MASTER_MOBILE_ALERT_REG_DATA_MAIN where IDENTIFIER in( 'R_EMAIL' ) and PHONE_EMAIL is null;
+  --SELECT TOP 10 * FROM MCCM.CUST_CONTACT_MASTER
+  insert into MCCM.CUST_CONTACT_MASTER
+    select * from MCCM.CUST_CONTACT_MASTER_PAN_DATA; --union all
+  --select * from MCCM.CUST_CONTACT_MASTER_MOBILE_ALERT_REG_DATA_MAIN;
+  commit work;
+  alter table MCCM.CUST_CONTACT_MASTER_EPMS_DATA delete
+    CLEAN_PHONE_EMAIL;
+  commit work;
+  insert into MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    select cast(null as varchar(30)) as UCIC_CODE,
+      B.SOURCE_PARTY_ID,
+      A.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+      A.EADDRESS as PHONE_EMAIL,
+      'EMAIL' as IDENTIFIER,
+      cast('N' as varchar(5)) as DNC,
+      cast('N' as varchar(5)) as NDNC,
+      cast('N' as varchar(5)) as PHONE_ESCALATION,
+      cast('N' as varchar(5)) as EMAIL_DNC,
+      cast('N' as varchar(5)) as EMAIL_ESCALATION,
+      DATE(GETDATE()) as AS_OF_DATE,
+      cast('N' as varchar(5)) as IRIT_SMS,
+      cast('N' as varchar(5)) as IRIT_EMAIL,
+      'EDW.T0111_SOURCE_CUSTOMER_DETAILS_EPMS' as SOURCE_TABLE_NAME,
+      A.DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      cast(null as varchar(5)) as MASTER_EXCLUDE,
+      cast(null as varchar(5)) as MASTER_EXCLUDE_HOUSE_WIFE,
+      cast(null as varchar(5)) as STAFF_FLAG,
+      cast(null as varchar(8)) as INCOME_SEGMENT
+      --INTO MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EPMS as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B where TRIM(A.SOURCE_PARTY_ID) = TRIM(B.SOURCE_PARTY_ID) and B.SOURCE_SYSTEM_CODE = 90;
+  commit work;
+  select A.UCIC_VALUE,A.SOURCE_PARTY_ID into #UCIC_VALE_EPMS
+    from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as A,EDW.T0111_SOURCE_CUSTOMER_DETAILS_EPMS as B where TRIM(A.SOURCE_PARTY_ID) = TRIM(B.SOURCE_PARTY_ID) and B.SOURCE_SYSTEM_code = 90;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA as A
+    set A.UCIC_CODE = B.UCIC_VALUE from
+    #UCIC_VALE_EPMS as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  ---------------------------------------------------------------------------------
+  alter table MCCM.CUST_CONTACT_MASTER_EPMS_DATA add
+    CLEAN_PHONE_EMAIL varchar(300) null;
+  commit work;
+  ----------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = PHONE_EMAIL from
+    MCCM.CUST_CONTACT_MASTER_EPMS_DATA;
+  commit work;
+  ---------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(CLEAN_PHONE_EMAIL,' ','')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(UPPER(CLEAN_PHONE_EMAIL),'@ABCD.','')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(UPPER(CLEAN_PHONE_EMAIL),'@ABC.','')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(UPPER(CLEAN_PHONE_EMAIL),'@XYZ.','')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = case when CLEAN_PHONE_EMAIL like '%_%@%_%.%' then CLEAN_PHONE_EMAIL else null end
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'..','.'),'..','.')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'..','.'),'..','.')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'__','_'),'__','_')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'__','_'),'__','_')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'@@','@'),'@@','@')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'@@','@'),'@@','@')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'--','-'),'--','-')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(REPLACE(CLEAN_PHONE_EMAIL,'--','-'),'--','-')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = case when CLEAN_PHONE_EMAIL like '%_%@%_%.%' then CLEAN_PHONE_EMAIL else null end
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when(CHARINDEX('<',CLEAN_PHONE_EMAIL) <> 0 and CHARINDEX('>',CLEAN_PHONE_EMAIL)
+     <> 0)
+    and CHARINDEX('<',CLEAN_PHONE_EMAIL) < CHARINDEX('>',CLEAN_PHONE_EMAIL)
+    and SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('<',CLEAN_PHONE_EMAIL),CHARINDEX('>',CLEAN_PHONE_EMAIL))
+    like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('<',CLEAN_PHONE_EMAIL)+1,((CHARINDEX('>',CLEAN_PHONE_EMAIL)-CHARINDEX('<',CLEAN_PHONE_EMAIL))-1))
+    else CLEAN_PHONE_EMAIL
+    end where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when(CHARINDEX('(',CLEAN_PHONE_EMAIL) <> 0 and CHARINDEX(')',CLEAN_PHONE_EMAIL)
+     <> 0)
+    and CHARINDEX('(',CLEAN_PHONE_EMAIL) < CHARINDEX(')',CLEAN_PHONE_EMAIL)
+    and SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('(',CLEAN_PHONE_EMAIL),CHARINDEX(')',CLEAN_PHONE_EMAIL))
+    like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('(',CLEAN_PHONE_EMAIL)+1,((CHARINDEX(')',CLEAN_PHONE_EMAIL)-CHARINDEX('(',CLEAN_PHONE_EMAIL))-1))
+    else CLEAN_PHONE_EMAIL
+    end where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when(CHARINDEX('[',CLEAN_PHONE_EMAIL) <> 0 and CHARINDEX(']',CLEAN_PHONE_EMAIL)
+     <> 0)
+    and CHARINDEX('[',CLEAN_PHONE_EMAIL) < CHARINDEX(']',CLEAN_PHONE_EMAIL)
+    and SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('[',CLEAN_PHONE_EMAIL),CHARINDEX(']',CLEAN_PHONE_EMAIL))
+    like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('[',CLEAN_PHONE_EMAIL)+1,((CHARINDEX(']',CLEAN_PHONE_EMAIL)-CHARINDEX('[',CLEAN_PHONE_EMAIL))-1))
+    else CLEAN_PHONE_EMAIL
+    end where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when(CHARINDEX('{',CLEAN_PHONE_EMAIL) <> 0 and CHARINDEX('}',CLEAN_PHONE_EMAIL)
+     <> 0)
+    and CHARINDEX('{',CLEAN_PHONE_EMAIL) < CHARINDEX('}',CLEAN_PHONE_EMAIL)
+    and SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('{',CLEAN_PHONE_EMAIL),CHARINDEX('}',CLEAN_PHONE_EMAIL))
+    like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,CHARINDEX('{',CLEAN_PHONE_EMAIL)+1,((CHARINDEX('}',CLEAN_PHONE_EMAIL)-CHARINDEX('{',CLEAN_PHONE_EMAIL))-1))
+    else CLEAN_PHONE_EMAIL
+    end where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '>' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '<' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '-' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '_' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '+' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '=' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = ')' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '(' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '*' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '&' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '^' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '$' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '#' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '@' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '!' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '~' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '`' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = ';' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = ':' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '.' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = ',' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '?' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '/' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '{' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '}' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '|' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = '[' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,1,1) = ']' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,2,LENGTH(CLEAN_PHONE_EMAIL)-1) else CLEAN_PHONE_EMAIL end
+    where(CLEAN_PHONE_EMAIL is not null
+    and SUBSTRING(CLEAN_PHONE_EMAIL,1,1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '>' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '<' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '-' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '_' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '+' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '=' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = ')' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '(' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '*' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '&' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '^' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '$' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '#' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '@' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '!' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '~' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '`' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = ';' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = ':' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '.' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = ',' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '?' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '/' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '{' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '}' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '|' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = '[' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1)
+    when SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) = ']' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,LENGTH(CLEAN_PHONE_EMAIL)-1) else CLEAN_PHONE_EMAIL end
+    where(CLEAN_PHONE_EMAIL is not null
+    and SUBSTRING(CLEAN_PHONE_EMAIL,LENGTH(CLEAN_PHONE_EMAIL),1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('/',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('/',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX('/',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX('/',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX('/',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX(':',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX(':',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX(':',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX(':',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX(':',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX(',',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX(',',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX(',',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX(',',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX(',',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('|',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('|',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX('|',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX('|',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX('|',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('&',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('&',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX('&',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX('&',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX('&',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX(';',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX(';',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX(';',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX(';',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX(';',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('\\',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('\\',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX('\\',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX('\\',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX('\\',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('^',CLEAN_PHONE_EMAIL)-1) like '%@%.%' then
+      SUBSTRING(CLEAN_PHONE_EMAIL,1,CHARINDEX('^',CLEAN_PHONE_EMAIL)-1)
+    else SUBSTRING(CLEAN_PHONE_EMAIL,(CHARINDEX('^',CLEAN_PHONE_EMAIL)+1),LENGTH(CLEAN_PHONE_EMAIL)-CHARINDEX('^',CLEAN_PHONE_EMAIL))
+    end
+    where(CLEAN_PHONE_EMAIL is not null
+    and CHARINDEX('^',CLEAN_PHONE_EMAIL) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when CLEAN_PHONE_EMAIL like '%_%@%_%.%' then CLEAN_PHONE_EMAIL else null end
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = null
+    where(CLEAN_PHONE_EMAIL is not null
+    and(CHARINDEX('>',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('<',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('+',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('=',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX(')',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('(',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('*',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('&',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('^',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('%',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('$',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('#',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('!',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('~',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('`',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX(';',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX(':',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX(',',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('?',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('/',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('{',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('}',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('|',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX('[',CLEAN_PHONE_EMAIL) > 1
+    or CHARINDEX(']',CLEAN_PHONE_EMAIL) > 1));
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = TRIM(CLEAN_PHONE_EMAIL)
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL
+     = case when CLEAN_PHONE_EMAIL like '%_%@%_%.%' then CLEAN_PHONE_EMAIL else null end
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = SUBSTR(CLEAN_PHONE_EMAIL,-2,-(LENGTH(CLEAN_PHONE_EMAIL)-1))
+    where(RIGHT(CLEAN_PHONE_EMAIL,1) = '.'
+    and CLEAN_PHONE_EMAIL is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = null
+    where(CLEAN_PHONE_EMAIL like '%@%@%'
+    and CLEAN_PHONE_EMAIL is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(CLEAN_PHONE_EMAIL,'\x0D','')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = (case when(PATINDEX('%[A-Z]%',CLEAN_PHONE_EMAIL) = 1
+    or PATINDEX('%[0-9]%',CLEAN_PHONE_EMAIL) = 1) then CLEAN_PHONE_EMAIL else SUBSTR(CLEAN_PHONE_EMAIL,2) end)
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = REPLACE(CLEAN_PHONE_EMAIL,'\x09','')
+    where CLEAN_PHONE_EMAIL is not null;
+  commit work;
+  --------------------------------------------------------------
+  commit work;
+  begin
+    declare @i integer;
+    declare @l integer;
+    declare @len integer;
+    --Select @len = ( Select max(length(CLEAN_PHONE_EMAIL)) From MCCM.CUST_CONTACT_MASTER_EPMS_DATA );
+    select max(length(CLEAN_PHONE_EMAIL)) into @len from MCCM.CUST_CONTACT_MASTER_EPMS_DATA;
+    --select @i=1;
+    select 1 into @i;
+    while(@i <= @len) loop
+      update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+        set CLEAN_PHONE_EMAIL = replace(CLEAN_PHONE_EMAIL,substr(CLEAN_PHONE_EMAIL,@i,1),' ')
+        where(substr(CLEAN_PHONE_EMAIL,@i,1) not between 'A' and 'z'
+        and substr(CLEAN_PHONE_EMAIL,@i,1) <> '@'
+        and substr(CLEAN_PHONE_EMAIL,@i,1) <> '.'
+        and substr(CLEAN_PHONE_EMAIL,@i,1) <> '_'
+        and substr(CLEAN_PHONE_EMAIL,@i,1) <> '-'
+        and substr(CLEAN_PHONE_EMAIL,@i,1) not between '0' and '9');
+      --select @i=@i+1;
+      select @i+1
+        into @i
+    end loop;
+    update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+      set CLEAN_PHONE_EMAIL = Replace(CLEAN_PHONE_EMAIL,' ','')
+  end;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA as A
+    set CLEAN_PHONE_EMAIL
+     = REVERSE(SUBSTR(REVERSE(CLEAN_PHONE_EMAIL),PATINDEX('%[A-Z]%',REVERSE(CLEAN_PHONE_EMAIL))));
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = null
+    where CHARINDEX('@',CLEAN_PHONE_EMAIL) = 0;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_EPMS_DATA
+    set CLEAN_PHONE_EMAIL = null
+    where LENGTH(SUBSTR(SUBSTR(CLEAN_PHONE_EMAIL,LOCATE(CLEAN_PHONE_EMAIL,'@')+1),LOCATE(SUBSTR(CLEAN_PHONE_EMAIL,LOCATE(CLEAN_PHONE_EMAIL,'@')+1),'.')+1)) <= 1;
+  commit work;
+  insert into mccm.cust_contact_master
+    ( UCIC_CODE,
+    SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE,
+    PHONE_EMAIL,
+    IDENTIFIER,
+    DNC,
+    NDNC,
+    PHONE_ESCALATION,
+    EMAIL_DNC,
+    EMAIL_ESCALATION,
+    AS_OF_DATE,
+    IRIT_SMS,
+    IRIT_EMAIL,
+    SOURCE_TABLE_NAME,
+    SOURCE_TABLE_MODIFIED_DATE ) 
+    select UCIC_CODE,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      CLEAN_PHONE_EMAIL,
+      IDENTIFIER,
+      DNC,
+      NDNC,
+      PHONE_ESCALATION,
+      EMAIL_DNC,
+      EMAIL_ESCALATION,
+      AS_OF_DATE,
+      IRIT_SMS,
+      IRIT_EMAIL,
+      SOURCE_TABLE_NAME,
+      SOURCE_TABLE_MODIFIED_DATE
+      from MCCM.CUST_CONTACT_MASTER_EPMS_DATA;
+  commit work
+end

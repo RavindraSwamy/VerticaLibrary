@@ -1,0 +1,2238 @@
+create procedure EDW.CUST_CONTACT_MASTER_CLEAN_NEW()
+begin
+  update MCCM.CUST_CONTACT_MASTER_NEW as A
+    set A.R_EMAIL = B.CLEAN_EMAIL,A.CLEAN_EMAIL = B.CIFT_CLEAN_EMAIL from
+    EDW.T0117_CUSTOMER_PAN_EDETAILS as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(PER_EADDRESS,' ','')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(UPPER(PER_EADDRESS),'@ABCD.','')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(UPPER(PER_EADDRESS),'@ABC.','')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(UPPER(PER_EADDRESS),'@XYZ.','')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = case when PER_EADDRESS like '%_%@%_%.%' then PER_EADDRESS else null end
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'..','.'),'..','.')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'..','.'),'..','.')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'__','_'),'__','_')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'__','_'),'__','_')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'@@','@'),'@@','@')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'@@','@'),'@@','@')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'--','-'),'--','-')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(REPLACE(PER_EADDRESS,'--','-'),'--','-')
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = case when PER_EADDRESS like '%_%@%_%.%' then PER_EADDRESS else null end
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when(CHARINDEX('<',PER_EADDRESS) <> 0 and CHARINDEX('>',PER_EADDRESS)
+     <> 0)
+    and CHARINDEX('<',PER_EADDRESS) < CHARINDEX('>',PER_EADDRESS)
+    and SUBSTRING(PER_EADDRESS,CHARINDEX('<',PER_EADDRESS),CHARINDEX('>',PER_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,CHARINDEX('<',PER_EADDRESS)+1,((CHARINDEX('>',PER_EADDRESS)-CHARINDEX('<',PER_EADDRESS))-1))
+    else PER_EADDRESS
+    end where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when(CHARINDEX('(',PER_EADDRESS) <> 0 and CHARINDEX(')',PER_EADDRESS)
+     <> 0)
+    and CHARINDEX('(',PER_EADDRESS) < CHARINDEX(')',PER_EADDRESS)
+    and SUBSTRING(PER_EADDRESS,CHARINDEX('(',PER_EADDRESS),CHARINDEX(')',PER_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,CHARINDEX('(',PER_EADDRESS)+1,((CHARINDEX(')',PER_EADDRESS)-CHARINDEX('(',PER_EADDRESS))-1))
+    else PER_EADDRESS
+    end where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when(CHARINDEX('[',PER_EADDRESS) <> 0 and CHARINDEX(']',PER_EADDRESS)
+     <> 0)
+    and CHARINDEX('[',PER_EADDRESS) < CHARINDEX(']',PER_EADDRESS)
+    and SUBSTRING(PER_EADDRESS,CHARINDEX('[',PER_EADDRESS),CHARINDEX(']',PER_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,CHARINDEX('[',PER_EADDRESS)+1,((CHARINDEX(']',PER_EADDRESS)-CHARINDEX('[',PER_EADDRESS))-1))
+    else PER_EADDRESS
+    end where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when(CHARINDEX('{',PER_EADDRESS) <> 0 and CHARINDEX('}',PER_EADDRESS)
+     <> 0)
+    and CHARINDEX('{',PER_EADDRESS) < CHARINDEX('}',PER_EADDRESS)
+    and SUBSTRING(PER_EADDRESS,CHARINDEX('{',PER_EADDRESS),CHARINDEX('}',PER_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,CHARINDEX('{',PER_EADDRESS)+1,((CHARINDEX('}',PER_EADDRESS)-CHARINDEX('{',PER_EADDRESS))-1))
+    else PER_EADDRESS
+    end where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,1) = '>' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '<' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '-' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '_' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '+' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '=' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = ')' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '(' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '*' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '&' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '^' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '%' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '$' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '#' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '@' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '!' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '~' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '`' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = ';' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = ':' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '.' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = ',' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '?' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '/' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '{' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '}' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '|' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = '[' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,1,1) = ']' then
+      SUBSTRING(PER_EADDRESS,2,LENGTH(PER_EADDRESS)-1) else PER_EADDRESS end
+    where(PER_EADDRESS is not null
+    and SUBSTRING(PER_EADDRESS,1,1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '>' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '<' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '-' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '_' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '+' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '=' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = ')' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '(' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '*' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '&' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '^' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '%' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '$' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '#' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '@' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '!' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '~' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '`' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = ';' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = ':' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '.' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = ',' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '?' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '/' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '{' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '}' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '|' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = '[' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1)
+    when SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) = ']' then
+      SUBSTRING(PER_EADDRESS,1,LENGTH(PER_EADDRESS)-1) else PER_EADDRESS end
+    where(PER_EADDRESS is not null
+    and SUBSTRING(PER_EADDRESS,LENGTH(PER_EADDRESS),1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX('/',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX('/',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX('/',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX('/',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX('/',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX(':',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX(':',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX(':',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX(':',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX(':',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX(',',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX(',',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX(',',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX(',',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX(',',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX('|',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX('|',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX('|',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX('|',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX('|',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX('&',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX('&',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX('&',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX('&',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX('&',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX(';',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX(';',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX(';',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX(';',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX(';',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX('\\',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX('\\',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX('\\',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX('\\',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX('\\',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when SUBSTRING(PER_EADDRESS,1,CHARINDEX('^',PER_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(PER_EADDRESS,1,CHARINDEX('^',PER_EADDRESS)-1)
+    else SUBSTRING(PER_EADDRESS,(CHARINDEX('^',PER_EADDRESS)+1),LENGTH(PER_EADDRESS)-CHARINDEX('^',PER_EADDRESS))
+    end
+    where(PER_EADDRESS is not null
+    and CHARINDEX('^',PER_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when PER_EADDRESS like '%_%@%_%.%' then PER_EADDRESS else null end
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = null
+    where(PER_EADDRESS is not null
+    and(CHARINDEX('>',PER_EADDRESS) > 1
+    or CHARINDEX('<',PER_EADDRESS) > 1
+    or CHARINDEX('+',PER_EADDRESS) > 1
+    or CHARINDEX('=',PER_EADDRESS) > 1
+    or CHARINDEX(')',PER_EADDRESS) > 1
+    or CHARINDEX('(',PER_EADDRESS) > 1
+    or CHARINDEX('*',PER_EADDRESS) > 1
+    or CHARINDEX('&',PER_EADDRESS) > 1
+    or CHARINDEX('^',PER_EADDRESS) > 1
+    or CHARINDEX('%',PER_EADDRESS) > 1
+    or CHARINDEX('$',PER_EADDRESS) > 1
+    or CHARINDEX('#',PER_EADDRESS) > 1
+    or CHARINDEX('!',PER_EADDRESS) > 1
+    or CHARINDEX('~',PER_EADDRESS) > 1
+    or CHARINDEX('`',PER_EADDRESS) > 1
+    or CHARINDEX('',PER_EADDRESS) > 1
+    or CHARINDEX(';',PER_EADDRESS) > 1
+    or CHARINDEX(':',PER_EADDRESS) > 1
+    or CHARINDEX(',',PER_EADDRESS) > 1
+    or CHARINDEX('?',PER_EADDRESS) > 1
+    or CHARINDEX('/',PER_EADDRESS) > 1
+    or CHARINDEX('{',PER_EADDRESS) > 1
+    or CHARINDEX('}',PER_EADDRESS) > 1
+    or CHARINDEX('|',PER_EADDRESS) > 1
+    or CHARINDEX('[',PER_EADDRESS) > 1
+    or CHARINDEX(']',PER_EADDRESS) > 1));
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = TRIM(PER_EADDRESS)
+    where PER_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS
+     = case when PER_EADDRESS like '%_%@%_%.%' then PER_EADDRESS else null end
+    where PER_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = SUBSTR(PER_EADDRESS,-2,-(LENGTH(PER_EADDRESS)-1))
+    where(RIGHT(PER_EADDRESS,1) = '.'
+    and PER_EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = null
+    where(PER_EADDRESS like '%@%@%'
+    and PER_EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(PER_EADDRESS,'\x0D','')
+    where PER_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = (case when(PATINDEX('%[A-Z]%',PER_EADDRESS) = 1
+    or PATINDEX('%[0-9]%',PER_EADDRESS) = 1) then PER_EADDRESS else SUBSTR(PER_EADDRESS,2) end)
+    where PER_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = REPLACE(PER_EADDRESS,'\x09','')
+    where PER_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  commit work;
+  begin
+    declare @i integer;
+    declare @l integer;
+    declare @len integer;
+    --Select @len = ( Select max(length(PER_EADDRESS)) From MCCM.MCCM.CUST_CONTACT_MASTER_NEW );
+    select max(length(PER_EADDRESS)) into @len from MCCM.CUST_CONTACT_MASTER_NEW;
+    --select @i=1;
+    select 1 into @i;
+    while(@i <= @len) loop
+      update MCCM.CUST_CONTACT_MASTER_NEW
+        set PER_EADDRESS = replace(PER_EADDRESS,substr(PER_EADDRESS,@i,1),' ')
+        where(substr(PER_EADDRESS,@i,1) not between 'A' and 'z'
+        and substr(PER_EADDRESS,@i,1) <> '@'
+        and substr(PER_EADDRESS,@i,1) <> '.'
+        and substr(PER_EADDRESS,@i,1) <> '_'
+        and substr(PER_EADDRESS,@i,1) <> '-'
+        and substr(PER_EADDRESS,@i,1) not between '0' and '9');
+      --select @i=@i+1;
+      select @i+1
+        into @i
+    end loop;
+    update MCCM.CUST_CONTACT_MASTER_NEW
+      set PER_EADDRESS = Replace(PER_EADDRESS,' ','')
+  end;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW as A
+    set PER_EADDRESS
+     = REVERSE(SUBSTR(REVERSE(PER_EADDRESS),PATINDEX('%[A-Z]%',REVERSE(PER_EADDRESS))));
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = null
+    where CHARINDEX('@',PER_EADDRESS) = 0;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set PER_EADDRESS = null
+    where LENGTH(SUBSTR(SUBSTR(PER_EADDRESS,LOCATE(PER_EADDRESS,'@')+1),LOCATE(SUBSTR(PER_EADDRESS,LOCATE(PER_EADDRESS,'@')+1),'.')+1)) <= 1;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(EADDRESS,' ','')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(UPPER(EADDRESS),'@ABCD.','')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(UPPER(EADDRESS),'@ABC.','')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(UPPER(EADDRESS),'@XYZ.','')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = case when EADDRESS like '%_%@%_%.%' then EADDRESS else null end
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'..','.'),'..','.')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'..','.'),'..','.')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'__','_'),'__','_')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'__','_'),'__','_')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'@@','@'),'@@','@')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'@@','@'),'@@','@')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'--','-'),'--','-')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(REPLACE(EADDRESS,'--','-'),'--','-')
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = case when EADDRESS like '%_%@%_%.%' then EADDRESS else null end
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when(CHARINDEX('<',EADDRESS) <> 0 and CHARINDEX('>',EADDRESS)
+     <> 0)
+    and CHARINDEX('<',EADDRESS) < CHARINDEX('>',EADDRESS)
+    and SUBSTRING(EADDRESS,CHARINDEX('<',EADDRESS),CHARINDEX('>',EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(EADDRESS,CHARINDEX('<',EADDRESS)+1,((CHARINDEX('>',EADDRESS)-CHARINDEX('<',EADDRESS))-1))
+    else EADDRESS
+    end where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when(CHARINDEX('(',EADDRESS) <> 0 and CHARINDEX(')',EADDRESS)
+     <> 0)
+    and CHARINDEX('(',EADDRESS) < CHARINDEX(')',EADDRESS)
+    and SUBSTRING(EADDRESS,CHARINDEX('(',EADDRESS),CHARINDEX(')',EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(EADDRESS,CHARINDEX('(',EADDRESS)+1,((CHARINDEX(')',EADDRESS)-CHARINDEX('(',EADDRESS))-1))
+    else EADDRESS
+    end where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when(CHARINDEX('[',EADDRESS) <> 0 and CHARINDEX(']',EADDRESS)
+     <> 0)
+    and CHARINDEX('[',EADDRESS) < CHARINDEX(']',EADDRESS)
+    and SUBSTRING(EADDRESS,CHARINDEX('[',EADDRESS),CHARINDEX(']',EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(EADDRESS,CHARINDEX('[',EADDRESS)+1,((CHARINDEX(']',EADDRESS)-CHARINDEX('[',EADDRESS))-1))
+    else EADDRESS
+    end where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when(CHARINDEX('{',EADDRESS) <> 0 and CHARINDEX('}',EADDRESS)
+     <> 0)
+    and CHARINDEX('{',EADDRESS) < CHARINDEX('}',EADDRESS)
+    and SUBSTRING(EADDRESS,CHARINDEX('{',EADDRESS),CHARINDEX('}',EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(EADDRESS,CHARINDEX('{',EADDRESS)+1,((CHARINDEX('}',EADDRESS)-CHARINDEX('{',EADDRESS))-1))
+    else EADDRESS
+    end where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,1) = '>' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '<' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '-' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '_' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '+' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '=' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = ')' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '(' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '*' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '&' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '^' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '%' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '$' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '#' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '@' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '!' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '~' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '`' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = ';' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = ':' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '.' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = ',' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '?' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '/' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '{' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '}' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '|' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = '[' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,1,1) = ']' then
+      SUBSTRING(EADDRESS,2,LENGTH(EADDRESS)-1) else EADDRESS end
+    where(EADDRESS is not null
+    and SUBSTRING(EADDRESS,1,1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '>' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '<' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '-' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '_' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '+' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '=' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = ')' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '(' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '*' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '&' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '^' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '%' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '$' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '#' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '@' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '!' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '~' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '`' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = ';' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = ':' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '.' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = ',' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '?' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '/' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '{' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '}' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '|' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = '[' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1)
+    when SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) = ']' then
+      SUBSTRING(EADDRESS,1,LENGTH(EADDRESS)-1) else EADDRESS end
+    where(EADDRESS is not null
+    and SUBSTRING(EADDRESS,LENGTH(EADDRESS),1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX('/',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX('/',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX('/',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX('/',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX('/',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX(':',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX(':',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX(':',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX(':',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX(':',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX(',',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX(',',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX(',',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX(',',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX(',',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX('|',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX('|',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX('|',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX('|',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX('|',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX('&',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX('&',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX('&',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX('&',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX('&',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX(';',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX(';',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX(';',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX(';',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX(';',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX('\\',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX('\\',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX('\\',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX('\\',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX('\\',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when SUBSTRING(EADDRESS,1,CHARINDEX('^',EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(EADDRESS,1,CHARINDEX('^',EADDRESS)-1)
+    else SUBSTRING(EADDRESS,(CHARINDEX('^',EADDRESS)+1),LENGTH(EADDRESS)-CHARINDEX('^',EADDRESS))
+    end
+    where(EADDRESS is not null
+    and CHARINDEX('^',EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when EADDRESS like '%_%@%_%.%' then EADDRESS else null end
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = null
+    where(EADDRESS is not null
+    and(CHARINDEX('>',EADDRESS) > 1
+    or CHARINDEX('<',EADDRESS) > 1
+    or CHARINDEX('+',EADDRESS) > 1
+    or CHARINDEX('=',EADDRESS) > 1
+    or CHARINDEX(')',EADDRESS) > 1
+    or CHARINDEX('(',EADDRESS) > 1
+    or CHARINDEX('*',EADDRESS) > 1
+    or CHARINDEX('&',EADDRESS) > 1
+    or CHARINDEX('^',EADDRESS) > 1
+    or CHARINDEX('%',EADDRESS) > 1
+    or CHARINDEX('$',EADDRESS) > 1
+    or CHARINDEX('#',EADDRESS) > 1
+    or CHARINDEX('!',EADDRESS) > 1
+    or CHARINDEX('~',EADDRESS) > 1
+    or CHARINDEX('`',EADDRESS) > 1
+    or CHARINDEX('',EADDRESS) > 1
+    or CHARINDEX(';',EADDRESS) > 1
+    or CHARINDEX(':',EADDRESS) > 1
+    or CHARINDEX(',',EADDRESS) > 1
+    or CHARINDEX('?',EADDRESS) > 1
+    or CHARINDEX('/',EADDRESS) > 1
+    or CHARINDEX('{',EADDRESS) > 1
+    or CHARINDEX('}',EADDRESS) > 1
+    or CHARINDEX('|',EADDRESS) > 1
+    or CHARINDEX('[',EADDRESS) > 1
+    or CHARINDEX(']',EADDRESS) > 1));
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = TRIM(EADDRESS)
+    where EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS
+     = case when EADDRESS like '%_%@%_%.%' then EADDRESS else null end
+    where EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = SUBSTR(EADDRESS,-2,-(LENGTH(EADDRESS)-1))
+    where(RIGHT(EADDRESS,1) = '.'
+    and EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = null
+    where(EADDRESS like '%@%@%'
+    and EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(EADDRESS,'\x0D','')
+    where EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = (case when(PATINDEX('%[A-Z]%',EADDRESS) = 1
+    or PATINDEX('%[0-9]%',EADDRESS) = 1) then EADDRESS else SUBSTR(EADDRESS,2) end)
+    where EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = REPLACE(EADDRESS,'\x09','')
+    where EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  commit work;
+  begin
+    declare @i integer;
+    declare @l integer;
+    declare @len integer;
+    --Select @len = ( Select max(length(EADDRESS)) From MCCM.MCCM.CUST_CONTACT_MASTER_NEW );
+    select max(length(EADDRESS)) into @len from MCCM.CUST_CONTACT_MASTER_NEW;
+    --select @i=1;
+    select 1 into @i;
+    while(@i <= @len) loop
+      update MCCM.CUST_CONTACT_MASTER_NEW
+        set EADDRESS = replace(EADDRESS,substr(EADDRESS,@i,1),' ')
+        where(substr(EADDRESS,@i,1) not between 'A' and 'z'
+        and substr(EADDRESS,@i,1) <> '@'
+        and substr(EADDRESS,@i,1) <> '.'
+        and substr(EADDRESS,@i,1) <> '_'
+        and substr(EADDRESS,@i,1) <> '-'
+        and substr(EADDRESS,@i,1) not between '0' and '9');
+      --select @i=@i+1;
+      select @i+1
+        into @i
+    end loop;
+    update MCCM.CUST_CONTACT_MASTER_NEW
+      set EADDRESS = Replace(EADDRESS,' ','')
+  end;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW as A
+    set EADDRESS
+     = REVERSE(SUBSTR(REVERSE(EADDRESS),PATINDEX('%[A-Z]%',REVERSE(EADDRESS))));
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = null
+    where CHARINDEX('@',EADDRESS) = 0;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set EADDRESS = null
+    where LENGTH(SUBSTR(SUBSTR(EADDRESS,LOCATE(EADDRESS,'@')+1),LOCATE(SUBSTR(EADDRESS,LOCATE(EADDRESS,'@')+1),'.')+1)) <= 1;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(Eaddress,' ','')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(UPPER(Eaddress),'@ABCD.','')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(UPPER(Eaddress),'@ABC.','')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(UPPER(Eaddress),'@XYZ.','')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = case when Eaddress like '%_%@%_%.%' then Eaddress else null end
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'..','.'),'..','.')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'..','.'),'..','.')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'__','_'),'__','_')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'__','_'),'__','_')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'@@','@'),'@@','@')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'@@','@'),'@@','@')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'--','-'),'--','-')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(REPLACE(Eaddress,'--','-'),'--','-')
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = case when Eaddress like '%_%@%_%.%' then Eaddress else null end
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when(CHARINDEX('<',Eaddress) <> 0 and CHARINDEX('>',Eaddress)
+     <> 0)
+    and CHARINDEX('<',Eaddress) < CHARINDEX('>',Eaddress)
+    and SUBSTRING(Eaddress,CHARINDEX('<',Eaddress),CHARINDEX('>',Eaddress))
+    like '%@%.%' then
+      SUBSTRING(Eaddress,CHARINDEX('<',Eaddress)+1,((CHARINDEX('>',Eaddress)-CHARINDEX('<',Eaddress))-1))
+    else Eaddress
+    end where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when(CHARINDEX('(',Eaddress) <> 0 and CHARINDEX(')',Eaddress)
+     <> 0)
+    and CHARINDEX('(',Eaddress) < CHARINDEX(')',Eaddress)
+    and SUBSTRING(Eaddress,CHARINDEX('(',Eaddress),CHARINDEX(')',Eaddress))
+    like '%@%.%' then
+      SUBSTRING(Eaddress,CHARINDEX('(',Eaddress)+1,((CHARINDEX(')',Eaddress)-CHARINDEX('(',Eaddress))-1))
+    else Eaddress
+    end where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when(CHARINDEX('[',Eaddress) <> 0 and CHARINDEX(']',Eaddress)
+     <> 0)
+    and CHARINDEX('[',Eaddress) < CHARINDEX(']',Eaddress)
+    and SUBSTRING(Eaddress,CHARINDEX('[',Eaddress),CHARINDEX(']',Eaddress))
+    like '%@%.%' then
+      SUBSTRING(Eaddress,CHARINDEX('[',Eaddress)+1,((CHARINDEX(']',Eaddress)-CHARINDEX('[',Eaddress))-1))
+    else Eaddress
+    end where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when(CHARINDEX('{',Eaddress) <> 0 and CHARINDEX('}',Eaddress)
+     <> 0)
+    and CHARINDEX('{',Eaddress) < CHARINDEX('}',Eaddress)
+    and SUBSTRING(Eaddress,CHARINDEX('{',Eaddress),CHARINDEX('}',Eaddress))
+    like '%@%.%' then
+      SUBSTRING(Eaddress,CHARINDEX('{',Eaddress)+1,((CHARINDEX('}',Eaddress)-CHARINDEX('{',Eaddress))-1))
+    else Eaddress
+    end where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,1) = '>' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '<' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '-' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '_' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '+' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '=' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = ')' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '(' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '*' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '&' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '^' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '%' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '$' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '#' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '@' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '!' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '~' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '`' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = ';' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = ':' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '.' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = ',' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '?' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '/' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '{' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '}' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '|' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = '[' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,1,1) = ']' then
+      SUBSTRING(Eaddress,2,LENGTH(Eaddress)-1) else Eaddress end
+    where(Eaddress is not null
+    and SUBSTRING(Eaddress,1,1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '>' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '<' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '-' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '_' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '+' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '=' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = ')' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '(' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '*' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '&' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '^' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '%' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '$' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '#' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '@' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '!' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '~' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '`' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = ';' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = ':' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '.' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = ',' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '?' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '/' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '{' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '}' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '|' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = '[' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1)
+    when SUBSTRING(Eaddress,LENGTH(Eaddress),1) = ']' then
+      SUBSTRING(Eaddress,1,LENGTH(Eaddress)-1) else Eaddress end
+    where(Eaddress is not null
+    and SUBSTRING(Eaddress,LENGTH(Eaddress),1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX('/',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX('/',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX('/',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX('/',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX('/',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX(':',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX(':',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX(':',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX(':',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX(':',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX(',',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX(',',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX(',',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX(',',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX(',',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX('|',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX('|',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX('|',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX('|',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX('|',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX('&',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX('&',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX('&',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX('&',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX('&',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX(';',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX(';',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX(';',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX(';',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX(';',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX('\\',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX('\\',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX('\\',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX('\\',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX('\\',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when SUBSTRING(Eaddress,1,CHARINDEX('^',Eaddress)-1) like '%@%.%' then
+      SUBSTRING(Eaddress,1,CHARINDEX('^',Eaddress)-1)
+    else SUBSTRING(Eaddress,(CHARINDEX('^',Eaddress)+1),LENGTH(Eaddress)-CHARINDEX('^',Eaddress))
+    end
+    where(Eaddress is not null
+    and CHARINDEX('^',Eaddress) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when Eaddress like '%_%@%_%.%' then Eaddress else null end
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = null
+    where(Eaddress is not null
+    and(CHARINDEX('>',Eaddress) > 1
+    or CHARINDEX('<',Eaddress) > 1
+    or CHARINDEX('+',Eaddress) > 1
+    or CHARINDEX('=',Eaddress) > 1
+    or CHARINDEX(')',Eaddress) > 1
+    or CHARINDEX('(',Eaddress) > 1
+    or CHARINDEX('*',Eaddress) > 1
+    or CHARINDEX('&',Eaddress) > 1
+    or CHARINDEX('^',Eaddress) > 1
+    or CHARINDEX('%',Eaddress) > 1
+    or CHARINDEX('$',Eaddress) > 1
+    or CHARINDEX('#',Eaddress) > 1
+    or CHARINDEX('!',Eaddress) > 1
+    or CHARINDEX('~',Eaddress) > 1
+    or CHARINDEX('`',Eaddress) > 1
+    or CHARINDEX('',Eaddress) > 1
+    or CHARINDEX(';',Eaddress) > 1
+    or CHARINDEX(':',Eaddress) > 1
+    or CHARINDEX(',',Eaddress) > 1
+    or CHARINDEX('?',Eaddress) > 1
+    or CHARINDEX('/',Eaddress) > 1
+    or CHARINDEX('{',Eaddress) > 1
+    or CHARINDEX('}',Eaddress) > 1
+    or CHARINDEX('|',Eaddress) > 1
+    or CHARINDEX('[',Eaddress) > 1
+    or CHARINDEX(']',Eaddress) > 1));
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = TRIM(Eaddress)
+    where Eaddress is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress
+     = case when Eaddress like '%_%@%_%.%' then Eaddress else null end
+    where Eaddress is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = SUBSTR(Eaddress,-2,-(LENGTH(Eaddress)-1))
+    where(RIGHT(Eaddress,1) = '.'
+    and Eaddress is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = null
+    where(Eaddress like '%@%@%'
+    and Eaddress is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(Eaddress,'\x0D','')
+    where Eaddress is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = (case when(PATINDEX('%[A-Z]%',Eaddress) = 1
+    or PATINDEX('%[0-9]%',Eaddress) = 1) then Eaddress else SUBSTR(Eaddress,2) end)
+    where Eaddress is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = REPLACE(Eaddress,'\x09','')
+    where Eaddress is not null;
+  commit work;
+  --------------------------------------------------------------
+  commit work;
+  begin
+    declare @i integer;
+    declare @l integer;
+    declare @len integer;
+    --Select @len = ( Select max(length(Eaddress)) From MCCM.MCCM.CUST_CONTACT_MASTER_NEW );
+    select max(length(Eaddress)) into @len from MCCM.CUST_CONTACT_MASTER_NEW;
+    --select @i=1;
+    select 1 into @i;
+    while(@i <= @len) loop
+      update MCCM.CUST_CONTACT_MASTER_NEW
+        set Eaddress = replace(Eaddress,substr(Eaddress,@i,1),' ')
+        where(substr(Eaddress,@i,1) not between 'A' and 'z'
+        and substr(Eaddress,@i,1) <> '@'
+        and substr(Eaddress,@i,1) <> '.'
+        and substr(Eaddress,@i,1) <> '_'
+        and substr(Eaddress,@i,1) <> '-'
+        and substr(Eaddress,@i,1) not between '0' and '9');
+      --select @i=@i+1;
+      select @i+1
+        into @i
+    end loop;
+    update MCCM.CUST_CONTACT_MASTER_NEW
+      set Eaddress = Replace(Eaddress,' ','')
+  end;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW as A
+    set Eaddress
+     = REVERSE(SUBSTR(REVERSE(Eaddress),PATINDEX('%[A-Z]%',REVERSE(Eaddress))));
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = null
+    where CHARINDEX('@',Eaddress) = 0;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set Eaddress = null
+    where LENGTH(SUBSTR(SUBSTR(Eaddress,LOCATE(Eaddress,'@')+1),LOCATE(SUBSTR(Eaddress,LOCATE(Eaddress,'@')+1),'.')+1)) <= 1;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(CUR_EADDRESS,' ','')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(UPPER(CUR_EADDRESS),'@ABCD.','')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(UPPER(CUR_EADDRESS),'@ABC.','')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(UPPER(CUR_EADDRESS),'@XYZ.','')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = case when CUR_EADDRESS like '%_%@%_%.%' then CUR_EADDRESS else null end
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'..','.'),'..','.')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'..','.'),'..','.')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'__','_'),'__','_')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'__','_'),'__','_')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'@@','@'),'@@','@')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'@@','@'),'@@','@')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'--','-'),'--','-')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(REPLACE(CUR_EADDRESS,'--','-'),'--','-')
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = case when CUR_EADDRESS like '%_%@%_%.%' then CUR_EADDRESS else null end
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when(CHARINDEX('<',CUR_EADDRESS) <> 0 and CHARINDEX('>',CUR_EADDRESS)
+     <> 0)
+    and CHARINDEX('<',CUR_EADDRESS) < CHARINDEX('>',CUR_EADDRESS)
+    and SUBSTRING(CUR_EADDRESS,CHARINDEX('<',CUR_EADDRESS),CHARINDEX('>',CUR_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,CHARINDEX('<',CUR_EADDRESS)+1,((CHARINDEX('>',CUR_EADDRESS)-CHARINDEX('<',CUR_EADDRESS))-1))
+    else CUR_EADDRESS
+    end where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when(CHARINDEX('(',CUR_EADDRESS) <> 0 and CHARINDEX(')',CUR_EADDRESS)
+     <> 0)
+    and CHARINDEX('(',CUR_EADDRESS) < CHARINDEX(')',CUR_EADDRESS)
+    and SUBSTRING(CUR_EADDRESS,CHARINDEX('(',CUR_EADDRESS),CHARINDEX(')',CUR_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,CHARINDEX('(',CUR_EADDRESS)+1,((CHARINDEX(')',CUR_EADDRESS)-CHARINDEX('(',CUR_EADDRESS))-1))
+    else CUR_EADDRESS
+    end where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when(CHARINDEX('[',CUR_EADDRESS) <> 0 and CHARINDEX(']',CUR_EADDRESS)
+     <> 0)
+    and CHARINDEX('[',CUR_EADDRESS) < CHARINDEX(']',CUR_EADDRESS)
+    and SUBSTRING(CUR_EADDRESS,CHARINDEX('[',CUR_EADDRESS),CHARINDEX(']',CUR_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,CHARINDEX('[',CUR_EADDRESS)+1,((CHARINDEX(']',CUR_EADDRESS)-CHARINDEX('[',CUR_EADDRESS))-1))
+    else CUR_EADDRESS
+    end where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when(CHARINDEX('{',CUR_EADDRESS) <> 0 and CHARINDEX('}',CUR_EADDRESS)
+     <> 0)
+    and CHARINDEX('{',CUR_EADDRESS) < CHARINDEX('}',CUR_EADDRESS)
+    and SUBSTRING(CUR_EADDRESS,CHARINDEX('{',CUR_EADDRESS),CHARINDEX('}',CUR_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,CHARINDEX('{',CUR_EADDRESS)+1,((CHARINDEX('}',CUR_EADDRESS)-CHARINDEX('{',CUR_EADDRESS))-1))
+    else CUR_EADDRESS
+    end where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,1) = '>' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '<' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '-' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '_' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '+' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '=' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = ')' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '(' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '*' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '&' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '^' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '%' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '$' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '#' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '@' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '!' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '~' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '`' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = ';' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = ':' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '.' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = ',' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '?' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '/' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '{' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '}' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '|' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = '[' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,1,1) = ']' then
+      SUBSTRING(CUR_EADDRESS,2,LENGTH(CUR_EADDRESS)-1) else CUR_EADDRESS end
+    where(CUR_EADDRESS is not null
+    and SUBSTRING(CUR_EADDRESS,1,1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '>' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '<' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '-' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '_' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '+' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '=' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = ')' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '(' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '*' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '&' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '^' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '%' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '$' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '#' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '@' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '!' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '~' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '`' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = ';' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = ':' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '.' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = ',' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '?' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '/' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '{' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '}' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '|' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = '[' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1)
+    when SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) = ']' then
+      SUBSTRING(CUR_EADDRESS,1,LENGTH(CUR_EADDRESS)-1) else CUR_EADDRESS end
+    where(CUR_EADDRESS is not null
+    and SUBSTRING(CUR_EADDRESS,LENGTH(CUR_EADDRESS),1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX('/',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX('/',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX('/',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX('/',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX('/',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX(':',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX(':',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX(':',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX(':',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX(':',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX(',',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX(',',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX(',',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX(',',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX(',',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX('|',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX('|',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX('|',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX('|',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX('|',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX('&',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX('&',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX('&',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX('&',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX('&',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX(';',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX(';',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX(';',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX(';',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX(';',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX('\\',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX('\\',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX('\\',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX('\\',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX('\\',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when SUBSTRING(CUR_EADDRESS,1,CHARINDEX('^',CUR_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(CUR_EADDRESS,1,CHARINDEX('^',CUR_EADDRESS)-1)
+    else SUBSTRING(CUR_EADDRESS,(CHARINDEX('^',CUR_EADDRESS)+1),LENGTH(CUR_EADDRESS)-CHARINDEX('^',CUR_EADDRESS))
+    end
+    where(CUR_EADDRESS is not null
+    and CHARINDEX('^',CUR_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when CUR_EADDRESS like '%_%@%_%.%' then CUR_EADDRESS else null end
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = null
+    where(CUR_EADDRESS is not null
+    and(CHARINDEX('>',CUR_EADDRESS) > 1
+    or CHARINDEX('<',CUR_EADDRESS) > 1
+    or CHARINDEX('+',CUR_EADDRESS) > 1
+    or CHARINDEX('=',CUR_EADDRESS) > 1
+    or CHARINDEX(')',CUR_EADDRESS) > 1
+    or CHARINDEX('(',CUR_EADDRESS) > 1
+    or CHARINDEX('*',CUR_EADDRESS) > 1
+    or CHARINDEX('&',CUR_EADDRESS) > 1
+    or CHARINDEX('^',CUR_EADDRESS) > 1
+    or CHARINDEX('%',CUR_EADDRESS) > 1
+    or CHARINDEX('$',CUR_EADDRESS) > 1
+    or CHARINDEX('#',CUR_EADDRESS) > 1
+    or CHARINDEX('!',CUR_EADDRESS) > 1
+    or CHARINDEX('~',CUR_EADDRESS) > 1
+    or CHARINDEX('`',CUR_EADDRESS) > 1
+    or CHARINDEX('',CUR_EADDRESS) > 1
+    or CHARINDEX(';',CUR_EADDRESS) > 1
+    or CHARINDEX(':',CUR_EADDRESS) > 1
+    or CHARINDEX(',',CUR_EADDRESS) > 1
+    or CHARINDEX('?',CUR_EADDRESS) > 1
+    or CHARINDEX('/',CUR_EADDRESS) > 1
+    or CHARINDEX('{',CUR_EADDRESS) > 1
+    or CHARINDEX('}',CUR_EADDRESS) > 1
+    or CHARINDEX('|',CUR_EADDRESS) > 1
+    or CHARINDEX('[',CUR_EADDRESS) > 1
+    or CHARINDEX(']',CUR_EADDRESS) > 1));
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = TRIM(CUR_EADDRESS)
+    where CUR_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS
+     = case when CUR_EADDRESS like '%_%@%_%.%' then CUR_EADDRESS else null end
+    where CUR_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = SUBSTR(CUR_EADDRESS,-2,-(LENGTH(CUR_EADDRESS)-1))
+    where(RIGHT(CUR_EADDRESS,1) = '.'
+    and CUR_EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = null
+    where(CUR_EADDRESS like '%@%@%'
+    and CUR_EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(CUR_EADDRESS,'\x0D','')
+    where CUR_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = (case when(PATINDEX('%[A-Z]%',CUR_EADDRESS) = 1
+    or PATINDEX('%[0-9]%',CUR_EADDRESS) = 1) then CUR_EADDRESS else SUBSTR(CUR_EADDRESS,2) end)
+    where CUR_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = REPLACE(CUR_EADDRESS,'\x09','')
+    where CUR_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  commit work;
+  begin
+    declare @i integer;
+    declare @l integer;
+    declare @len integer;
+    --Select @len = ( Select max(length(CUR_EADDRESS)) From MCCM.MCCM.CUST_CONTACT_MASTER_NEW );
+    select max(length(CUR_EADDRESS)) into @len from MCCM.CUST_CONTACT_MASTER_NEW;
+    --select @i=1;
+    select 1 into @i;
+    while(@i <= @len) loop
+      update MCCM.CUST_CONTACT_MASTER_NEW
+        set CUR_EADDRESS = replace(CUR_EADDRESS,substr(CUR_EADDRESS,@i,1),' ')
+        where(substr(CUR_EADDRESS,@i,1) not between 'A' and 'z'
+        and substr(CUR_EADDRESS,@i,1) <> '@'
+        and substr(CUR_EADDRESS,@i,1) <> '.'
+        and substr(CUR_EADDRESS,@i,1) <> '_'
+        and substr(CUR_EADDRESS,@i,1) <> '-'
+        and substr(CUR_EADDRESS,@i,1) not between '0' and '9');
+      --select @i=@i+1;
+      select @i+1
+        into @i
+    end loop;
+    update MCCM.CUST_CONTACT_MASTER_NEW
+      set CUR_EADDRESS = Replace(CUR_EADDRESS,' ','')
+  end;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW as A
+    set CUR_EADDRESS
+     = REVERSE(SUBSTR(REVERSE(CUR_EADDRESS),PATINDEX('%[A-Z]%',REVERSE(CUR_EADDRESS))));
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = null
+    where CHARINDEX('@',CUR_EADDRESS) = 0;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set CUR_EADDRESS = null
+    where LENGTH(SUBSTR(SUBSTR(CUR_EADDRESS,LOCATE(CUR_EADDRESS,'@')+1),LOCATE(SUBSTR(CUR_EADDRESS,LOCATE(CUR_EADDRESS,'@')+1),'.')+1)) <= 1;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(BUS_EADDRESS,' ','')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(UPPER(BUS_EADDRESS),'@ABCD.','')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(UPPER(BUS_EADDRESS),'@ABC.','')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(UPPER(BUS_EADDRESS),'@XYZ.','')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = case when BUS_EADDRESS like '%_%@%_%.%' then BUS_EADDRESS else null end
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'..','.'),'..','.')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'..','.'),'..','.')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'__','_'),'__','_')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'__','_'),'__','_')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'@@','@'),'@@','@')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'@@','@'),'@@','@')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'--','-'),'--','-')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(REPLACE(BUS_EADDRESS,'--','-'),'--','-')
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = case when BUS_EADDRESS like '%_%@%_%.%' then BUS_EADDRESS else null end
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when(CHARINDEX('<',BUS_EADDRESS) <> 0 and CHARINDEX('>',BUS_EADDRESS)
+     <> 0)
+    and CHARINDEX('<',BUS_EADDRESS) < CHARINDEX('>',BUS_EADDRESS)
+    and SUBSTRING(BUS_EADDRESS,CHARINDEX('<',BUS_EADDRESS),CHARINDEX('>',BUS_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,CHARINDEX('<',BUS_EADDRESS)+1,((CHARINDEX('>',BUS_EADDRESS)-CHARINDEX('<',BUS_EADDRESS))-1))
+    else BUS_EADDRESS
+    end where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when(CHARINDEX('(',BUS_EADDRESS) <> 0 and CHARINDEX(')',BUS_EADDRESS)
+     <> 0)
+    and CHARINDEX('(',BUS_EADDRESS) < CHARINDEX(')',BUS_EADDRESS)
+    and SUBSTRING(BUS_EADDRESS,CHARINDEX('(',BUS_EADDRESS),CHARINDEX(')',BUS_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,CHARINDEX('(',BUS_EADDRESS)+1,((CHARINDEX(')',BUS_EADDRESS)-CHARINDEX('(',BUS_EADDRESS))-1))
+    else BUS_EADDRESS
+    end where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when(CHARINDEX('[',BUS_EADDRESS) <> 0 and CHARINDEX(']',BUS_EADDRESS)
+     <> 0)
+    and CHARINDEX('[',BUS_EADDRESS) < CHARINDEX(']',BUS_EADDRESS)
+    and SUBSTRING(BUS_EADDRESS,CHARINDEX('[',BUS_EADDRESS),CHARINDEX(']',BUS_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,CHARINDEX('[',BUS_EADDRESS)+1,((CHARINDEX(']',BUS_EADDRESS)-CHARINDEX('[',BUS_EADDRESS))-1))
+    else BUS_EADDRESS
+    end where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when(CHARINDEX('{',BUS_EADDRESS) <> 0 and CHARINDEX('}',BUS_EADDRESS)
+     <> 0)
+    and CHARINDEX('{',BUS_EADDRESS) < CHARINDEX('}',BUS_EADDRESS)
+    and SUBSTRING(BUS_EADDRESS,CHARINDEX('{',BUS_EADDRESS),CHARINDEX('}',BUS_EADDRESS))
+    like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,CHARINDEX('{',BUS_EADDRESS)+1,((CHARINDEX('}',BUS_EADDRESS)-CHARINDEX('{',BUS_EADDRESS))-1))
+    else BUS_EADDRESS
+    end where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,1) = '>' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '<' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '-' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '_' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '+' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '=' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = ')' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '(' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '*' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '&' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '^' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '%' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '$' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '#' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '@' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '!' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '~' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '`' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = ';' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = ':' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '.' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = ',' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '?' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '/' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '{' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '}' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '|' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = '[' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,1,1) = ']' then
+      SUBSTRING(BUS_EADDRESS,2,LENGTH(BUS_EADDRESS)-1) else BUS_EADDRESS end
+    where(BUS_EADDRESS is not null
+    and SUBSTRING(BUS_EADDRESS,1,1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '>' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '<' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '-' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '_' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '+' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '=' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = ')' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '(' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '*' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '&' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '^' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '%' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '$' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '#' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '@' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '!' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '~' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '`' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = ';' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = ':' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '.' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = ',' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '?' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '/' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '{' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '}' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '|' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = '[' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1)
+    when SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) = ']' then
+      SUBSTRING(BUS_EADDRESS,1,LENGTH(BUS_EADDRESS)-1) else BUS_EADDRESS end
+    where(BUS_EADDRESS is not null
+    and SUBSTRING(BUS_EADDRESS,LENGTH(BUS_EADDRESS),1) in( 
+    '>','<','-','_','+','=',')','(','*','&','^','%','$','#','@','!','~','`','',';',':','.',',','?','/','{','}','|','[',']' ) );
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX('/',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX('/',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX('/',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX('/',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX('/',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX(':',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX(':',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX(':',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX(':',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX(':',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX(',',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX(',',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX(',',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX(',',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX(',',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX('|',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX('|',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX('|',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX('|',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX('|',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX('&',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX('&',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX('&',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX('&',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX('&',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX(';',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX(';',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX(';',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX(';',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX(';',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX('\\',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX('\\',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX('\\',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX('\\',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX('\\',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when SUBSTRING(BUS_EADDRESS,1,CHARINDEX('^',BUS_EADDRESS)-1) like '%@%.%' then
+      SUBSTRING(BUS_EADDRESS,1,CHARINDEX('^',BUS_EADDRESS)-1)
+    else SUBSTRING(BUS_EADDRESS,(CHARINDEX('^',BUS_EADDRESS)+1),LENGTH(BUS_EADDRESS)-CHARINDEX('^',BUS_EADDRESS))
+    end
+    where(BUS_EADDRESS is not null
+    and CHARINDEX('^',BUS_EADDRESS) <> 0);
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when BUS_EADDRESS like '%_%@%_%.%' then BUS_EADDRESS else null end
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = null
+    where(BUS_EADDRESS is not null
+    and(CHARINDEX('>',BUS_EADDRESS) > 1
+    or CHARINDEX('<',BUS_EADDRESS) > 1
+    or CHARINDEX('+',BUS_EADDRESS) > 1
+    or CHARINDEX('=',BUS_EADDRESS) > 1
+    or CHARINDEX(')',BUS_EADDRESS) > 1
+    or CHARINDEX('(',BUS_EADDRESS) > 1
+    or CHARINDEX('*',BUS_EADDRESS) > 1
+    or CHARINDEX('&',BUS_EADDRESS) > 1
+    or CHARINDEX('^',BUS_EADDRESS) > 1
+    or CHARINDEX('%',BUS_EADDRESS) > 1
+    or CHARINDEX('$',BUS_EADDRESS) > 1
+    or CHARINDEX('#',BUS_EADDRESS) > 1
+    or CHARINDEX('!',BUS_EADDRESS) > 1
+    or CHARINDEX('~',BUS_EADDRESS) > 1
+    or CHARINDEX('`',BUS_EADDRESS) > 1
+    or CHARINDEX('',BUS_EADDRESS) > 1
+    or CHARINDEX(';',BUS_EADDRESS) > 1
+    or CHARINDEX(':',BUS_EADDRESS) > 1
+    or CHARINDEX(',',BUS_EADDRESS) > 1
+    or CHARINDEX('?',BUS_EADDRESS) > 1
+    or CHARINDEX('/',BUS_EADDRESS) > 1
+    or CHARINDEX('{',BUS_EADDRESS) > 1
+    or CHARINDEX('}',BUS_EADDRESS) > 1
+    or CHARINDEX('|',BUS_EADDRESS) > 1
+    or CHARINDEX('[',BUS_EADDRESS) > 1
+    or CHARINDEX(']',BUS_EADDRESS) > 1));
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = TRIM(BUS_EADDRESS)
+    where BUS_EADDRESS is not null;
+  commit work;
+  -------------------------------------------------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS
+     = case when BUS_EADDRESS like '%_%@%_%.%' then BUS_EADDRESS else null end
+    where BUS_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = SUBSTR(BUS_EADDRESS,-2,-(LENGTH(BUS_EADDRESS)-1))
+    where(RIGHT(BUS_EADDRESS,1) = '.'
+    and BUS_EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = null
+    where(BUS_EADDRESS like '%@%@%'
+    and BUS_EADDRESS is not null);
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(BUS_EADDRESS,'\x0D','')
+    where BUS_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = (case when(PATINDEX('%[A-Z]%',BUS_EADDRESS) = 1
+    or PATINDEX('%[0-9]%',BUS_EADDRESS) = 1) then BUS_EADDRESS else SUBSTR(BUS_EADDRESS,2) end)
+    where BUS_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = REPLACE(BUS_EADDRESS,'\x09','')
+    where BUS_EADDRESS is not null;
+  commit work;
+  --------------------------------------------------------------
+  commit work;
+  begin
+    declare @i integer;
+    declare @l integer;
+    declare @len integer;
+    --Select @len = ( Select max(length(BUS_EADDRESS)) From MCCM.MCCM.CUST_CONTACT_MASTER_NEW );
+    select max(length(BUS_EADDRESS)) into @len from MCCM.CUST_CONTACT_MASTER_NEW;
+    --select @i=1;
+    select 1 into @i;
+    while(@i <= @len) loop
+      update MCCM.CUST_CONTACT_MASTER_NEW
+        set BUS_EADDRESS = replace(BUS_EADDRESS,substr(BUS_EADDRESS,@i,1),' ')
+        where(substr(BUS_EADDRESS,@i,1) not between 'A' and 'z'
+        and substr(BUS_EADDRESS,@i,1) <> '@'
+        and substr(BUS_EADDRESS,@i,1) <> '.'
+        and substr(BUS_EADDRESS,@i,1) <> '_'
+        and substr(BUS_EADDRESS,@i,1) <> '-'
+        and substr(BUS_EADDRESS,@i,1) not between '0' and '9');
+      --select @i=@i+1;
+      select @i+1
+        into @i
+    end loop;
+    update MCCM.CUST_CONTACT_MASTER_NEW
+      set BUS_EADDRESS = Replace(BUS_EADDRESS,' ','')
+  end;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW as A
+    set BUS_EADDRESS
+     = REVERSE(SUBSTR(REVERSE(BUS_EADDRESS),PATINDEX('%[A-Z]%',REVERSE(BUS_EADDRESS))));
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = null
+    where CHARINDEX('@',BUS_EADDRESS) = 0;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER_NEW
+    set BUS_EADDRESS = null
+    where LENGTH(SUBSTR(SUBSTR(BUS_EADDRESS,LOCATE(BUS_EADDRESS,'@')+1),LOCATE(SUBSTR(BUS_EADDRESS,LOCATE(BUS_EADDRESS,'@')+1),'.')+1)) <= 1;
+  commit work
+end

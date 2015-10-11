@@ -1,0 +1,112 @@
+create procedure EDW.SP_MAIN_AUTO_METADATA_BKP()
+on exception resume
+begin
+  truncate table EDW.SYB_ETL_METADATA_RECOVERY;
+  load into table EDW.SYB_ETL_METADATA_RECOVERY( ETL_LOAD_ID,SRC_SYSTEM_CODE,WH_TABLE_NAME,MAPPING_NAME,WH_LOAD_SCHEDULE,LOAD_TABLE_NAME,LOAD_DELIMITER,LOAD_INPUT_FILE,LOAD_MESSAGE_FILE,LOAD_ROW_FILE,REQ_LOOKUP_FLG,LOOKUP_TABLE_NAME,STAGE_TABLE_NAME,STABLE_LOOKUP_COLUMN,LOOKUP_LOOKUP_COLUMN,INSERT_UPSERT_HISTORY_FLG,UPSERT_TEMP_TABLE,UPDATE_JOIN_COLUMN,REQ_PASS_FAIL_FLG,LTD_COLUMN_FLG,MULTI_UPD_FLG,FAIL_TABLE_FLG,FAIL_TABLE_NAME,LOAD_TABLE_FLG,HISTORY_DATE_COLUMN,LOAD_INPUT_DIRECTORY,ARCHIVE_DIRECTORY,MODIFIED_BY,MODIFIED_DATE,MODIFIED_IP ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_metadata.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_LOADER_RECOVERY;
+  load into table EDW.SYB_ETL_LOADER_RECOVERY( ETL_LOAD_ID,GROUP_NAME,LOAD_ORDER ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_loader.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_UPD_WHERE_COLUMN_RECOVERY;
+  load into table EDW.SYB_ETL_UPD_WHERE_COLUMN_RECOVERY( ETL_LOAD_ID,SRC_SYSTEM_CODE,WH_TABLE_NAME,MAPPING_NAME,SOURCE_COLUMN,TARGET_COLUMN ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_upd_where_column.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_LTD_UPD_COLUMN_RECOVERY;
+  load into table EDW.SYB_ETL_LTD_UPD_COLUMN_RECOVERY( ETL_LOAD_ID,SRC_SYSTEM_CODE,WH_TABLE_NAME,COLUMN_NAME ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_ltd_upd_column.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_METADATA_OTHER_SCHEMA_RECOVERY;
+  load into table EDW.SYB_ETL_METADATA_OTHER_SCHEMA_RECOVERY( ETL_LOAD_ID,SRC_SYSTEM_CODE,WH_TABLE_NAME,MAPPING_NAME,WH_LOAD_SCHEDULE,LOAD_TABLE_NAME,LOAD_DELIMITER,LOAD_INPUT_FILE,LOAD_MESSAGE_FILE,LOAD_ROW_FILE,REQ_LOOKUP_FLG,LOOKUP_TABLE_NAME,STAGE_TABLE_NAME,STABLE_LOOKUP_COLUMN,LOOKUP_LOOKUP_COLUMN,INSERT_UPSERT_HISTORY_FLG,UPSERT_TEMP_TABLE,UPDATE_JOIN_COLUMN,REQ_PASS_FAIL_FLG,LTD_COLUMN_FLG,MULTI_UPD_FLG,FAIL_TABLE_FLG,FAIL_TABLE_NAME,LOAD_TABLE_FLG,HISTORY_DATE_COLUMN,LOAD_INPUT_DIRECTORY,ARCHIVE_DIRECTORY,MODIFIED_BY,MODIFIED_DATE,MODIFIED_IP,ETL_SCHEMA ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_metadata_other_schema.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_UPD_WHERE_COLUMN_OTHER_SCHEMA_RECOVERY;
+  load into table EDW.SYB_ETL_UPD_WHERE_COLUMN_OTHER_SCHEMA_RECOVERY( ETL_LOAD_ID,SRC_SYSTEM_CODE,WH_TABLE_NAME,MAPPING_NAME,SOURCE_COLUMN,TARGET_COLUMN ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_upd_where_column_other_schema.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_LOADER_OTHER_SCHEMA_RECOVERY;
+  load into table EDW.SYB_ETL_LOADER_OTHER_SCHEMA_RECOVERY( ETL_LOAD_ID,GROUP_NAME,LOAD_ORDER ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_loader_other_schema.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_TABLE_SUMMARY_OTHER_SCHEMA_RECOVERY;
+  load into table EDW.SYB_ETL_TABLE_SUMMARY_OTHER_SCHEMA_RECOVERY( ETL_LOAD_ID,SRC_SYSTEM_CODE,WH_TABLE_NAME,WH_LOAD_SCHEDULE,WH_RUN_DATE,RUN_MODE,FAIL_DATE,START_TIMESTAMP,STOP_TIMESTAMP,ROWS_LOADED_FROM_FILE,ROWS_DELETED,ROWS_UPDATED_IN_DW,ROWS_INSERTED_IN_DW,ROWS_INSERTED_IN_FAIL ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_table_summary_other_schema.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_FIXED_WIDTH_LOAD_RECOVERY;
+  load into table EDW.SYB_FIXED_WIDTH_LOAD_RECOVERY( ETL_LOAD_ID,WH_TABLE_NAME,COLUMN_NAME,COLUMN_WIDTH,COLUMN_ORDER ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_fixed_width_load.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_UNIQUE_LOAD_RECOVERY;
+  load into table EDW.SYB_UNIQUE_LOAD_RECOVERY( ETL_LOAD_ID,SRC_SYSTEM_CODE,WH_TABLE_NAME ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_unique_load.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_HISTORY_RERUN_HIST_RECOVERY;
+  load into table EDW.SYB_ETL_HISTORY_RERUN_HIST_RECOVERY( SRC_SYSTEM_CODE,WH_TABLE_NAME,WH_LOAD_SCHEDULE,ETL_LOAD_ID,LOAD_ORDER,GROUP_NAME,WH_RUN_DATE ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_history_rerun_hist11.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work;
+  truncate table EDW.SYB_ETL_HISTORY_RERUN_RECOVERY;
+  load into table EDW.SYB_ETL_HISTORY_RERUN_RECOVERY( SRC_SYSTEM_CODE,WH_TABLE_NAME,WH_LOAD_SCHEDULE,ETL_LOAD_ID,LOAD_ORDER,GROUP_NAME ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MATADATA_BKP/syb_etl_history_rerun.out' quotes off escapes off format bcp delimited by '|^|' row delimited by '\x0A' preview on notify 100000 with checkpoint on;
+  --IGNORE CONSTRAINT ALL 0
+  --MESSAGE LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.msg'
+  --ROW LOG '/sybase_load/uat_test_load/ofsa_payment_schedule11.row'
+  --ONLY LOG ALL
+  --LOG DELIMITED BY ,
+  commit work
+end

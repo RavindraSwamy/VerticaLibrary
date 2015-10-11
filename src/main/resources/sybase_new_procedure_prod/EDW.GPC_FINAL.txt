@@ -1,0 +1,8 @@
+create procedure edw.GPC_FINAL()
+begin
+  truncate table MCCM.GPC_FINAL;
+  commit work;
+  insert into MCCM.GPC_FINAL
+    select * from qdesk.GPC_Final_V1_AUG12;
+  commit work
+end

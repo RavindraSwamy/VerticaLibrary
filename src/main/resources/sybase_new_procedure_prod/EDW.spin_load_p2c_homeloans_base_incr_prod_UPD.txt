@@ -1,0 +1,164 @@
+create procedure EDW.spin_load_p2c_homeloans_base_incr_prod_UPD()
+on exception resume
+begin
+  declare V$$EDATE date;
+  declare V$$SDATE date;
+  declare V$$SR smallint;
+  declare V$$remark varchar(50);
+  select max(sr) into V$$SR from edw.P2C_BASE_PARAM_N_DEB_UPD
+    where start_date is not null and end_date is not null;
+  select Start_Date into V$$SDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select End_Date into V$$EDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Run_Comment into V$$remark from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  if(V$$remark = 'OK TO PROCESS') then
+    select * into #HOME_LOANS_INCR_SEGMNT_DUMP1
+      --substr(a.agreementno,1,2) in ('LB','LH','NH')
+      --and
+      --substr(a.agreementno,1,2) in ('LB','LH','NH')
+      --and
+      from(select a.agreementno as source_account_nbr,
+          a.amtfin as sanc_amt,
+          b.schemedesc as product,
+          c.promotionid as promotion,
+          (case d.employment_type when 'D' then ' STUDENT' when 'E' then 'SELF EMPLOYED NON PROFESSIONAL' when 'H' then 'HUF' when 'M' then 'MINOR' when 'N' then 'NON WORKING' when 'O' then 'PENSIONER' when 'P' then 'SELF EMPLOYED PROFESSIONAL' when 'R' then 'RETIRED' when 'S' then 'SALARIED' when 'T' then 'PART TIME' when 'W' then 'HOUSEWIFE' when 'A' then 'NRI -FOR HFC UW QTS' when 'G' then 'GENERAL' else 'OTHERS' end) as EMP_TYPE
+          from reconp.lea_agreement_dtl_bank_full as a left outer join RECONP.FINONE_PRODUCT_MASTER as b
+            on a.agreementno = b.agreementno
+            left outer join EDW.DW_PROMOTION_MASTER as c
+            on a.promotionid = c.promotionid
+            left outer join reconp.nbfc_customer_m as d
+            on a.LESSEEID = d.CUSTOMERID
+          where a.status <> 'CANCELLED' union
+        select a.agreementno as source_account_nbr,
+          a.amtfin as sanc_amt,
+          b.schemedesc as product,
+          c.promotionid as promotion,
+          (case d.employment_type when 'D' then ' STUDENT' when 'E' then 'SELF EMPLOYED NON PROFESSIONAL' when 'H' then 'HUF' when 'M' then 'MINOR' when 'N' then 'NON WORKING' when 'O' then 'PENSIONER' when 'P' then 'SELF EMPLOYED PROFESSIONAL' when 'R' then 'RETIRED' when 'S' then 'SALARIED' when 'T' then 'PART TIME' when 'W' then 'HOUSEWIFE' when 'A' then 'NRI -FOR HFC UW QTS' when 'G' then 'GENERAL' else 'OTHERS' end) as EMP_TYPE
+          from reconp.lea_agreement_dtl_hfc_full as a left outer join RECONP.FINONE_PRODUCT_MASTER as b
+            on a.agreementno = b.agreementno
+            left outer join EDW.DW_PROMOTION_MASTER as c
+            on a.promotionid = c.promotionid
+            left outer join reconp.nbfc_customer_m as d
+            on a.LESSEEID = d.CUSTOMERID
+          where a.status <> 'CANCELLED') as x; --1981453 row(s) affected
+    commit work;
+    select * into #HOME_LOANS_INCR_SEGMNT_DUMP
+      from #HOME_LOANS_INCR_SEGMNT_DUMP1
+      where substr(source_account_nbr,1,2) in( 'LB','LH','NH' ) ; --1930990 row(s) affected
+    select * into #HOME_LOANS_INCR_SEGMNT_DUMP_n_p2c_DEB
+      from(select a.*
+          from P2C.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as DD,#HOME_LOANS_INCR_SEGMNT_DUMP1 as a
+          where DD.SOURCE_ACCOUNT_NBR = a.source_account_nbr
+          and DD.SOURCE_SYSTEM_CODE in( 52,53 ) 
+          and DD.IDENTIFIER = 'GPC') as x; --29 row(s) affected
+    commit work;
+    select * into #t0300
+      from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+          T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+          T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+          T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+          T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+          HOME.sanc_amt as SANC_AMT,
+          HOME.product as PRODUCT,
+          HOME.promotion as PROMOTION,
+          HOME.EMP_TYPE
+          from #HOME_LOANS_INCR_SEGMNT_DUMP as HOME,edw.T0300_Account as T0300
+          where HOME.SOURCE_ACCOUNT_NBR = T0300.SOURCE_ACCOUNT_NBR) as x; --1905692 row(s) affected
+    commit work;
+    select * into #p2c_homeloan
+      from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+          T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+          T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+          T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+          T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+          HOME.sanc_amt as SANC_AMT,
+          HOME.product as PRODUCT,
+          HOME.promotion as PROMOTION,
+          HOME.EMP_TYPE
+          from #HOME_LOANS_INCR_SEGMNT_DUMP_n_p2c_DEB as HOME,edw.T0300_Account as T0300
+          where HOME.SOURCE_ACCOUNT_NBR = T0300.SOURCE_ACCOUNT_NBR) as x; --29 row(s) affected
+    commit work;
+    create hg index Hg_IDX_temo_t0300_1 on #t0300(ACCOUNT_OPEN_DATE asc);
+    create hg index Hg_IDX_temo_t0300_2 on #t0300(account_nbr asc);
+    commit work;
+    insert into #p2c_homeloan
+      select * from #t0300 where ACCOUNT_OPEN_DATE between V$$SDATE and V$$EDATE; --'2015-05-14' AND '2015-05-23'--V$$SDATE and V$$EDATE --3406 row(s) inserted
+    commit work;
+    select * into #gpid_change
+      --          and A.Unique_ID <> B.Unique_ID
+      --          and substring(A.Unique_ID,1,1) = 'G'
+      from(select a.account_nbr,a.SOURCE_ACCOUNT_NBR,a.source_system_code
+          from P2C.p2c_UCIC_table as A,p2c.p2c_base_data19_upd as B
+          where A.Account_NBR = B.Account_NBR
+          and B.source_system_code in( 52,53 ) 
+          and A.UCIC_VALUE <> B.UCIC_VALUE) as x;
+    --0
+    commit work;
+    insert into #p2c_homeloan
+      select a.*
+        from #t0300 as a,#gpid_change as b
+        where a.ACCOUNT_NBR = b.ACCOUNT_NBR; --0
+    commit work;
+    insert into #p2c_homeloan
+      select * from #t0300
+        where ACCOUNT_OPEN_DATE <= V$$SDATE --'2015-05-14'--V$$SDATE
+        and not account_nbr = any(select account_nbr from p2c.p2c_base_data19_UPD where source_system_code in( 52,53 ) ); --1901794 row(s) inserted
+    commit work;
+    insert into #p2c_homeloan
+      select a.* from #t0300 as A,P2C.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as B
+        where A.account_nbr = B.account_nbr and B.source_system_code in( 52,53 ) and B.IDENTIFIER <> 'GPC'; --780
+    commit work;
+    drop table p2c.HOME_LOANS_INCR_SEGMNT_BASE_UPD;
+    select distinct
+      ACCOUNT_NBR,
+      SOURCE_ACCOUNT_NBR,
+      SOURCE_SYSTEM_CODE,
+      ACCOUNT_OPEN_DATE,
+      ACCOUNT_CLOSE_DATE,
+      SANC_AMT,
+      PRODUCT,
+      PROMOTION,
+      EMP_TYPE
+      into p2c.HOME_LOANS_INCR_SEGMNT_BASE_UPD
+      from #p2c_homeloan; ---1904917 row(s) affected
+    commit work;
+    drop table p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_UPD;
+    select * into p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_UPD
+      from(select PLT.UCIC_VALUE,PLT.UNIQUE_ID,
+          CSBR.ACCOUNT_NBR,
+          CSBR.SOURCE_ACCOUNT_NBR,
+          CSBR.SOURCE_SYSTEM_CODE,
+          CSBR.ACCOUNT_OPEN_DATE,
+          CSBR.ACCOUNT_CLOSE_DATE,
+          CSBR.SANC_AMT,
+          CSBR.PRODUCT,
+          CSBR.PROMOTION,
+          CSBR.EMP_TYPE
+          from p2c.HOME_LOANS_INCR_SEGMNT_BASE_UPD as CSBR,P2c.p2c_UCIC_table as PLT
+          where CSBR.account_nbr = PLT.account_nbr
+          and CSBR.source_system_code = PLT.source_system_code) as x; --1903345 row(s) affected
+    commit work;
+    drop table p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD;
+    select * into p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD
+      from(select BASE.*,BASIC_QUALIFICATION,PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME
+          from p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_UPD as BASE
+            left outer join edw.B0328_party_account as B0328
+            on BASE.SOURCE_ACCOUNT_NBR = B0328.SOURCE_ACCOUNT_NBR
+            and BASE.source_system_code = B0328.source_system_code
+            left outer join EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as T0111
+            on B0328.SOURCE_PARTY_ID = T0111.SOURCE_PARTY_ID
+            and B0328.source_system_code = T0111.source_system_code) as x;
+    --1910464 row(s) affected
+    commit work;
+    /*
+SELECT TOP 10 * FROM p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD
+SELECT COUNT(1) FROM p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD
+UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SANC_AMT,PRODUCT,PROMOTION,EMP_TYPE,BASIC_QUALIFICATION,
+PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME
+'0000000020136029','G20136029',993375181,'LBMGA00000923822',52,'2004-11-06','2005-05-04',80000.00,'HOME IMPROVEMENT LOAN + FRR',501752,'SELF EMPLOYED NON PROFESSIONAL','UG','BSN',,'KANCHIPURAM',,,,,0.00
+
+*/
+    if sqlstate <> '00000' then
+      return
+    end if
+  end if
+end

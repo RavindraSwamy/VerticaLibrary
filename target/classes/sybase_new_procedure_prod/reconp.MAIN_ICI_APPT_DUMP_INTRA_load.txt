@@ -1,0 +1,13 @@
+create procedure RECONP.MAIN_ICI_APPT_DUMP_INTRA_load()
+begin
+  truncate table RECONP.MAIN_ICI_APPT_DUMP_INTRA;
+  commit work;
+  load into table RECONP.MAIN_ICI_APPT_DUMP_INTRA( ACTIVITYID '|~|',TYPE '|~|',RELATEDTOTYPENAME '|~|',CREATEDON '|~|',DUEDATE '|~|',CREATEDBY '|~|',Status '|~|',ASSIGNTO '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/DC/main_ici_appt_dump_intra.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/DC/main_ici_appt_dump_intra.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/DC/main_ici_appt_dump_intra.out.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  insert into RECONP.MAIN_ICI_APPT_DUMP_INTRA_AUDIT
+    select 'MAIN_ICI_APPT_DUMP_INTRA',@@rowcount,getdate();
+  commit work;
+  insert into RECONP.MAIN_ICI_APPT_DUMP_INTRA_HISTORY select * from RECONP.MAIN_ICI_APPT_DUMP_INTRA;
+  commit work
+end

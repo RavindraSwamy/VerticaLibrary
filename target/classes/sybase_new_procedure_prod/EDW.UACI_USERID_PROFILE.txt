@@ -1,0 +1,448 @@
+create procedure --sp_iqprocedure'UACI_USERID_PROFILE'
+EDW.UACI_USERID_PROFILE()
+begin
+  select trim(USER_ID) as USER_ID,
+    cast(null as varchar(25)) as UCIC,
+    cast(null as varchar(12)) as MOBILENUMBER,
+    cast(null as varchar(50)) as DEVICE_SOFTWARE,
+    min(AS_OF_DATE) as AS_OF_DATE1,
+    min(EXPIRY_REVIEW_DATE) as EXPIRY_REVIEW_DATE1,
+    max(SCORE) as SCORE1,
+    Min(MAX_ENROLLMENT_DATE) as enrollment_date,
+    MAX(LAST_LOGIN_DATE) as LAST_LOGIN_DATE1,
+    cast(null as varchar(80)) as REFEREENAME,
+    cast(null as varchar(20)) as REFEREEMOBILENO,
+    cast(null as integer) as DEVICESTATUS,
+    SUM(NO_OF_LOGINS) as NO_OF_LOGINS,
+    cast(null as char(5)) as FT_DONE,
+    cast(null as char(5)) as BP_DONE,
+    cast(null as char(5)) as PMR_DONE,
+    cast(null as char(5)) as RD_DONE,
+    cast(null as char(5)) as FD_DONE,
+    cast(null as char(5)) as CHEQUE_BOOK_REQUEST,
+    cast(null as varchar(20)) as TITLE,
+    cast(null as varchar(80)) as FULL_NAME,
+    cast(null as date) as BIRTH_DATE,
+    cast(null as varchar(10)) as GENDER,
+    cast(null as integer) as AGE,
+    cast(null as varchar(80)) as OCCUPATION,
+    cast(null as varchar(10)) as MARRIED,
+    cast(null as char(5)) as IMOBILE_ACTIVE,
+    cast(null as char(5)) as INTERNET_ACTIVE,
+    cast(null as char(5)) as ATM_ACTIVE,
+    cast(null as char(5)) as POS_ACTIVE,
+    cast(null as char(5)) as BRANCH_ACTIVE,
+    cast(null as char(5)) as LIABILITY_ACCT_HOLDER,
+    cast(null as char(5)) as CARD_ACCT_HOLDER,
+    cast(null as char(5)) as DEMAT_ACCT_HOLDER,
+    cast(null as char(5)) as LOAN_ACCT_HOLDER,
+    cast(null as char(5)) as MOBILE_ACCT_HOLDER,
+    cast(null as char(5)) as OTHER_ACCT_HOLDER,
+    cast(null as char(5)) as SERVICE_REQUEST_OPEN,
+    cast(null as varchar(10)) as DELIVERABLE_IN_TRANSIT,
+    cast(null as date) as LAST_CALLCENTER_CONTACT_DATE,
+    cast(null as char(5)) as SERVICE_SEGMENT,
+    cast(null as char(5)) as INCOME_SEGMENT,
+    cast(null as integer) as CREDIT_SCORE,
+    cast(null as char(5)) as DNC,
+    cast(null as char(5)) as NDNC,
+    cast(null as varchar(20)) as DELINQUENT_CUSTOMER,
+    cast(null as char(5)) as FRAUD_CUSTOMER_FLAG,
+    cast(null as varchar(20)) as ANNUAL_SALARY_OR_TURNOVER,
+    cast(null as varchar(10)) as HAVE_KIDS,
+    cast(null as varchar(10)) as SOCIAL_MEDIA_ACTIVE,
+    cast(null as varchar(10)) as SENTIMENT_GREVIENCES,
+    cast(null as varchar(20)) as CARD_BLOCK_CODE,
+    cast(null as varchar(10)) as DORMANT_DEMAT_ACCOUNT,
+    cast(null as varchar(80)) as EMAILID,
+    cast(null as varchar(15)) as MOBILE_NUMBER,
+    cast(null as varchar(5)) as FOREX_ACTIVE,
+    cast(null as char(5)) as TRAVEL_INSURANCE_ACTIVE,
+    cast(null as char(5)) as TRAVEL_CARD_ACTIVE,
+    cast(null as char(5)) as ECOMMERECE_ACTIVE,
+    cast(null as char(5)) as PREF_MERCHANT_SHOPPING,
+    cast(null as char(5)) as PREF_MERCHANT_DINNING,
+    cast(null as varchar(80)) as DEVICETYPE,
+    cast(null as varchar(20)) as BROWSED_TIME,
+    cast(null as varchar(80)) as BROWSED_SECTION,
+    cast(null as date) as LOG_DATE,
+    cast(null as varchar(20)) as NEW_MOB_NO_REG,
+    cast(null as varchar(20)) as UPDATE_MOB_NO_REG,
+    cast(null as varchar(20)) as OLD_REGISTERED_MOBILE_NO,
+    cast(null as varchar(20)) as MAREKTING_FIELD1,
+    cast(null as varchar(20)) as MAREKTING_FIELD2,
+    cast(null as varchar(20)) as MAREKTING_FIELD3,
+    cast(null as varchar(20)) as MAREKTING_FIELD4,
+    cast(null as varchar(20)) as MAREKTING_FIELD5,
+    cast(null as varchar(20)) as MAREKTING_FIELD6,
+    cast(null as varchar(20)) as MAREKTING_FIELD7,
+    cast(null as varchar(20)) as MAREKTING_FIELD8,
+    cast(null as varchar(20)) as MAREKTING_FIELD9,
+    cast(null as varchar(20)) as MAREKTING_FIELD10,
+    cast(null as char(5)) as POCKETS_ACTIVE,
+    cast(null as char(5)) as SHOPPING_ACTIVE
+    into reconp.UACI_USERID_PROFILE2
+    from MCCM.IMOBILE_CHANNEL_ATTRIBUTE where USER_ID is not null
+    group by USER_ID;
+  commit work;
+  create unique hg index UQHGIDX_MCCMUSERPROF_1 on reconp.UACI_USERID_PROFILE2(USER_ID);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select *
+    into #IMOBILE
+    from(select USER_ID,
+        UCIC,MOBILENUMBER,DEVICE_SOFTWARE,REFEREENAME,REFEREEMOBILENO,LOG_DATE,DEVICESTATUS,LAST_LOGIN_DATE,
+        RANK() over(partition by USER_ID order by
+        LAST_LOGIN_DATE desc) as ROWNUM
+        from MCCM.IMOBILE_CHANNEL_ATTRIBUTE) as B where B.ROWNUM = 1;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.MOBILENUMBER = B.MOBILENUMBER,
+    A.DEVICE_SOFTWARE = B.DEVICE_SOFTWARE,
+    A.REFEREENAME = B.REFEREENAME,
+    A.REFEREEMOBILENO = B.REFEREEMOBILENO,
+    A.LOG_DATE = B.LOG_DATE,
+    A.DEVICESTATUS = B.DEVICESTATUS from
+    #IMOBILE as B
+    where A.USER_ID = B.USER_ID and A.LAST_LOGIN_DATE1 = B.LAST_LOGIN_DATE;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.FT_DONE = B.FT_DONE from
+    (select USER_ID,FT_DONE from MCCM.IMOBILE_CHANNEL_ATTRIBUTE where FT_DONE = 'Y') as B
+    where A.USER_ID = B.USER_ID;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.BP_DONE = B.BP_DONE from
+    (select USER_ID,BP_DONE from MCCM.IMOBILE_CHANNEL_ATTRIBUTE where BP_DONE = 'Y') as B
+    where A.USER_ID = B.USER_ID;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.PMR_DONE = B.PMR_DONE from
+    (select USER_ID,PMR_DONE from MCCM.IMOBILE_CHANNEL_ATTRIBUTE where PMR_DONE = 'Y') as B
+    where A.USER_ID = B.USER_ID;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.RD_DONE = B.RD_DONE from
+    (select USER_ID,RD_DONE from MCCM.IMOBILE_CHANNEL_ATTRIBUTE where RD_DONE = 'Y') as B
+    where A.USER_ID = B.USER_ID;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.FD_DONE = B.FD_DONE from
+    (select USER_ID,FD_DONE from MCCM.IMOBILE_CHANNEL_ATTRIBUTE where FD_DONE = 'Y') as B
+    where A.USER_ID = B.USER_ID;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  -----------------UCIC POPULATION-----------
+  select A.USER_ID,A.UCIC,B.ACCOUNT_OPEN_DATE into #BASE_STAGE1 from MCCM.IMOBILE_CHANNEL_ATTRIBUTE as A
+      ,(select UCIC_VALUE,MIN(ACCOUNT_OPEN_DATE) as ACCOUNT_OPEN_DATE from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+        where ACCOUNT_CLOSE_DATE is null and SOURCE_SYSTEM_CODE in( 30,20,70,90 ) group by UCIC_VALUE) as B
+    where A.UCIC = B.UCIC_VALUE;
+  commit work;
+  select *
+    into #BASE_STAGE2
+    from(select A.*,ROW_NUMBER() over(partition by USER_ID order by ACCOUNT_OPEN_DATE asc) as ROWNUM
+        from #BASE_STAGE1 as A) as B where B.ROWNUM = 1;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.UCIC = B.UCIC from
+    #BASE_STAGE2 as B
+    where TRIM(A.USER_ID) = TRIM(B.USER_ID);
+  commit work;
+  select A.USER_ID,A.UCIC,B.ACCOUNT_OPEN_DATE into #BASE_STAGE11 from MCCM.IMOBILE_CHANNEL_ATTRIBUTE as A
+      ,(select UCIC_VALUE,MIN(ACCOUNT_OPEN_DATE) as ACCOUNT_OPEN_DATE from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+        where ACCOUNT_CLOSE_DATE is null group by UCIC_VALUE) as B
+    where A.UCIC = B.UCIC_VALUE;
+  commit work;
+  select *
+    into #BASE_STAGE22
+    from(select A.*,ROW_NUMBER() over(partition by USER_ID order by ACCOUNT_OPEN_DATE asc) as ROWNUM
+        from #BASE_STAGE11 as A) as B where B.ROWNUM = 1;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.UCIC = B.UCIC from
+    #BASE_STAGE22 as B
+    where A.USER_ID = B.USER_ID and A.UCIC is null;
+  commit work;
+  select A.USER_ID,A.UCIC,B.ACCOUNT_OPEN_DATE into #BASE_STAGE111 from MCCM.IMOBILE_CHANNEL_ATTRIBUTE as A
+      ,(select UCIC_VALUE,MIN(ACCOUNT_OPEN_DATE) as ACCOUNT_OPEN_DATE from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+        group by UCIC_VALUE) as B
+    where A.UCIC = B.UCIC_VALUE;
+  commit work;
+  select *
+    into #BASE_STAGE222
+    from(select A.*,ROW_NUMBER() over(partition by USER_ID order by ACCOUNT_OPEN_DATE asc) as ROWNUM
+        from #BASE_STAGE111 as A) as B where B.ROWNUM = 1;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.UCIC = B.UCIC from
+    #BASE_STAGE222 as B
+    where A.USER_ID = B.USER_ID and A.UCIC is null;
+  commit work;
+  create hg index HGIDX_MCCMUSERPROF_2 on reconp.UACI_USERID_PROFILE2(UCIC);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  -----------------UCIC MASTER DATA-----------
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.TITLE = B.TITLE,
+    A.FULL_NAME = B.FULL_NAME,
+    A.BIRTH_DATE = B.BIRTH_DATE,
+    A.GENDER = B.GENDER,
+    A.AGE = B.AGE,
+    A.OCCUPATION = B.OCCUPATION,
+    A.MARRIED = B.MARRIED,
+    A.IMOBILE_ACTIVE = B.IMOBILE_ACTIVE,
+    A.INTERNET_ACTIVE = B.INTERNET_ACTIVE,
+    A.ATM_ACTIVE = B.ATM_ACTIVE,
+    A.POS_ACTIVE = B.POS_ACTIVE,
+    A.BRANCH_ACTIVE = B.BRANCH_ACTIVE,
+    A.LIABILITY_ACCT_HOLDER = B.LIABILITY_ACCT_HOLDER,
+    A.CARD_ACCT_HOLDER = B.CARD_ACCT_HOLDER,
+    A.DEMAT_ACCT_HOLDER = B.DEMAT_ACCT_HOLDER,
+    A.LOAN_ACCT_HOLDER = B.LOAN_ACCT_HOLDER,
+    A.MOBILE_ACCT_HOLDER = B.MOBILE_ACCT_HOLDER,
+    -- A.OTHER_ACCT_HOLDER=B.OTHER_ACCT_HOLDER,
+    A.SERVICE_REQUEST_OPEN = B.SERVICE_REQUEST_OPEN,
+    A.DELIVERABLE_IN_TRANSIT = B.DELIVERABLE_IN_TRANSIT,
+    A.LAST_CALLCENTER_CONTACT_DATE = B.LAST_CALLCENTER_CONTACT_DATE,
+    A.SERVICE_SEGMENT = B.SERVICE_SEGMENT,
+    A.INCOME_SEGMENT = B.INCOME_SEGMENT,
+    A.CREDIT_SCORE = B.CREDIT_SCORE,
+    A.DELINQUENT_CUSTOMER = B.DELINQUENT_CUSTOMER,
+    A.FRAUD_CUSTOMER_FLAG = B.FRAUD_CUSTOMER_FLAG,
+    A.POCKETS_ACTIVE = B.POCKET_DOWNLOADED,
+    A.SHOPPING_ACTIVE = B.SHOPPING_ACTIVE from
+    MCCM.UCIC_MASTER as B
+    where A.UCIC = B.UCIC_CODE;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.POCKETS_ACTIVE = 'Y' from
+    MCCM.XID_MAPPING as B
+    where B.SOURCE_SYSTEM = 'POCKET' and A.USER_ID = B.USER_ID;
+  update reconp.UACI_USERID_PROFILE2 as a
+    set a.shopping_active = b.shopping_active from
+    b.MCCM.RIB_CHANNEL_ATTRIBUTE as b
+    where a.USER_ID = b.USERID;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.ANNUAL_SALARY_OR_TURNOVER = B.ANNUAL_SALARY_OR_TURNOVER,
+    A.HAVE_KIDS = B.HAVE_KIDS,
+    A.SOCIAL_MEDIA_ACTIVE = B.SOCIAL_MEDIA_ACTIVE,
+    A.SENTIMENT_GREVIENCES = B.SENTIMENT_GREVIENCES,
+    --A.CARD_BLOCK_CODE=B.CARD_BLOCK_CODE,
+    A.DORMANT_DEMAT_ACCOUNT = B.DORMANT_DEMAT_ACCOUNT,
+    A.FOREX_ACTIVE = B.FOREX_ACTIVE,
+    A.TRAVEL_INSURANCE_ACTIVE = B.TRAVEL_INSURANCE_ACTIVE,
+    A.TRAVEL_CARD_ACTIVE = B.TRAVEL_CARD_ACTIVE,
+    A.ECOMMERECE_ACTIVE = B.ECOMMERECE_ACTIVE,
+    A.PREF_MERCHANT_SHOPPING = B.PREF_MERCHANT_SHOPPING,
+    A.PREF_MERCHANT_DINNING = B.PREF_MERCHANT_DINNING from
+    MCCM.UCIC_ATTRIBUTE as B
+    where A.UCIC = B.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.DNC = B.DNC from
+    MCCM.CUST_CONTACT_MASTER as B
+    where A.UCIC = B.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.NDNC = B.NDNC from
+    MCCM.CUST_CONTACT_MASTER as B
+    where A.UCIC = B.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  -----------------CONTACTABILITY POPULATION-----------
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.mobile_number = (case when b.R_MOBILE is null then
+      (case when b.CUR_MOBILENUMBER is null then
+        (case when b.PER_MOBILENUMBER is null then
+          (case when b.BUS_MOBILENUMBER is null then
+            (case when b.MOBILENUMBER is null then null else b.MOBILENUMBER end)
+          else b.BUS_MOBILENUMBER
+          end)
+        else b.PER_MOBILENUMBER
+        end)
+      else b.CUR_MOBILENUMBER
+      end) --AS MNUM 
+    else b.R_MOBILE
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE
+    and B.source_system_code = 30;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.mobile_number = (case when b.R_MOBILE is null then
+      (case when b.CUR_MOBILENUMBER is null then
+        (case when b.PER_MOBILENUMBER is null then
+          (case when b.BUS_MOBILENUMBER is null then
+            (case when b.MOBILENUMBER is null then null else b.MOBILENUMBER end)
+          else b.BUS_MOBILENUMBER
+          end)
+        else b.PER_MOBILENUMBER
+        end)
+      else b.CUR_MOBILENUMBER
+      end) --AS MNUM  
+    else b.R_MOBILE
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE
+    and B.source_system_code = 20 and A.mobile_number is null;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.mobile_number = (case when b.R_MOBILE is null then
+      (case when b.CUR_MOBILENUMBER is null then
+        (case when b.PER_MOBILENUMBER is null then
+          (case when b.BUS_MOBILENUMBER is null then
+            (case when b.MOBILENUMBER is null then null else b.MOBILENUMBER end)
+          else b.BUS_MOBILENUMBER
+          end)
+        else b.PER_MOBILENUMBER
+        end)
+      else b.CUR_MOBILENUMBER
+      end) --AS MNUM 
+    else b.R_MOBILE
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE
+    and B.source_system_code = 70 and A.mobile_number is null;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.mobile_number = (case when b.R_MOBILE is null then
+      (case when b.CUR_MOBILENUMBER is null then
+        (case when b.PER_MOBILENUMBER is null then
+          (case when b.BUS_MOBILENUMBER is null then
+            (case when b.MOBILENUMBER is null then null else b.MOBILENUMBER end)
+          else b.BUS_MOBILENUMBER
+          end)
+        else b.PER_MOBILENUMBER
+        end)
+      else b.CUR_MOBILENUMBER
+      end) --AS MNUM 
+    else b.R_MOBILE
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE
+    and B.source_system_code = 90 and A.mobile_number is null;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.mobile_number = (case when b.R_MOBILE is null then
+      (case when b.CUR_MOBILENUMBER is null then
+        (case when b.PER_MOBILENUMBER is null then
+          (case when b.BUS_MOBILENUMBER is null then
+            (case when b.MOBILENUMBER is null then null else b.MOBILENUMBER end)
+          else b.BUS_MOBILENUMBER
+          end)
+        else b.PER_MOBILENUMBER
+        end)
+      else b.CUR_MOBILENUMBER
+      end) --AS MNUM 
+    else b.R_MOBILE
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE and A.mobile_number is null;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.emailid = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE and source_system_code = 30;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.emailid = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE and source_system_code = 20 and A.emailid is null;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.emailid = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE and source_system_code = 70 and A.emailid is null;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.emailid = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE and source_system_code = 90 and A.emailid is null;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.emailid = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end) from
+    mccm.cust_contact_master as B
+    where A.UCIC = B.UCIC_CODE and A.emailid is null;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  ------------------------------------------------------------------------------------
+  select distinct UCIC_CODE,NEW_MOB_NO_REG,UPDATE_MOB_NO_REG,OLD_REGISTERED_MOBILE_NO into #CUSTOMER_MASTER_DATA from MCCM.CUSTOMER_MASTER;
+  commit work;
+  update reconp.UACI_USERID_PROFILE2 as A
+    set A.NEW_MOB_NO_REG = B.NEW_MOB_NO_REG,
+    A.UPDATE_MOB_NO_REG = B.UPDATE_MOB_NO_REG,
+    A.OLD_REGISTERED_MOBILE_NO = B.OLD_REGISTERED_MOBILE_NO from
+    #CUSTOMER_MASTER_DATA as B
+    where A.UCIC = B.UCIC_CODE;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  truncate table MCCM.UACI_USERID_PROFILE;
+  insert into MCCM.UACI_USERID_PROFILE select * from reconp.UACI_USERID_PROFILE2;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  --drop table reconp.UACI_USERID_PROFILE2;
+  --commit work
+  end if
+end

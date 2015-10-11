@@ -1,0 +1,6 @@
+create procedure edw.tran_contra()
+begin
+  load into table EDW.MAIN_TRAN_CONTRA_TABLE( TRAN_DATE '|^|' null(zeros,'NULL','null'),TRAN_ID '|^|' null(zeros,'NULL','null'),PART_TRAN_SRL_NUM '|^|' null(zeros,'NULL','null'),CONTRA_TRAN_DATE '|^|' null(zeros,'NULL','null'),CONTRA_TRAN_ID '|^|' null(zeros,'NULL','null'),CONTRA_PART_TRAN_SRL_NUM '|^|' null(zeros,'NULL','null'),ENTITY_CRE_FLG '|^|' null(zeros,'NULL','null'),DEL_FLG '|^|' null(zeros,'NULL','null'),AMT_OFFSET '|^|' null(zeros,'NULL','null'),LCHG_USER_ID '|^|' null(zeros,'NULL','null'),RCRE_USER_ID '|^|' null(zeros,'NULL','null'),LCHG_TIME '|^|' null(zeros,'NULL','null'),RCRE_TIME '|^|' null(zeros,'NULL','null'),SOL_ID '|^|' null(zeros,'NULL','null'),CRNCY_CODE '|^|' null(zeros,'NULL','null'),TS_CNT '|^|' null(zeros,'NULL','null'),BANK_ID '\x0A' null(zeros,'NULL','null') ) using file
+    '/data_extraction2/tran_contra_table.out' quotes off escapes off preview on message log '/data_extraction2/tran_contra_table.out_201509021434.msg' row log '/data_extraction2/tran_contra_table.out_201509021434.row' only log all log delimited by '|^|' notify 100000 with checkpoint on;
+  commit work
+end

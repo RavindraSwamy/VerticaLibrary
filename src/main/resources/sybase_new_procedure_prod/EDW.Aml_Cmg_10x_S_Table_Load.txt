@@ -1,0 +1,11 @@
+create procedure edw.Aml_Cmg_10x_S_Table_Load()
+begin
+  -------Truncating of staging tables-----------------
+  truncate table reconp.S_AML_CMG_10x;
+  truncate table reconp.S_AML_cmg_10x_insert;
+  commit work;
+  -----Loading of AML CMG Incremental data into staging table------------------------
+  load into table reconp.S_AML_CMG_10x( CUST_ID '^|',ENTITY_CRE_FLG '^|',DEL_FLG '^|',CUST_TITLE_CODE '^|',CUST_NAME '^|',CUST_PERM_ADDR1 '^|',CUST_PERM_ADDR2 '^|',CUST_PERM_ADDR3 '^|',CUST_PERM_CITY_CODE '^|',CUST_PERM_STATE_CODE '^|',CUST_PERM_PIN_CODE '^|',CUST_PERM_CNTRY_CODE '^|',CUST_PERM_PHONE_NUM '^|',CUST_PERM_TELEX_NUM '^|',CUST_SEX '^|',CUST_COMU_ADDR1 '^|',CUST_COMU_ADDR2 '^|',CUST_COMU_ADDR3 '^|',CUST_COMU_CITY_CODE '^|',CUST_COMU_STATE_CODE '^|',CUST_COMU_PIN_CODE '^|',CUST_COMU_CNTRY_CODE '^|',CUST_COMU_PHONE_NUM_1 '^|',CUST_COMU_PHONE_NUM_2 '^|',CUST_COMU_TELEX_NUM '^|',CUST_OCCP_CODE '^|',CUST_COMMU_CODE '^|',CUST_RATING_CODE '^|',CUST_FIRST_ACCT_DATE '^|',CUST_INTROD_CUST_ID '^|',INTROD_TITLE_CODE '^|',CUST_INTROD_NAME '^|',CUST_INTROD_STAT_CODE '^|',CUST_TYPE_CODE '^|',CUST_EMP_ID '^|',CUST_STAT_CODE '^|',CUST_STAT_CHG_DATE '^|',CUST_CONST '^|',CUST_MINOR_FLG '^|',CUST_NRE_FLG '^|',LCHG_TIME '^|',RCRE_TIME '^|',DATE_OF_BIRTH '^|',PAN_GIR_NUM '^|',PSPRT_NUM '^|',PSPRT_ISSU_DATE '^|',PSPRT_DET '^|',PSPRT_EXP_DATE '^|',CUST_PAGER_NO '^|',CUST_FAX_NO '^|',TDS_EXMPT_END_DATE '^|',TDS_EXMPT_SUBMIT_DATE '^|',TDS_EXMPT_REF_NUM '^|',TDS_EXMPT_RMKS '^|',CRNCY_CODE '^|',EMAIL_ID '^|',PRIMARY_SOL_ID '^|',DSA_ID '^|',CUST_OPN_DATE '^|',CUST_MARITAL_STATUS '^|',EMPLOYER_ID '^|',CUST_PERM_EMAIL_ID '^|',CUST_FREE_TEXT '^|',CUST_EMP_ADDR1 '^|',CUST_EMP_ADDR2 '^|',CUST_EMP_ADDR3 '^|',CUST_EMP_CITY_CODE '^|',CUST_EMP_STATE_CODE '^|',CUST_EMP_CNTRY_CODE '^|',CUST_EMP_PIN_CODE '^|',CUST_EMP_PHONE_NUM_1 '^|',CUST_EMP_EMAIL_ID '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/aml_cmg_10x_uat.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/aml_cmg_10x_uat.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/aml_cmg_10x_uat.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work
+end

@@ -1,0 +1,16 @@
+create procedure edw.Cards_Addon()
+begin
+  select Numberx,serno,Peopleserno,caccserno,
+    (case when(substr(Numberx,1,1) = '3' and trim(substr(Numberx,13,1)) = '0') -- mx 15 , visa 16 ,master 16
+    or(substr(Numberx,1,1) <> '3' and trim(substr(Numberx,14,1)) = '0') then 'PRIMARY'
+    else 'ADDON'
+    end) as Card_Flag into #base
+    from edw.CARDX;
+  commit work;
+  insert into EDW.MAIN_CARDS_ADDON select Account_nbr,cast(Source_Account_Nbr as varchar) as Source_Account_Nbr,
+      base.Numberx as Card_Nbr,cast(peopleserno as varchar) as Cust_id,card_Flag,B03201.Date_Created
+      from B03201_Account_Prime as B03201,#base as base
+      where B03201.Source_Account_Nbr = base.caccserno
+      and not cast(B03201.Source_Account_Nbr as varchar) = any(select Source_Account_Nbr from EDW.MAIN_CARDS_ADDON);
+  commit work
+end

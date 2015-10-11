@@ -1,0 +1,5 @@
+create procedure EDW.ACCOUNT_OPEN_REQUEST_UAT()
+begin
+  load into table RECONP.ACCOUNT_OPEN_REQUEST_UAT( APPLICATION_NO '|^|',SOURCE_SYSTEM_CODE '|^|',PRODUCT_type '|^|',APPLICATION_DATE '|^|',APPLICATION_CHANNEL '|^|',CURRENT_STATUS '|^|',NAME_PREFIX '|^|',FULL_NAME '|^|',BIRTH_DATE '|^|',GENDER '|^|',PAN_NBR '|^|',MOBILENUMBER '|^|',APPL_EMAILID '|^|',SOURCE_OF_LEAD '|^|',CUR_CITY '|^|',CUR_STATE '|^|',CUR_PIN '|^|',CUR_COUNTRY '|^|',CURPHONE1 '|^|',ASOF_DATE '|^|',LONG_URL '|^|',SHORT_URL '|^|',FLAG '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MCCM/ACCOUNT/YET_TO_LOAD_FILES/SHORT_URL.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/MCCM/ACCOUNT/YET_TO_LOAD_FILES/SHORT_URL.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/MCCM/ACCOUNT/YET_TO_LOAD_FILES/SHORT_URL.out.row' only log all log delimited by '~' notify 100000 with checkpoint on
+end

@@ -1,0 +1,195 @@
+create procedure EDW.spin_p2c_dev_first_level_count_check_UPD()
+begin
+  declare V$$SR1 integer;
+  declare V$$SR2 integer;
+  declare V$$SR3 integer;
+  declare V$$SR4 integer;
+  declare V$$SR_Final integer;
+  declare V$$End_Date1 date;
+  declare V$$End_Date2 date;
+  declare V$$End_Date3 date;
+  declare V$$End_Date0 date;
+  declare V$$End_Date_Final date;
+  declare V$$Last_Day_Curr_Mon date;
+  declare V$$Start_Date_Final date;
+  declare V$$Run_Comment varchar(50);
+  declare V$$CCC integer;
+  truncate table EDW.p2c_dev_firstlevel_table_check_n_heena_UPD;
+  -- insert into p2c_dev_firstlevel_table_check_n_heena 
+  -- select
+  -- 'reconp.T0328_PARTY_ACCOUNT_WEB_snapshot',max(upd_date),count(*),dateformat(getdate(),'yyyy-mm-dd')
+  -- from reconp.T0328_PARTY_ACCOUNT_WEB_snapshot;
+  -- commit;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE_RAPG',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE where source_system_code = 51;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE_BANK',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE where source_system_code = 52;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE_HFC',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE where source_system_code = 53;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINACLE',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS where source_system_code = 30;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0111_SOURCE_CUSTOMER_DETAILS_PRIME',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS where source_system_code = 20;
+  commit work;
+  --insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+  --select
+  --'EDW.T0111_SOURCE_CUSTOMER_DETAILS_DEMAT',max(date_created),count(*),dateformat(getdate(),'yyyy-mm-dd')
+  --from EDW.T0111_SOURCE_CUSTOMER_DETAILS where source_system_code=80;
+  --commit;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T093083_CREDIT_CARD_CUST_DETAILS',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from edw.T093083_CREDIT_CARD_CUST_DETAILS;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T09311_liability_account_addon',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T09311_liability_account_addon;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T09310_liability_customer_addon',max(date_created),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T09310_liability_customer_addon;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'reconp.lea_agreement_dtl_bank_full',max(datelastupdt),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from reconp.lea_agreement_dtl_bank_full;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'reconp.lea_agreement_dtl_rapg_full',max(datelastupdt),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from reconp.lea_agreement_dtl_rapg_full;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'reconp.lea_agreement_dtl_hfc_full',max(datelastupdt),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from reconp.lea_agreement_dtl_hfc_full;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0300_account_RAPG',max(account_open_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0300_account where source_system_code = 51;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0300_account_BANK',max(account_open_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0300_account where source_system_code = 52;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0300_account_HFC',max(account_open_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0300_account where source_system_code = 53;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0300_account_FINACLE',max(account_open_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0300_account where source_system_code = 30;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.T0300_account_PRIME',max(account_open_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.T0300_account where source_system_code = 20;
+  commit work;
+  --insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD 
+  --select
+  --'EDW.T0300_account_DEMAT',max(account_open_date),count(*),dateformat(getdate(),'yyyy-mm-dd')
+  --from EDW.T0300_account where source_system_code =80;
+  --commit;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.B0328_PARTY_ACCOUNT_RAPG',max(account_party_start_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.B0328_PARTY_ACCOUNT where source_system_code = 51;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.B0328_PARTY_ACCOUNT_BANK',max(account_party_start_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.B0328_PARTY_ACCOUNT where source_system_code = 52;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.B0328_PARTY_ACCOUNT_HFC',max(account_party_start_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.B0328_PARTY_ACCOUNT where source_system_code = 53;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.B0328_PARTY_ACCOUNT_PRIME',max(account_party_start_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.B0328_PARTY_ACCOUNT where source_system_code = 20;
+  commit work;
+  insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    select 'EDW.B0328_PARTY_ACCOUNT_FINACLE',max(account_party_start_date),count(),dateformat(getdate(),'yyyy-mm-dd')
+      from EDW.B0328_PARTY_ACCOUNT where source_system_code = 30;
+  commit work;
+  --insert into EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+  --select
+  --'EDW.B0328_PARTY_ACCOUNT_DEMAT',max(account_party_start_date),count(*),dateformat(getdate(),'yyyy-mm-dd')
+  --from EDW.B0328_PARTY_ACCOUNT where source_system_code =80;
+  --commit;
+  -- PARAMETER GENERATION
+  select min(max_date)
+    into V$$End_Date1
+    from EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    where date_created = dateformat(getdate(),'yyyy-mm-dd'); --2015-06-22
+  select dateformat(getdate(),'yyyy-mm-dd')
+    into V$$End_Date2
+  ;
+  if(V$$End_Date2 > V$$End_Date1) then
+    select V$$End_Date1
+      into V$$End_Date3
+  else
+    select V$$End_Date2
+      into V$$End_Date3
+  end if;
+  select SR into V$$SR1 from edw.P2C_BASE_PARAM_N_DEB_upd
+    where dateformat(getdate(),'yyyy-mm-dd') >= First_Day_Curr_Mon and dateformat(getdate(),'yyyy-mm-dd') <= Last_Day_Curr_Mon;
+  select SR into V$$SR2 from edw.P2C_BASE_PARAM_N_DEB_upd
+    where End_Date = (select max(End_Date) from edw.P2C_BASE_PARAM_N_DEB_upd where End_Date is not null);
+  select Last_Day_Curr_Mon
+    into V$$Last_Day_Curr_Mon
+    from edw.P2C_BASE_PARAM_N_DEB_upd
+    where SR = V$$SR2;
+  select max(End_Date) into V$$End_Date0 from edw.P2C_BASE_PARAM_N_DEB_upd where End_Date is not null;
+  if(V$$Last_Day_Curr_Mon = V$$End_Date0) then
+    select first_day_curr_mon into V$$Start_Date_Final from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR1
+  else
+    select max(End_Date) into V$$Start_Date_Final from edw.P2C_BASE_PARAM_N_DEB_upd where End_Date is not null
+  end if;
+  select SR into V$$SR3 from edw.P2C_BASE_PARAM_N_DEB_upd
+    where V$$Start_Date_Final >= First_Day_Curr_Mon and V$$Start_Date_Final <= Last_Day_Curr_Mon;
+  select SR into V$$SR4 from edw.P2C_BASE_PARAM_N_DEB_upd
+    where V$$End_Date3 >= First_Day_Curr_Mon and V$$End_Date3 <= Last_Day_Curr_Mon;
+  if(V$$SR3 = V$$SR4) then
+    select V$$End_Date3
+      into V$$End_Date_Final
+  else
+    select Last_Day_Curr_Mon into V$$End_Date_Final from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR3
+  end if;
+  select SR into V$$SR_Final from edw.P2C_BASE_PARAM_N_DEB_upd
+    where V$$Start_Date_Final >= First_Day_Curr_Mon
+    and V$$Start_Date_Final <= Last_Day_Curr_Mon
+    and V$$End_Date_Final >= First_Day_Curr_Mon
+    and V$$End_Date_Final <= Last_Day_Curr_Mon;
+  select count(1) into V$$CCC from EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+    where date_created = (select max(date_created) from EDW.p2c_dev_firstlevel_table_check_n_heena_UPD)
+    and max_date
+     = (select min(max_date) from EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+      where date_created
+       = (select max(date_created) from EDW.p2c_dev_firstlevel_table_check_n_heena_UPD
+        where date_created <> (select max(date_created) from EDW.p2c_dev_firstlevel_table_check_n_heena_UPD)));
+  if(V$$CCC = 0 and V$$End_Date_Final > V$$Start_Date_Final) then
+    select 'OK TO PROCESS'
+      into V$$Run_Comment
+  else
+    select 'Data Loading Issue'
+      into V$$Run_Comment
+  end if;
+  if V$$Run_Comment = 'Data Loading Issue' then
+    update edw.P2C_BASE_PARAM_N_DEB_upd
+      set Exec_Initiate_DT = getdate(),
+      Run_Comment = V$$Run_Comment
+      where SR = V$$SR_Final;
+    commit work
+  else
+    update edw.P2C_BASE_PARAM_N_DEB_upd
+      set Start_Date = V$$Start_Date_Final,
+      End_Date = V$$End_Date_Final,
+      Exec_Initiate_DT = getdate(),
+      Run_Comment = V$$Run_Comment
+      where SR = V$$SR_Final;
+    commit work
+  end if
+end

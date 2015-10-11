@@ -1,0 +1,122 @@
+create procedure EDW.CUST_CONTACT_MASTER_FINAL()
+begin
+  /* TAKING MAX REGISTER MOBILE FROM CUST_CONTACT_MASTER TABLE*/
+  select * into #REG_MOBILE
+    from(select source_party_id,max(source_table_modified_date) as max_modified_date from mccm.cust_contact_master group by source_party_id,identifier having identifier = 'R_MOBILE') as A;
+  commit work;
+  delete from mccm.cust_contact_master from
+    mccm.cust_contact_master,#REG_MOBILE
+    where mccm.cust_contact_master.source_party_id = #REG_MOBILE.source_party_id
+    and mccm.cust_contact_master.source_table_modified_date <> #REG_MOBILE.max_modified_date
+    and mccm.cust_contact_master.identifier = 'R_MOBILE';
+  commit work;
+  /*DELETING DUPLICATES FROM CUST_CONTACT_MASTER TABLE*/
+  delete from MCCM.CUST_CONTACT_MASTER as A from
+    MCCM.CUST_CONTACT_MASTER as A
+    ,(select MAX(ROWID(A)) as ROW_ID,
+      SOURCE_PARTY_ID,SOURCE_SYSTEM_CODE,PHONE_EMAIL,IDENTIFIER from MCCM.CUST_CONTACT_MASTER as A
+      group by SOURCE_PARTY_ID,SOURCE_SYSTEM_CODE,PHONE_EMAIL,IDENTIFIER) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = B.PHONE_EMAIL
+    and A.IDENTIFIER = B.IDENTIFIER
+    and ROWID(A) <> B.ROW_ID;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where RIGHT(DNC_CHANNEL_DETAILS,10) = RIGHT(PHONE_EMAIL,10)
+    and DNC_CHANNEL = 'PHONE'
+    and A.IDENTIFIER not in( 'R_EMAIL','CLEAN_EMAIL','EMAIL' ) ;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.NDNC = 'Y' from
+    CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226 as B
+    where RIGHT(PHONE_NUMBER,10) = RIGHT(PHONE_EMAIL,10)
+    and A.IDENTIFIER not in( 'R_EMAIL','CLEAN_EMAIL','EMAIL' ) ;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.PHONE_ESCALATION = 'Y' from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where RIGHT(MOBILE_PHONE,10) = RIGHT(PHONE_EMAIL,10)
+    and A.IDENTIFIER not in( 'R_EMAIL','CLEAN_EMAIL','EMAIL' ) ;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_DNC = 'Y' from
+    EDW.T0125_PARTY_DO_NOT_CALL as B
+    where UPPER(DNC_CHANNEL_DETAILS) = UPPER(PHONE_EMAIL)
+    and B.DNC_CHANNEL = 'EMAIL' and A.IDENTIFIER in( 'CLEAN_EMAIL','R_EMAIL','EMAIL' ) ;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(HOME_PHONE,10) = RIGHT(PHONE_EMAIL,10)
+    and A.IDENTIFIER not in( 'R_EMAIL','CLEAN_EMAIL','EMAIL' ) ;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.EMAIL_ESCALATION = 'Y' from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where RIGHT(MOBILE,10) = RIGHT(PHONE_EMAIL,10)
+    and A.IDENTIFIER not in( 'R_EMAIL','CLEAN_EMAIL','EMAIL' ) ;
+  commit work;
+  select A.SRC_ACCOUNT_NBR,B.UCIC_VALUE
+    into #IRIT_CUSTOMERS_DATA
+    from CAMP.NO_CALL_LIST_KS0616 as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SRC_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  create hg index IDX_UCIC_CODE on EDW.#IRIT_CUSTOMERS_DATA(UCIC_VALUE);
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.IRIT_SMS = (case when B.UCIC_VALUE is not null then 'Y' else 'N' end) from
+    #IRIT_CUSTOMERS_DATA as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.IRIT_EMAIL = (case when B.UCIC_VALUE is not null then 'Y' else 'N' end) from
+    #IRIT_CUSTOMERS_DATA as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select A.SOURCE_ACCOUNT_NBR,UCIC_VALUE
+    into #TEMP
+    from CAMP.MASTER_EXCLUDE as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.MASTER_EXCLUDE = 'Y' from
+    #TEMP as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select A.SOURCE_ACCOUNT_NBR,UCIC_VALUE
+    into #TEMP1
+    from(select * from CAMP.MASTER_EXCLUDE where HOUSEWIFE = 1) as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.MASTER_EXCLUDE_HOUSE_WIFE = 'Y' from
+    #TEMP1 as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.STAFF_FLAG = C.STAFF_FLAG from
+    (select case when B.CUST_STAT_CODE in( 'STF',
+      'STFF',
+      'PSTF',
+      '1STF',
+      '2STF',
+      '3STF',
+      'XSTF',
+      'ESTF',
+      'SBRSL',
+      'HNIST',
+      'HNIPT' ) then 'Y' else 'N' end as STAFF_FLAG,UCIC_VALUE
+      from EDW.T09311_LIABILITY_ACCOUNT_ADDON as A,(select * from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 30) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.UCIC_CODE = C.UCIC_VALUE;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.INCOME_SEGMENT = C.INCOMESEGMENT from
+    (select A.INCOMESEGMENT,B.UCIC_VALUE from P2C.P2C_CUSTOMER_SEGMENT_FINAL_N_HEENA as A,(select SOURCE_ACCOUNT_NBR,UCIC_VALUE from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.UCIC_CODE = C.UCIC_VALUE;
+  commit work
+end

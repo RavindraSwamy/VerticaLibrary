@@ -1,0 +1,291 @@
+create procedure edw.Cmg_10x_Updation()
+begin
+  ------***updating s-table values with main tables ****------
+  ---------------updating cmg table with only cmg fileds---------------
+  update RECONP.CMG_10X_UAT as a
+    set a.ENTITY_CRE_FLG = b.ENTITY_CRE_FLG,
+    a.DEL_FLG = b.DEL_FLG,
+    a.CUST_TITLE_CODE = b.CUST_TITLE_CODE,
+    a.CUST_NAME = b.CUST_NAME,
+    a.CUST_SEX = b.CUST_SEX,
+    a.CUST_OCCP_CODE = b.CUST_OCCP_CODE,
+    a.CUST_COMMU_CODE = b.CUST_COMMU_CODE,
+    a.CUST_INTROD_CUST_ID = b.CUST_INTROD_CUST_ID,
+    a.INTROD_TITLE_CODE = b.INTROD_TITLE_CODE,
+    a.CUST_INTROD_NAME = b.CUST_INTROD_NAME,
+    a.CUST_INTROD_STAT_CODE = b.CUST_INTROD_STAT_CODE,
+    a.CUST_TYPE_CODE = b.CUST_TYPE_CODE,
+    a.CUST_STAT_CODE = b.CUST_STAT_CODE,
+    a.CUST_STAT_CHG_DATE = b.CUST_STAT_CHG_DATE,
+    a.CUST_CONST = b.CUST_CONST,
+    a.CUST_MINOR_FLG = b.CUST_MINOR_FLG,
+    a.CUST_NRE_FLG = b.CUST_NRE_FLG,
+    a.LCHG_TIME = b.LCHG_TIME,
+    a.RCRE_TIME = b.RCRE_TIME,
+    a.DATE_OF_BIRTH = b.DATE_OF_BIRTH,
+    a.PAN_GIR_NUM = b.PAN_GIR_NUM,
+    a.PSPRT_NUM = b.PSPRT_NUM,
+    a.PSPRT_ISSU_DATE = b.PSPRT_ISSU_DATE,
+    a.PSPRT_DET = b.PSPRT_DET,
+    a.PSPRT_EXP_DATE = b.PSPRT_EXP_DATE,
+    a.CRNCY_CODE = b.CRNCY_CODE,
+    a.EMAIL_ID = b.EMAIL_ID,
+    a.PRIMARY_SOL_ID = b.PRIMARY_SOL_ID,
+    a.DSA_ID = b.DSA_ID,
+    a.CUST_OPN_DATE = b.CUST_OPN_DATE from
+    reconp.S_CUST_MAST_GEN_TABLE_10x as b
+    where A.CUST_ID = b.cust_id;
+  commit work;
+  ----------------------updating ADDRESS table to update end_date, lastupdate_date of already existing record in case it is changed----------
+  /*
+update RECONP.ADDRESS_10X_UAT a
+set 
+a.END_DATE    =  b.max_end_date   ,
+a.LASTUPDATE_DATE=b.max_lastupdate_date
+
+from
+(select ADDR_B2KID,ADDR_ID,max(LASTUPDATE_DATE) max_lastupdate_date, max(START_DATE) max_start_date,max(END_DATE) max_end_date 
+from 
+RECONP.S_ADDRESS_10X_UAT 
+where end_date < '2099-12-31'
+group by ADDR_B2KID,ADDR_ID) b
+where 
+a.ADDR_B2KID =b.ADDR_B2KID
+and a.ADDR_ID     =  b.ADDR_ID
+and a.START_DATE=b.max_start_date;
+commit;
+*/
+  update RECONP.ADDRESS_10X_UAT as a
+    set a.END_DATE = b.end_date,
+    a.LASTUPDATE_DATE = b.lastupdate_date from
+    RECONP.S_ADDRESS_10X_UAT as b
+    where a.ADDR_B2KID = b.ADDR_B2KID
+    and a.ADDR_ID = b.ADDR_ID
+    and a.start_date = b.start_date;
+  commit work;
+  -------- inserting the already existing record into Address table with changed end_date for history------------------------
+  insert into RECONP.ADDRESS_10X_UAT(
+    select b.ADDR_B2KID,
+      b.ADDR_ID,
+      b.CORP_ID,
+      b.START_DATE,
+      b.END_DATE,
+      b.ADDRESS1,
+      b.ADDRESS2,
+      b.ADDRESS3,
+      b.CITY_CODE,
+      b.STATE_CODE,
+      b.CNTRY_CODE,
+      b.PIN_CODE,
+      b.LASTUPDATE_DATE,
+      b.TMDATE
+      from RECONP.ADDRESS_10X_UAT as a
+        ,RECONP.S_ADDRESS_10X_UAT as b
+      where a.ADDR_B2KID = b.ADDR_B2KID
+      and a.ADDR_ID = b.ADDR_ID
+      and date(b.END_DATE) <> date(a.END_DATE));
+  commit work;
+  /*
+update RECONP.ADDRESS_10X_UAT a
+set 
+
+
+a.START_DATE  =  b.START_DATE     ,
+a.END_DATE    =  b.END_DATE   ,
+a.ADDRESS1    =  b.ADDRESS1    , 
+a.ADDRESS2    =  b.ADDRESS2  ,
+a.CITY_CODE   =  b.CITY_CODE,
+a.STATE_CODE  =  b.STATE_CODE,
+a.CNTRY_CODE  =  b.CNTRY_CODE,
+a.PIN_CODE    =  b.PIN_CODE,
+a.LASTUPDATE_DATE=b.LASTUPDATE_DATE,
+a.TMDATE=b.TMDATE 
+from
+RECONP.S_ADDRESS_10X_UAT b
+where 
+a.ADDR_B2KID =b.ADDR_B2KID
+and a.ADDR_ID     =  b.ADDR_ID;
+commit;
+
+*/
+  -----------updating phoneemil table------------
+  update RECONP.PHONEEMAIL_10X_UAT as a
+    set a.PHONEEMAILID = b.PHONEEMAILID,
+    a.BANK_ID = b.BANK_ID,
+    a.PHONENO = b.PHONENO,
+    a.EMAIL = b.EMAIL,
+    a.START_DATE = b.START_DATE,
+    a.END_DATE = b.END_DATE,
+    a.TMDATE = b.TMDATE from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where a.ORGKEY = b.ORGKEY
+    and a.PHONEEMAILTYPE = b.PHONEEMAILTYPE;
+  commit work;
+  ---------updating ccmg table-------------
+  update RECONP.CORE_CMG_TABLE_10X_UAT as a
+    set a.CUST_ID = b.CUST_ID,
+    a.ENTITY_CRE_FLG = b.ENTITY_CRE_FLG,
+    a.COMBINED_STMT_REQD = b.COMBINED_STMT_REQD,
+    a.PS_FREQ_TYPE = b.PS_FREQ_TYPE,
+    a.CS_LAST_PRINTED_DATE = b.CS_LAST_PRINTED_DATE,
+    a.CS_NEXT_DUE_DATE = b.CS_NEXT_DUE_DATE,
+    a.CUST_FIRST_ACCT_DATE = b.CUST_FIRST_ACCT_DATE,
+    a.CRM_CUST_ID = b.CRM_CUST_ID,
+    a.LCHG_USER_ID = b.LCHG_USER_ID,
+    a.LCHG_TIME = b.LCHG_TIME,
+    a.RCRE_USER_ID = b.RCRE_USER_ID,
+    a.RCRE_TIME = b.RCRE_TIME,
+    a.NXT_ZAKAT_DED_DATE = b.NXT_ZAKAT_DED_DATE,
+    a.ZAKAT_DED_ACID = b.ZAKAT_DED_ACID from
+    RECONP.s_CORE_CMG_TABLE_10X_UAT as b
+    where a.CIF_ID = b.CIF_ID;
+  commit work;
+  -------------updating demographic table --------
+  update RECONP.DEMOGRAPHIC_10X_UAT as a
+    set a.DEMOGRAPHICID = b.DEMOGRAPHICID,
+    a.BANK_ID = b.BANK_ID,
+    a.TDSEXCEMPTENDDATE = b.TDSEXCEMPTENDDATE,
+    a.TDSEXCEMPTSUBMITDATE = b.TDSEXCEMPTSUBMITDATE,
+    a.TDSEXCEMPTREFNO = b.TDSEXCEMPTREFNO,
+    a.EMPLOYERID = b.EMPLOYERID,
+    a.MARITAL_STATUS_CODE = b.MARITAL_STATUS_CODE,
+    a.TMDATE = b.TMDATE,
+    a.BODATEMODIFIED = b.BODATEMODIFIED from
+    RECONP.S_DEMOGRAPHIC_10X_UAT as b
+    where a.ORGKEY = b.ORGKEY;
+  commit work;
+  --------------updating entitydocument table-----------
+  update RECONP.ENTITYDOCUMENT_10X_UAT as a
+    set a.ENTITYDOCUMENTID = b.ENTITYDOCUMENTID,
+    a.BANK_ID = b.BANK_ID,
+    a.REFERENCENUMBER = b.REFERENCENUMBER,
+    a.DOCTYPECODE = b.DOCTYPECODE,
+    a.TMDATE = b.TMDATE,
+    a.BODATEMODIFIED = b.BODATEMODIFIED from
+    RECONP.S_ENTITYDOCUMENT_10X_UAT as b
+    where a.ORGKEY = b.ORGKEY;
+  commit work;
+  ----------------------------------**updating the ADDRESS,PHONEEMAIL,CCMG,DEMOGRAPHIC,ENTITYDOCUMENT incremental VALUES into cmg table****---------------
+  ----updating permenent address details for Retail customers
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_PERM_ADDR1 = b.ADDRESS1,
+    a.CUST_PERM_ADDR2 = b.ADDRESS2,
+    a.CUST_PERM_ADDR3 = b.ADDRESS3,
+    a.CUST_PERM_CITY_CODE = b.CITY_CODE,
+    a.CUST_PERM_STATE_CODE = b.STATE_CODE,
+    a.CUST_PERM_PIN_CODE = b.PIN_CODE,
+    a.CUST_PERM_CNTRY_CODE = b.CNTRY_CODE from
+    RECONP.S_ADDRESS_10X_UAT as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Home'
+    --and cust_const != 'C%'
+    and b.CORP_ID is null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  ------updating permenent address details for corporate customers
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_PERM_ADDR1 = b.ADDRESS1,
+    a.CUST_PERM_ADDR2 = b.ADDRESS2,
+    a.CUST_PERM_ADDR3 = b.ADDRESS3,
+    a.CUST_PERM_CITY_CODE = b.CITY_CODE,
+    a.CUST_PERM_STATE_CODE = b.STATE_CODE,
+    a.CUST_PERM_PIN_CODE = b.PIN_CODE,
+    a.CUST_PERM_CNTRY_CODE = b.CNTRY_CODE from
+    RECONP.S_ADDRESS_10X_UAT as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Registered'
+    --and cust_const = 'C%'
+    and b.CORP_ID is not null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  ------------updating the permenent phone & telex numbers   
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_PERM_PHONE_NUM = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'HOMEPH1';
+  commit work;
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_PERM_TELEX_NUM = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'HOMETELEX';
+  commit work;
+  --------updating the communication address details for both corporate & Retail
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_COMU_ADDR1 = b.ADDRESS1,
+    a.CUST_COMU_ADDR2 = b.ADDRESS2,
+    a.CUST_COMU_ADDR3 = b.ADDRESS3,
+    a.CUST_COMU_CITY_CODE = b.CITY_CODE,
+    a.CUST_COMU_STATE_CODE = b.STATE_CODE,
+    a.CUST_COMU_PIN_CODE = b.PIN_CODE,
+    a.CUST_COMU_CNTRY_CODE = b.CNTRY_CODE from
+    RECONP.S_ADDRESS_10X_UAT as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Mailing'
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  ------------updating the comu phone & telex numbers   
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_COMU_PHONE_NUM_1 = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'COMMPH1';
+  commit work;
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_COMU_PHONE_NUM_2 = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'COMMPH2';
+  commit work;
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_COMU_TELEX_NUM = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'COMMTELEX';
+  commit work;
+  ----------- updating CUST_FIRST_ACCT_DATE
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_FIRST_ACCT_DATE = b.Cust_First_Acct_Date from
+    RECONP.s_CORE_CMG_TABLE_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.CIF_ID);
+  commit work;
+  -----------updating CUST_PAGER_NO
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_PAGER_NO = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'CELLPH';
+  commit work;
+  ------------- updating the CUST_FAX_NO
+  update RECONP.CMG_10X_UAT as a
+    set a.CUST_FAX_NO = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'FAX1';
+  commit work;
+  --------------updating the email_id
+  update RECONP.CMG_10X_UAT as a
+    set a.EMAIL_ID = b.email from
+    RECONP.S_PHONEEMAIL_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'COMMEML';
+  commit work;
+  ---------------updating the demographic table  columns
+  update RECONP.CMG_10X_UAT as a
+    set a.TDS_EXMPT_END_DATE = b.TDSExcemptEndDate,
+    a.TDS_EXMPT_SUBMIT_DATE = b.TDSExcemptSubmitDate,
+    a.TDS_EXMPT_REF_NUM = b.TDSExcemptRefNo,
+    a.CUST_MARITAL_STATUS = b.marital_status_code,
+    a.EMPLOYER_ID = b.employerid from
+    RECONP.S_DEMOGRAPHIC_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY);
+  commit work;
+  ------------ updating the ENTITYDOCUMENT table columns
+  update RECONP.CMG_10X_UAT as a
+    set a.TDS_EXMPT_RMKS = b.referencenumber from
+    RECONP.S_ENTITYDOCUMENT_10X_UAT as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.DOCTYPECODE = 'TAX DOCUMENT';
+  commit work
+end

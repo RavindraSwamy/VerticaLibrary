@@ -1,0 +1,129 @@
+create procedure EDW.SP_ATM_POS_ATTRIBUTE_LOGIC()
+begin
+  create table #ATT_NAMES(
+    ATTRIB_NAME varchar(200) null,
+    SEQ integer null,);
+  commit work;
+  insert into #ATT_NAMES values( 'LAST_TRANSACTION_ATM',1 ) ;
+  insert into #ATT_NAMES values( 'LAST_TRANSACTION_POS',1 ) ;
+  insert into #ATT_NAMES values( 'LAST_TRANSACTION_ECOM',1 ) ;
+  insert into #ATT_NAMES values( 'ATM_LOCATION_FREQUENTLY_VISITED',1 ) ;
+  insert into #ATT_NAMES values( 'POS_LOCATION_FREQUENTLY_VISITED',1 ) ;
+  insert into #ATT_NAMES values( 'ECOM_LOCATION_FREQUENTLY_VISITED',1 ) ;
+  insert into #ATT_NAMES values( 'TRANSACTING_ATMID',1 ) ;
+  insert into #ATT_NAMES values( 'TRANSACTING_POSID',1 ) ;
+  insert into #ATT_NAMES values( 'TRANSACTING_ECOMID',1 ) ;
+  insert into #ATT_NAMES values( 'FD_OPEN',1 ) ;
+  insert into #ATT_NAMES values( 'FT_DONE',1 ) ;
+  insert into #ATT_NAMES values( 'CHEQUE_BOOK_REQUEST',1 ) ;
+  insert into #ATT_NAMES values( 'BP_DONE',1 ) ;
+  insert into #ATT_NAMES values( 'PMR_DONE',1 ) ;
+  commit work;
+  alter table MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 add
+    SEQ integer null;
+  commit work;
+  update MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2
+    set seq = 1;
+  commit work;
+  select UCIC_CODE,CARD_NUMBER,B.ATTRIB_NAME,
+    cast(null as decimal(30,4)) as ATTRIB_VALUE_NUMERIC,
+    cast(null as varchar(100)) as ATTRIB_VALUE_CHARACTER,
+    cast(null as date) as ATTRIB_VALUE_DATE,
+    A.ASOF_DATE,A.EXPIRY_REVIEW_DATE,A.SCORE
+    into #ATM_POS_ATTRIBUTE
+    from MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as A,#ATT_NAMES as B
+    where a.SEQ = B.SEQ;
+  commit work;
+  create hg index IDX_CARD_NBR on #ATM_POS_ATTRIBUTE(CARD_NUMBER);
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_DATE = B.LAST_TRANSACTION_ATM from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'LAST_TRANSACTION_ATM';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_DATE = B.LAST_TRANSACTION_POS from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'LAST_TRANSACTION_POS';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_DATE = B.LAST_TRANSACTION_ECOM from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'LAST_TRANSACTION_ECOM';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.ATM_LOCATION_FREQUENTLY_VISITED from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'ATM_LOCATION_FREQUENTLY_VISITED';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.POS_LOCATION_FREQUENTLY_VISITED from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'POS_LOCATION_FREQUENTLY_VISITED';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.ECOM_LOCATION_FREQUENTLY_VISITED from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'ECOM_LOCATION_FREQUENTLY_VISITED';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.TRANSACTING_ATMID from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'TRANSACTING_ATMID';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.TRANSACTING_POSID from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'TRANSACTING_POSID';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.TRANSACTING_ECOMID from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'TRANSACTING_ECOMID';
+  commit work;
+  ----------------------------
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FD_OPEN from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'FD_OPEN';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FT_DONE from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'FT_DONE';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.CHEQUE_BOOK_REQUEST from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'CHEQUE_BOOK_REQUEST';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.BP_DONE from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'BP_DONE';
+  commit work;
+  update #ATM_POS_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.PMR_DONE from
+    MCCM.TEMP_ATM_POS_CHANNEL_ATTRIBUTE_N_MUR2 as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ATTRIB_NAME = 'PMR_DONE';
+  commit work;
+  truncate table MCCM.ATM_POS_CHANNEL_ATTRIBUTE;
+  commit work;
+  insert into MCCM.ATM_POS_CHANNEL_ATTRIBUTE
+    select * from #ATM_POS_ATTRIBUTE;
+  commit work
+end

@@ -1,0 +1,18 @@
+create procedure edw.travel_card_stage_mc()
+begin
+  truncate table edw.s_main_stage_forex_cards_MULTI;
+  commit work;
+  load into table edw.s_main_stage_forex_cards_MULTI( CARD_NUMBER '|^|',FIRST_NAME '|^|' null(zeros,'NULL','null'),MIDDLE_NAME '|^|' null(zeros,'NULL','null'),LAST_NAME '|^|' null(zeros,'NULL','null'),CARD_STATUS '|^|' null(zeros,'NULL','null'),ENTITY '|^|' null(zeros,'NULL','null'),MOTHERS_MAIDEN_NAME '|^|' null(zeros,'NULL','null'),EMAILID '|^|' null(zeros,'NULL','null'),PASSPORT_NBR '|^|' null(zeros,'NULL','null'),CUR_ADDRESS1 '|^|' null(zeros,'NULL','null'),CUR_ADDRESS2 '|^|' null(zeros,'NULL','null'),CITY '|^|' null(zeros,'NULL','null'),CUR_STATE '|^|' null(zeros,'NULL','null'),COUNTRY '|^|' null(zeros,'NULL','null'),CUR_PIN '|^|' null(zeros,'NULL','null'),ACTIVATION_DATE '|^|' null(zeros,'NULL','null'),CARD_ACCT_CCY '|^|' null(zeros,'NULL','null'),CARD_ACCT_AMOUNT '|^|' null(zeros,'NULL','null'),TXN_CCY '|^|' null(zeros,'NULL','null'),PURPOSE_OF_TRAVEL '|^|' null(zeros,'NULL','null'),PAN_CARD_NBR '|^|' null(zeros,'NULL','null'),MAKER_ID '|^|' null(zeros,'NULL','null'),TXN_NAME '|^|' null(zeros,'NULL','null'),ORM_MOD_NO '|^|' null(zeros,'NULL','null'),BANK_ACCT_NUMBER '|^|' null(zeros,'NULL','null'),MOBILE_NBR '|^|' null(zeros,'NULL','null'),ICICI_ACCT_NBR '|^|' null(zeros,'NULL','null'),DOB '|^|' null(zeros,'NULL','null'),EMB_DATE '|^|' null(zeros,'NULL','null'),date_created '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/TRAVELCARD_MC/ACCOUNT/YET_TO_LOAD_FILES/stage_forex_cards_multi_curr.out' quotes off escapes off preview on skip 1 message log '/data_extraction2/syb_mig_sur/extract_files/Travel_Card_multi.csv_201503311654.msg' row log '/data_extraction2/syb_mig_sur/extract_files/Travel_Card_multi.csv_201503311654.row' only log all log delimited by '|^|' notify 100000 with checkpoint on;
+  commit work;
+  delete from edw.s_main_stage_forex_cards_MULTI as A from
+    edw.s_main_stage_forex_cards_MULTI as A
+    ,(select MAX(ROWID(s_main_stage_forex_cards_MULTI)) as ROW_ID,
+      CARD_NUMBER from edw.s_main_stage_forex_cards_MULTI
+      group by CARD_NUMBER) as B
+    where A.CARD_NUMBER = B.CARD_NUMBER
+    and ROWID(A) <> B.ROW_ID;
+  commit work;
+  insert into edw.main_stage_Forex_Cards_N_DEB select * from edw.s_main_stage_forex_cards_MULTI;
+  commit work
+end

@@ -1,0 +1,7 @@
+create procedure EDW.IMOBILE_CHANNEL_ATTRIBUTE_LOAD()
+begin
+  truncate table MCCM.IMOBILE_CHANNEL_ATTRIBUTE_TEMP;
+  load into table MCCM.CUSTOMER_MASTER( UCIC_CODE '~',MOBILE_NO '~',DEVICE_ID '~',USER_ID '~',ATTRIB_NAME '~',ATTRIB_VALUE_NUMERIC '~',ATTRIB_VALUE_CHARACTER '~',ATTRIB_VALUE_DATE '~',ASOF_DATE '~',EXPIRY_REVIEW_DATE '~',SCORE '~',UPDATE_MOB_NO_REG '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MCCM/ACCOUNT/YET_TO_LOAD_FILES/mccm_imobile_target.out' quotes off escapes off preview on message log '/sybase_load/LOAD_MANAGEMENT/FINONE/BANK/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/mccm_imobile_attribute.msg' row log '/sybase_load/LOAD_MANAGEMENT/FINONE/BANK/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/mccm_imobile_attribute.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work
+end

@@ -1,0 +1,10 @@
+create procedure edw.cartbl_lookup()
+begin
+  truncate table RECONP.cartbl_lookup;
+  commit work;
+  set temporary option DATE_ORDER = 'MDY';
+  load into table RECONP.cartbl_lookup( CL_ACTIVE_REF_NO '|^|',CL_ACTIVE_HOLDING '|^|',CL_LINKED_REF_NO '|^|',CL_LINKED_HOLDING '|^|',CL_USER_ID '|^|',CL_LAST_UPD_DT '|^|',CL_MAKER_ID '\x0A' ) using file --RECONP.TEMP_cartbl_lookup  --RECONP.cartbl_lookup
+    '/sybase_load/LOAD_MANAGEMENT/CAR/ACCOUNT/YET_TO_LOAD_FILES/sq_cartbl_lookup11.out' quotes off escapes off preview on;
+  ---5404292 row(s) affected
+  commit work
+end

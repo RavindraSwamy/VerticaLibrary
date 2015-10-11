@@ -1,0 +1,1464 @@
+create procedure EDW.SP_LIABILITY_ACCOUNT_MASTER()
+begin
+  declare @INCREE_DATE_1 date;
+  declare @INCREE_DATE_2 date;
+  declare @INCREE_DATE_3 date;
+  truncate table MCCM.LIABILITY_ACCT_MASTER_TEMP;
+  commit work;
+  select MIN(SOURCE_DATE)-3 into @INCREE_DATE_1 from RECONP.LIABILITY_PARAM where SOURCE_NAME = 'LIABILITY';
+  select MIN(SOURCE_DATE)-3 into @INCREE_DATE_2 from RECONP.LIABILITY_PARAM where SOURCE_NAME = 'LIABILITY_FINAGRI';
+  select MIN(SOURCE_DATE)-3 into @INCREE_DATE_3 from RECONP.LIABILITY_PARAM where SOURCE_NAME = 'LIABILITY_NRISR';
+  commit work;
+  insert into MCCM.LIABILITY_ACCT_MASTER_TEMP
+    select A.UCIC_VALUE as UCIC_CODE,
+      A.SOURCE_PARTY_ID as SOURCE_PARTY_ID,
+      B.SOURCE_SYSTEM_CODE,
+      B.SOURCE_ACCOUNT_NBR,
+      B.ACCOUNT_NBR,
+      B.ACCOUNT_DERIVE_DATE,
+      cast(null as date) as ACCOUNT_CLOSE_DATE,
+      cast(null as varchar(25)) as ACCOUNT_TYPE,
+      B.PRODUCT_TYPE,
+      cast(null as varchar(100)) as ACCOUNT_SOURCING_CHANNEL,
+      a.acc_holder,
+      cast(null as varchar(10)) as BRANCH_SOL_ID,
+      B.CUST_STAT_CODE,
+      B.CUST_CONST as CUST_CONST_CODE,
+      (case when B.NRI_STATUS = 'DOMESTIC' then 'N' else 'Y' end) as NRI_FLAG,
+      B.DORMANCY_STATUS,
+      cast(null as decimal(25,4)) as EOD_BALANCE,
+      cast(null as varchar(10)) as TRANSACTING_SOLID,
+      DATE(GETDATE()) as AS_OF_DATE,
+      cast(null as decimal(22,4)) as MTD,
+      B.UN_CLR_BAL_AMT,
+      B.CLR_BAL_AMT,
+      cast(null as decimal(18,2)) as MAB_MONTH1,
+      cast(null as decimal(18,2)) as MAB_MONTH2,
+      cast(null as decimal(18,2)) as MAB_MONTH3,
+      cast(null as char(5)) as MAB_NOT_MET,
+      cast(null as decimal(18,2)) as ELB_MONTH1,
+      cast(null as decimal(18,2)) as ELB_MONTH2,
+      cast(null as decimal(18,2)) as ELB_MONTH3,
+      cast(null as decimal(18,2)) as AQB_MONTH1,
+      cast(null as decimal(18,2)) as AQB_MONTH2,
+      cast(null as decimal(18,2)) as AQB_MONTH3,
+      cast(null as decimal(18,2)) as SALARY_MONTH1,
+      cast(null as decimal(18,2)) as SALARY_MONTH2,
+      cast(null as decimal(18,2)) as SALARY_MONTH3,
+      cast(null as varchar(20)) as DOMICILE_CHANNEL_ID,
+      cast(null as smallint) as DOMICILE_CHANNEL_TYPE_CODE,
+      cast(null as char(25)) as SCHEME_CODE,
+      cast(null as date) as FD_MATURITY_DATE,
+      cast(null as decimal(20,4)) as FD_MATURITY_AMOUNT,
+      cast(null as decimal(20,4)) as FD_DEPOSIT_AMOUNT,
+      cast(null as date) as RD_MATURITY_DATE,
+      cast(null as decimal(20,4)) as RD_MATURITY_AMOUNT,
+      cast(null as decimal(20,4)) as RD_DEPOSIT_AMOUNT,
+      cast(null as date) as IWISH_MATURITY_DATE,
+      cast(null as decimal(20,4)) as IWISH_MATURITY_AMOUNT,
+      cast(null as decimal(20,4)) as IWISH_DEPOSIT_AMOUNT,
+      cast(null as varchar(1)) as LIMIT_STATUS,
+      cast(null as date) as LIMIT_EXP_DATE,
+      cast(null as decimal(20,4)) as LIMIT_SANCT_LMT,
+      B.CUSTOMER_TYPE,
+      B.GL_SUB_HEAD_CODE,
+      B.LIMIT_B2KID,
+      B.LAST_UNFREZ_DATE,
+      B.LAST_FREZ_DATE,
+      B.FREZ_CODE,
+      cast(null as decimal(20,4)) as CONTRACTED_ACCOUNT_BALANCE,
+      cast(null as decimal(10,4)) as MAB_LIMIT,
+      B.ACCT_OWNERSHIP,
+      B.RTL_NONRTL,
+      B.DEL_FLG,
+      cast(null as varchar(10)) as STATUS,
+      cast(null as date) as DATE_OF_EXPIRY,
+      cast(null as decimal(20,4)) as CONTRACTED_MAB,
+      cast(null as decimal(20,4)) as ACTUAL_MTDMAB,
+      cast(null as integer) as MAB_DATE,
+      cast(null as integer) as MAB_DAYS_LEFT,
+      cast(null as char(5)) as one_KYC,
+      cast(null as varchar(32)) as Linked_User_ID,
+      cast(null as varchar(9)) as source_feed_identifier
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as A
+        ,(select * from EDW.T09311_LIABILITY_ACCOUNT_ADDON where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or ACCOUNT_DERIVE_DATE > COALESCE(null,@INCREE_DATE_1,'1900-01-01'))) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+      and A.SOURCE_SYSTEM_CODE = 30
+      and B.CUSTOMER_TYPE <> 'DUMMY'
+      and B.ACCT_OWNERSHIP <> 'O'
+      and B.GL_SUB_HEAD_CODE not in( '05091','05092','05093','05094','05095','35050' ) 
+      and B.DEL_FLG = 'N';
+  commit work;
+  truncate table RECONP.LIABILITY_PARAM;
+  commit work;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY',MAX(DATE_CREATED) from EDW.T09311_LIABILITY_ACCOUNT_ADDON;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY',MAX(DATE_LAST_MODIFIED) from EDW.T09311_LIABILITY_ACCOUNT_ADDON;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY',MAX(ACCOUNT_DERIVE_DATE) from EDW.T09311_LIABILITY_ACCOUNT_ADDON;
+  commit work;
+  ----------------------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.ACCOUNT_SOURCING_CHANNEL = B.OFFICER_TAG from
+    NEERAJS.E2E_BASE_FY16 as B
+    where A.SOURCE_ACCOUNT_NBR = B.ACCOUNT_NUMBER;
+  commit work;
+  ----------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.STATUS = B.STATUS,
+    A.DATE_OF_EXPIRY = B.DATE_OF_EXPIRY from
+    QDESK.QCM51_CAF as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  --------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE,
+    A.BRANCH_SOL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_TYPE_CODE = B.DOMICILE_CHANNEL_TYPE_CODE,
+    A.SCHEME_CODE = B.SCHEME_CODE from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,EDW.T0300_ACCOUNT as B
+    where A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  -------------------------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.ACCOUNT_TYPE
+     = case when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-1' then 'SELF'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-2' then 'JOINT'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-3' then 'EITHER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-4' then 'FORMER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-5' then 'JOINTLY WITH SATWIK ELEC.'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-6' then 'NO.1 JTLY WITH 2 OR 3'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-7' then 'NO.1 OR ANY 2 JOINTLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-8' then 'OPER. BY 1ST AC HLDR ONLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-9' then 'ANY OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-10' then 'ANY TWO JOINTLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-11' then 'KARTA'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-12' then 'LETTER OF AUTHORITY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-13' then 'LATTER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-14' then 'POWER OF ATTORNEY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-15' then 'PPA-RICOH INDIA LIMITED'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-16' then 'PPA SAN MOTORS'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-17' then 'REFER SPECIMEN SIGNATURE'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-18' then 'SECY WITH CHAIRMAN ORTRSR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-21' then 'AUTHORISED SIGNATORIES'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-22' then 'ANY TWO OR SURVIVOR/S'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-23' then 'BOTH OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-24' then 'JOINT OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30_39' then 'SINGLE'
+    else 'SINGLE'
+    end from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,EDW.T0300_ACCOUNT as B
+    where A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ----------------------------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.EOD_BALANCE = B.TRAN_DATE_BAL from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,EDW.D03056_EOD_ACC_BAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.FORACID
+    and B.END_EOD_DATE = '2099-12-31';
+  commit work;
+  ------------------------------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.FD_MATURITY_DATE = B.MATURITY_DATE,
+    A.FD_MATURITY_AMOUNT = B.MATURITY_AMOUNT,
+    A.FD_DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.product_type in( 'FD' ) ;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.RD_MATURITY_DATE = B.MATURITY_DATE,
+    A.RD_MATURITY_AMOUNT = B.MATURITY_AMOUNT,
+    A.RD_DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.product_type in( 'RD' ) ;
+  commit work;
+  -------------------------------------------------------------------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.LIMIT_STATUS = B.LIMIT_STATUS,
+    A.LIMIT_EXP_DATE = B.LIMIT_EXP_DATE,
+    A.LIMIT_SANCT_LMT = B.LIMIT_SANCT_LMT from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,T0313_ACCOUNT_LIMIT_FINCR as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR;
+  commit work;
+  --------------------------------------------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.TRANSACTING_SOLID = COALESCE(NEW_RULES_SOLID,FINAL_PORTABLE_SOLID) from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,SIVAB.PBGBWM_TRANSACTING_SOLID_FEB15 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ------------------------------------------------------------------------------------------------------------
+  select cust_id,source_account_nbr,sal_date,total_amount,RANK() over(partition by source_account_nbr order by sal_date desc) as RANK
+    into #sal_dmt
+    from NEERAJS.JP_SAL_ACCOUNT_DETAILS;
+  commit work;
+  create hg index idx_custid on EDW.#sal_dmt(source_account_nbr);
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.SALARY_MONTH1 = b.total_amount from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    ,#sal_dmt as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 1;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.SALARY_MONTH2 = b.total_amount from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    ,#sal_dmt as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 2;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.SALARY_MONTH3 = b.total_amount from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    ,#sal_dmt as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 3;
+  commit work;
+  ------------------------------------------------------------------
+  /* update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+set A.MAB_LIMIT = B.QAB_REQ from
+neerajs.E2E_HH_CNTRCT_MAB_MSTR as B
+where trim(B.STATUS_CODE) = trim(A.CUST_STAT_CODE);
+commit work;*/
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.MAB_LIMIT = B.CNTRCT_MAB from
+    neerajs.E2E_CA_CNTRCT_MAB_MSTR as B
+    where trim(B.STATUS_CODE) = trim(A.CUST_STAT_CODE);
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.MAB_LIMIT = 0
+    where MAB_LIMIT is null;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP as A
+    set A.IWISH_MATURITY_DATE = B.MATURITY_DATE,
+    A.IWISH_MATURITY_AMOUNT = B.RD_VALUE from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP as A,srcstage.ICI_VRD as B
+    where A.source_ACCOUNT_NBR = B.foracid
+    and SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  update mccm.MCCM.LIABILITY_ACCT_MASTER_TEMP as a
+    set a.Linked_User_ID = isnull(b.Linked_User_ID,b.user_id),
+    a.source_feed_identifier = b.source_feed_identifier from
+    d0122_car_cust_linkage as b
+    where a.source_account_nbr = b.source_account_nbr
+    and b.source_feed_identifier = '2';
+  commit work;
+  create table #UPS_LIABILITY_ACCT_MASTER(
+    SOURCE_ACCOUNT_NBR varchar(50) null,
+    SYB_SOURCE_ACCOUNT_NBR varchar(50) null,
+    SOURCE_SYSTEM_CODE smallint null,
+    SYB_SOURCE_SYSTEM_CODE smallint null,
+    );
+  commit work;
+  insert into #UPS_LIABILITY_ACCT_MASTER
+    select A.SOURCE_ACCOUNT_NBR,
+      B.SOURCE_ACCOUNT_NBR as SYB_SOURCE_ACCOUNT_NBR,
+      A.SOURCE_SYSTEM_CODE,
+      B.SOURCE_SYSTEM_CODE as SYB_SOURCE_SYSTEM_CODE
+      from MCCM.LIABILITY_ACCT_MASTER_TEMP as A left outer join MCCM.LIABILITY_ACCT_MASTER as B
+        on A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+        and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  delete from MCCM.LIABILITY_ACCT_MASTER where SOURCE_ACCOUNT_NBR = any(select SOURCE_ACCOUNT_NBR from #UPS_LIABILITY_ACCT_MASTER);
+  commit work;
+  insert into MCCM.LIABILITY_ACCT_MASTER select distinct * from MCCM.LIABILITY_ACCT_MASTER_TEMP;
+  commit work;
+  ----------------------------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.EOD_BALANCE = B.TRAN_DATE_BAL from
+    MCCM.LIABILITY_ACCT_MASTER as A,EDW.D03056_EOD_ACC_BAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.FORACID
+    and B.END_EOD_DATE = '2099-12-31';
+  commit work;
+  ------------------------------------------------------------------------------------------------
+  if DAY(GETDATE()) = 1 then
+    begin
+      declare MAB_DATE1 date;
+      declare MAB_DATE2 date;
+      declare MAB_DATE3 date;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into MAB_DATE1;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),MAB_DATE1,112)+'01'),112))) into MAB_DATE2;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),MAB_DATE2,112)+'01'),112))) into MAB_DATE3;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.MAB_MONTH1 = B.MONTHLY_AVG_BAL from
+        MCCM.LIABILITY_ACCT_MASTER as A,T0305_ACCOUNT_SUMMARY_DERIVE as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = MAB_DATE1
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.MAB_MONTH2 = B.MONTHLY_AVG_BAL from
+        MCCM.LIABILITY_ACCT_MASTER as A,T0305_ACCOUNT_SUMMARY_DERIVE as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = MAB_DATE2
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.MAB_MONTH3 = B.MONTHLY_AVG_BAL from
+        MCCM.LIABILITY_ACCT_MASTER as A,T0305_ACCOUNT_SUMMARY_DERIVE as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = MAB_DATE3
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work
+    end end if;
+  commit work;
+  --------------------------------------------------------------------------------------------------------
+  if DAY(GETDATE()) = 1 then
+    begin
+      declare ELB_DATE1 date;
+      declare ELB_DATE2 date;
+      declare ELB_DATE3 date;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into ELB_DATE1;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),ELB_DATE1,112)+'01'),112))) into ELB_DATE2;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),ELB_DATE2,112)+'01'),112))) into ELB_DATE3;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.ELB_MONTH1 = B.ENDING_LEDGER_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,T0305_ACCOUNT_SUMMARY_DERIVE as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = ELB_DATE1
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.ELB_MONTH2 = B.ENDING_LEDGER_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,T0305_ACCOUNT_SUMMARY_DERIVE as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = ELB_DATE2
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.ELB_MONTH3 = B.ENDING_LEDGER_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,T0305_ACCOUNT_SUMMARY_DERIVE as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = ELB_DATE3
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work
+    end end if;
+  commit work;
+  --------------------------------------------------------------------------------
+  if DAY(GETDATE()) = 1 then
+    begin
+      declare AQB_DATE1 date;
+      declare AQB_DATE2 date;
+      declare AQB_DATE3 date;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into AQB_DATE1;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),AQB_DATE1,112)+'01'),112))) into AQB_DATE2;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),AQB_DATE2,112)+'01'),112))) into AQB_DATE3;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.AQB_MONTH1 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,T03051_AVERAGE_QTRLY_BAL as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = AQB_DATE1
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.AQB_MONTH2 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,T03051_AVERAGE_QTRLY_BAL as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = AQB_DATE2
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.AQB_MONTH3 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,T03051_AVERAGE_QTRLY_BAL as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = AQB_DATE3
+        and B.SOURCE_SYSTEM_CODE = 30;
+      commit work
+    end end if;
+  commit work;
+  -------------------------------------------------------------------------------------------------------------------------------------
+  update mccm.MCCM.LIABILITY_ACCT_MASTER as a
+    set a.Linked_User_ID = isnull(b.Linked_User_ID,b.user_id),
+    a.source_feed_identifier = b.source_feed_identifier from
+    d0122_car_cust_linkage as b
+    where a.source_account_nbr = b.source_account_nbr
+    and b.source_feed_identifier = '2';
+  commit work;
+  /**************LIABILITY**********FINAGRI********************************/
+  truncate table MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI;
+  commit work;
+  drop index MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI.IDX_SRC_CODE;
+  drop index MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI.IDX_SRC_ACC_NBR;
+  drop index MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI.IDX_ACC_NBR;
+  commit work;
+  insert into MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI
+    select A.UCIC_VALUE as UCIC_CODE,
+      B.CUST_ID as SOURCE_PARTY_ID,
+      B.SOURCE_SYSTEM_CODE,
+      B.SOURCE_ACCOUNT_NBR,
+      B.ACCOUNT_NBR,
+      cast(null as date) as ACCOUNT_DERIVE_DATE,
+      A.ACCOUNT_CLOSE_DATE,
+      cast(null as varchar(25)) as ACCOUNT_TYPE,
+      A.PRODUCT_TYPE,
+      cast(null as varchar(100)) as ACCOUNT_SOURCING_CHANNEL,
+      cast(null as varchar(10)) as acc_holder,
+      cast(null as varchar(10)) as BRANCH_SOL_ID,
+      B.CUST_STAT_CODE,
+      B.CUST_CONST as CUST_CONST_CODE,
+      cast(null as varchar(10)) as NRI_FLAG,
+      B.DORMANCY_STATUS,
+      cast(null as decimal(25,4)) as EOD_BALANCE,
+      cast(null as varchar(10)) as TRANSACTING_SOLID,
+      DATE(GETDATE()) as AS_OF_DATE,
+      cast(null as decimal(22,4)) as MTD,
+      B.UN_CLR_BAL_AMT,
+      B.CLR_BAL_AMT,
+      cast(null as decimal(18,2)) as MAB_MONTH1,
+      cast(null as decimal(18,2)) as MAB_MONTH2,
+      cast(null as decimal(18,2)) as MAB_MONTH3,
+      cast(null as char(5)) as MAB_NOT_MET,
+      cast(null as decimal(18,2)) as ELB_MONTH1,
+      cast(null as decimal(18,2)) as ELB_MONTH2,
+      cast(null as decimal(18,2)) as ELB_MONTH3,
+      cast(null as decimal(18,2)) as AQB_MONTH1,
+      cast(null as decimal(18,2)) as AQB_MONTH2,
+      cast(null as decimal(18,2)) as AQB_MONTH3,
+      cast(null as decimal(18,2)) as SALARY_MONTH1,
+      cast(null as decimal(18,2)) as SALARY_MONTH2,
+      cast(null as decimal(18,2)) as SALARY_MONTH3,
+      cast(null as varchar(20)) as DOMICILE_CHANNEL_ID,
+      cast(null as smallint) as DOMICILE_CHANNEL_TYPE_CODE,
+      cast(null as char(25)) as SCHEME_CODE,
+      cast(null as date) as FD_MATURITY_DATE,
+      cast(null as decimal(20,4)) as FD_MATURITY_AMOUNT,
+      cast(null as decimal(20,4)) as FD_DEPOSIT_AMOUNT,
+      cast(null as date) as RD_MATURITY_DATE,
+      cast(null as decimal(20,4)) as RD_MATURITY_AMOUNT,
+      cast(null as decimal(20,4)) as RD_DEPOSIT_AMOUNT,
+      cast(null as date) as IWISH_MATURITY_DATE,
+      cast(null as decimal(20,4)) as IWISH_MATURITY_AMOUNT,
+      cast(null as decimal(20,4)) as IWISH_DEPOSIT_AMOUNT,
+      cast(null as varchar(1)) as LIMIT_STATUS,
+      cast(null as date) as LIMIT_EXP_DATE,
+      cast(null as decimal(20,4)) as LIMIT_SANCT_LMT,
+      cast(null as varchar(20)) as CUSTOMER_TYPE,
+      B.GL_SUB_HEAD_CODE,
+      cast(null as varchar(20)) as LIMIT_B2KID,
+      B.UNFREEZ_DATE as LAST_UNFREZ_DATE,
+      cast(null as date) as LAST_FREZ_DATE,
+      B.FREZ_CODE,
+      cast(null as decimal(20,4)) as CONTRACTED_ACCOUNT_BALANCE,
+      cast(null as decimal(10,4)) as MAB_LIMIT,
+      cast(null as varchar(10)) as ACCT_OWNERSHIP,
+      cast(null as varchar(10)) as RTL_NONRTL,
+      cast(null as varchar(10)) as DEL_FLG,
+      cast(null as varchar(10)) as STATUS,
+      cast(null as date) as DATE_OF_EXPIRY,
+      cast(null as decimal(20,4)) as CONTRACTED_MAB,
+      cast(null as decimal(20,4)) as ACTUAL_MTDMAB,
+      cast(null as integer) as MAB_DATE,
+      cast(null as integer) as MAB_DAYS_LEFT,
+      cast(null as char(5)) as one_KYC,
+      cast(null as varchar(32)) as Linked_User_ID,
+      cast(null as varchar(9)) as source_feed_identifier
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as A,FINAGRI.T09300_ACCOUNT_ADDON as B
+      --(SELECT * FROM FINAGRI.T09300_ACCOUNT_ADDON WHERE DATE_CREATED > COALESCE(null,@INCREE_DATE_2,'1900-01-01')) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+      and A.source_system_code = 75;
+  commit work;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY_FINAGRI',MAX(DATE_CREATED) from FINAGRI.T09300_ACCOUNT_ADDON;
+  commit work;
+  -----------------------------------------------------------------------
+  create hg index IDX_SRC_CODE on MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI(SOURCE_SYSTEM_CODE);
+  create hg index IDX_SRC_ACC_NBR on MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI(SOURCE_ACCOUNT_NBR);
+  create hg index IDX_ACC_NBR on MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI(ACCOUNT_NBR);
+  commit work;
+  ------------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A
+    set A.ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE,
+    A.BRANCH_SOL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_TYPE_CODE = B.DOMICILE_CHANNEL_TYPE_CODE,
+    A.SCHEME_CODE = B.SCHEME_CODE from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A,(select * from FINAGRI.T0300_Account where SOURCE_SYSTEM_CODE = 75) as B
+    where A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ------------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A
+    set A.LIMIT_STATUS = B.STATUS,
+    A.LIMIT_EXP_DATE = B.LIM_EXP_DATE,
+    A.LIMIT_SANCT_LMT = B.SANCT_LIM from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A,FINAGRI.LIM_HISTORY_TABLE as B,FINAGRI.GENERAL_ACCT_MAST_TABLE as C
+    where A.SOURCE_ACCOUNT_NBR = C.FORACID
+    and B.ACID = C.ACID;
+  commit work;
+  ------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A
+    set A.CUSTOMER_TYPE = B.CUST_TYPE_CODE from
+    FINAGRI.CUST_MAST_GEN_TABLE as B
+    where A.SOURCE_PARTY_ID = B.CUST_ID;
+  commit work;
+  -----------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A
+    set A.FD_MATURITY_DATE = B.MATURITY_DATE,
+    A.FD_MATURITY_AMOUNT = B.MATURITY_AMOUNT,
+    A.FD_DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    FINAGRI.TD_ACCT_MASTER_TABLE as B,FINAGRI.GENERAL_ACCT_MAST_TABLE as C
+    where A.SOURCE_ACCOUNT_NBR = C.FORACID
+    and B.ACID = C.ACID;
+  commit work;
+  -----------------------------------------------------
+  select SOURCE_ACCOUNT_NBR,solid,MAX(TRANDATE) into #SOLID from finagri.finacle_transaction_details group by SOURCE_ACCOUNT_NBR,solid;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A
+    set A.TRANSACTING_SOLID = B.solid from
+    #SOLID as b
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ---------------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A
+    set A.LAST_FREZ_DATE = B.LAST_FREZ_DATE from
+    FINAGRI.GENERAL_ACCT_MAST_TABLE as B
+    where A.SOURCE_ACCOUNT_NBR = B.FORACID;
+  commit work;
+  create table #UPS_LIABILITY_ACCT_MASTER_FINAGRI(
+    SOURCE_ACCOUNT_NBR varchar(50) null,
+    SYB_SOURCE_ACCOUNT_NBR varchar(50) null,
+    SOURCE_SYSTEM_CODE smallint null,
+    SYB_SOURCE_SYSTEM_CODE smallint null,
+    );
+  commit work;
+  insert into #UPS_LIABILITY_ACCT_MASTER_FINAGRI
+    select A.SOURCE_ACCOUNT_NBR,
+      B.SOURCE_ACCOUNT_NBR as SYB_SOURCE_ACCOUNT_NBR,
+      A.SOURCE_SYSTEM_CODE,
+      B.SOURCE_SYSTEM_CODE as SYB_SOURCE_SYSTEM_CODE
+      from MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI as A left outer join MCCM.LIABILITY_ACCT_MASTER as B
+        on A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+        and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  delete from MCCM.LIABILITY_ACCT_MASTER where SOURCE_ACCOUNT_NBR = any(select SOURCE_ACCOUNT_NBR from #UPS_LIABILITY_ACCT_MASTER_FINAGRI);
+  commit work;
+  insert into MCCM.LIABILITY_ACCT_MASTER select distinct * from MCCM.LIABILITY_ACCT_MASTER_TEMP_FINAGRI;
+  commit work;
+  ---------------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.ELB_MONTH1 = B.TRAN_DATE_BAL from
+    finagri.EOD_ACCT_BAL_TABLE as B,FINAGRI.GENERAL_ACCT_MAST_TABLE as C
+    where A.SOURCE_ACCOUNT_NBR = C.FORACID
+    and B.ACID = C.ACID
+    and END_EOD_DATE = '2099-12-31';
+  commit work;
+  -----------------------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.EOD_BALANCE = B.TRAN_DATE_BAL from
+    finagri.EOD_ACCT_BAL_TABLE as B,FINAGRI.GENERAL_ACCT_MAST_TABLE as C
+    where A.SOURCE_ACCOUNT_NBR = C.FORACID
+    and B.ACID = C.ACID
+    and END_EOD_DATE = '2099-12-31';
+  commit work;
+  -----------------------------------------------------
+  ---- ---------------------------------------
+  update MCCM.LIABILITY_ACCT_MASTER as a
+    set a.Linked_User_ID = isnull(b.Linked_User_ID,b.user_id),
+    a.source_feed_identifier = b.source_feed_identifier from
+    d0122_car_cust_linkage as b
+    where a.source_account_nbr = b.source_account_nbr
+    and b.source_feed_identifier = '69';
+  commit work;
+  ---------------------------------------------------------------------------
+  /**************LIABILITY**********NRISR********************************/
+  select cast(null as varchar(20)) as UCIC_CODE,
+    SOURCE_PARTY_ID,
+    cast(null as varchar(20)) as BENE_CUST_ID,
+    SOURCE_SYSTEM_CODE,
+    cast(null as varchar(20)) as SOURCE_ACCOUNT_NBR,
+    cast(null as integer) as ACCOUNT_NBR,
+    cast(null as date) as ACCOUNT_DERIVE_DATE,
+    cast(null as date) as ACCOUNT_CLOSE_DATE,
+    cast(null as varchar(25)) as ACCOUNT_TYPE,
+    cast(null as varchar(20)) as PRODUCT_TYPE,
+    cast(null as varchar(100)) as ACCOUNT_SOURCING_CHANNEL,
+    cast(null as varchar(10)) as acc_holder,
+    cast(null as varchar(20)) as BRANCH_SOL_ID,
+    cast(null as varchar(20)) as CUST_STAT_CODE,
+    cast(null as varchar(20)) as CUST_CONST_CODE,
+    cast(null as varchar(10)) as NRI_FLAG,
+    cast(null as varchar(10)) as DORMANCY_STATUS,
+    cast(null as decimal(25,4)) as EOD_BALANCE,
+    cast(null as varchar(10)) as TRANSACTING_SOLID,
+    DATE(GETDATE()) as AS_OF_DATE,
+    cast(null as decimal(22,4)) as MTD,
+    cast(null as decimal(22,4)) as UN_CLR_BAL_AMT,
+    cast(null as decimal(22,4)) as CLR_BAL_AMT,
+    cast(null as decimal(18,2)) as MAB_MONTH1,
+    cast(null as decimal(18,2)) as MAB_MONTH2,
+    cast(null as decimal(18,2)) as MAB_MONTH3,
+    cast(null as char(5)) as MAB_NOT_MET,
+    cast(null as decimal(18,2)) as ELB_MONTH1,
+    cast(null as decimal(18,2)) as ELB_MONTH2,
+    cast(null as decimal(18,2)) as ELB_MONTH3,
+    cast(null as decimal(18,2)) as AQB_MONTH1,
+    cast(null as decimal(18,2)) as AQB_MONTH2,
+    cast(null as decimal(18,2)) as AQB_MONTH3,
+    cast(null as decimal(18,2)) as SALARY_MONTH1,
+    cast(null as decimal(18,2)) as SALARY_MONTH2,
+    cast(null as decimal(18,2)) as SALARY_MONTH3,
+    cast(null as varchar(20)) as DOMICILE_CHANNEL_ID,
+    cast(null as varchar(20)) as DOMICILE_CHANNEL_TYPE_CODE,
+    cast(null as varchar(20)) as SCHEME_CODE,
+    cast(null as date) as FD_MATURITY_DATE,
+    cast(null as decimal(20,4)) as FD_MATURITY_AMOUNT,
+    cast(null as decimal(20,4)) as FD_DEPOSIT_AMOUNT,
+    cast(null as date) as RD_MATURITY_DATE,
+    cast(null as decimal(20,4)) as RD_MATURITY_AMOUNT,
+    cast(null as decimal(20,4)) as RD_DEPOSIT_AMOUNT,
+    cast(null as date) as IWISH_MATURITY_DATE,
+    cast(null as decimal(20,4)) as IWISH_MATURITY_AMOUNT,
+    cast(null as decimal(20,4)) as IWISH_DEPOSIT_AMOUNT,
+    cast(null as varchar(1)) as LIMIT_STATUS,
+    cast(null as date) as LIMIT_EXP_DATE,
+    cast(null as decimal(20,4)) as LIMIT_SANCT_LMT,
+    cast(null as varchar(20)) as CUSTOMER_TYPE,
+    cast(null as varchar(20)) as GL_SUB_HEAD_CODE,
+    cast(null as varchar(20)) as LIMIT_B2KID,
+    cast(null as date) as LAST_UNFREZ_DATE,
+    cast(null as date) as LAST_FREZ_DATE,
+    cast(null as varchar(20)) as FREZ_CODE,
+    cast(null as decimal(20,4)) as CONTRACTED_ACCOUNT_BALANCE,
+    cast(null as decimal(10,4)) as MAB_LIMIT,
+    cast(null as varchar(10)) as ACCT_OWNERSHIP,
+    cast(null as varchar(10)) as RTL_NONRTL,
+    cast(null as varchar(10)) as DEL_FLG,
+    cast(null as varchar(10)) as STATUS,
+    cast(null as date) as DATE_OF_EXPIRY,
+    cast(null as decimal(20,4)) as CONTRACTED_MAB,
+    cast(null as decimal(20,4)) as ACTUAL_MTDMAB,
+    cast(null as integer) as MAB_DATE,
+    cast(null as integer) as MAB_DAYS_LEFT,
+    cast(null as char(5)) as one_KYC,
+    cast(null as varchar(32)) as Linked_User_ID,
+    cast(null as varchar(9)) as source_feed_identifier
+    into #NRISR
+    from Edw.T0111_SOURCE_CUSTOMER_DETAILS
+    where source_system_code = 150
+    and(DATE_CREATED > COALESCE(null,@INCREE_DATE_3,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_3,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_3,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_3,'1900-01-01'));
+  commit work;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY_NRISR',MAX(DATE_CREATED) from EDW.T0111_SOURCE_CUSTOMER_DETAILS;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY_NRISR',MAX(DATE_LAST_MODIFIED) from EDW.T0111_SOURCE_CUSTOMER_DETAILS;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY_NRISR',MAX(SRC_CREATED_ON) from EDW.T0111_SOURCE_CUSTOMER_DETAILS;
+  insert into RECONP.LIABILITY_PARAM select 'LIABILITY_NRISR',MAX(SRC_MODIFIED_ON) from EDW.T0111_SOURCE_CUSTOMER_DETAILS;
+  commit work;
+  -----------------------------------------------------------------------
+  create hg index IDX_SRC_CODE on EDW.#NRISR(SOURCE_PARTY_ID);
+  commit work;
+  ---------------------------------------------------------------------------
+  update #NRISR as A
+    set A.SCHEME_CODE = B.SCHEME_CODE,
+    SOURCE_ACCOUNT_NBR = B.BENE_ACCOUNT_NBR,
+    a.CUSTOMER_TYPE = b.CUSTOMER_TYPE from
+    Edw.T09122_OFFCHN_REMIT_BENE_DETAILS as B
+    where TRIM(A.SOURCE_PARTY_ID) = TRIM(B.SOURCE_PARTY_ID)
+    and LENGTH(B.BENE_ACCOUNT_NBR) = 12;
+  commit work;
+  select * into #NRISR_NEW from #NRISR where SOURCE_ACCOUNT_NBR is not null;
+  commit work;
+  update #NRISR_NEW as A
+    set BENE_CUST_ID = TRIM(LA.SOURCE_PARTY_ID) from
+    EDW.T09311_LIABILITY_ACCOUNT_ADDON as LA
+    where A.SOURCE_ACCOUNT_NBR = LA.SOURCE_ACCOUNT_NBR
+    and LA.SOURCE_SYSTEM_CODE = 150;
+  commit work;
+  update #NRISR_NEW as A
+    set A.ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE,
+    A.BRANCH_SOL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_TYPE_CODE = B.DOMICILE_CHANNEL_TYPE_CODE,
+    A.SCHEME_CODE = B.SCHEME_CODE from
+    #NRISR_NEW as A,(select * from EDW.T0300_ACCOUNT where SOURCE_SYSTEM_CODE = 150) as B
+    where A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  -------------------------------------------------------------------------------------------
+  update #NRISR_NEW as A
+    set A.ACCOUNT_TYPE
+     = case when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-1' then 'SELF'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-2' then 'JOINT'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-3' then 'EITHER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-4' then 'FORMER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-5' then 'JOINTLY WITH SATWIK ELEC.'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-6' then 'NO.1 JTLY WITH 2 OR 3'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-7' then 'NO.1 OR ANY 2 JOINTLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-8' then 'OPER. BY 1ST AC HLDR ONLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-9' then 'ANY OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-10' then 'ANY TWO JOINTLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-11' then 'KARTA'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-12' then 'LETTER OF AUTHORITY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-13' then 'LATTER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-14' then 'POWER OF ATTORNEY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-15' then 'PPA-RICOH INDIA LIMITED'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-16' then 'PPA SAN MOTORS'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-17' then 'REFER SPECIMEN SIGNATURE'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-18' then 'SECY WITH CHAIRMAN ORTRSR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-21' then 'AUTHORISED SIGNATORIES'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-22' then 'ANY TWO OR SURVIVOR/S'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-23' then 'BOTH OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150-24' then 'JOINT OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '150_39' then 'SINGLE'
+    else 'SINGLE'
+    end from
+    #NRISR_NEW as A,(select * from EDW.T0300_ACCOUNT where SOURCE_SYSTEM_CODE = 150) as B
+    where A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ----------------------------------------------------------------------------------------------
+  update #NRISR_NEW as A
+    set A.FD_MATURITY_DATE = B.MATURITY_DATE,
+    A.FD_MATURITY_AMOUNT = B.MATURITY_AMOUNT,
+    A.FD_DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    #NRISR_NEW as A,EDW.T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.product_type in( 'FD' ) ;
+  commit work;
+  update #NRISR_NEW as A
+    set A.RD_MATURITY_DATE = B.MATURITY_DATE,
+    A.RD_MATURITY_AMOUNT = B.MATURITY_AMOUNT,
+    A.RD_DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    #NRISR_NEW as A,EDW.T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.product_type in( 'RD' ) ;
+  commit work;
+  -------------------------------------------------------------------------------------------------------------------------------------
+  update #NRISR_NEW as A
+    set A.LIMIT_STATUS = B.LIMIT_STATUS,
+    A.LIMIT_EXP_DATE = B.LIMIT_EXP_DATE,
+    A.LIMIT_SANCT_LMT = B.LIMIT_SANCT_LMT from
+    #NRISR_NEW as A,EDW.T0313_ACCOUNT_LIMIT_FINCR as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR;
+  commit work;
+  --------------------------------------------------------------------------------------------------------------
+  update #NRISR_NEW as A
+    set A.TRANSACTING_SOLID = COALESCE(NEW_RULES_SOLID,FINAL_PORTABLE_SOLID) from
+    #NRISR_NEW as A,SIVAB.PBGBWM_TRANSACTING_SOLID_FEB15 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ------------------------------------------------------------------------------------------------------------------
+  update #NRISR_NEW as A
+    set A.MTD = B.BAL31 from
+    #NRISR_NEW as A
+    ,SWAPNAK.MTD_MAB_FULL_BASE_V3 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ------------------------------------------------------------------------------------------------------------
+  select cust_id,source_account_nbr,sal_date,total_amount,RANK() over(partition by source_account_nbr order by sal_date desc) as RANK
+    into #sal_dmt1
+    from NEERAJS.JP_SAL_ACCOUNT_DETAILS;
+  commit work;
+  create hg index idx_custid2 on EDW.#sal_dmt1(source_account_nbr);
+  commit work;
+  update #NRISR_NEW as A
+    set A.SALARY_MONTH1 = b.total_amount from
+    #NRISR_NEW as A
+    ,#sal_dmt1 as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 1;
+  commit work;
+  update #NRISR_NEW as A
+    set A.SALARY_MONTH2 = b.total_amount from
+    #NRISR_NEW as A
+    ,#sal_dmt1 as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 2;
+  commit work;
+  update #NRISR_NEW as A
+    set A.SALARY_MONTH3 = b.total_amount from
+    #NRISR_NEW as A
+    ,#sal_dmt1 as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 3;
+  commit work;
+  ------------------------------------------------------------------
+  /*update #NRISR_NEW as A
+set A.MAB_LIMIT = B.QAB_REQ from
+neerajs.E2E_HH_CNTRCT_MAB_MSTR as B
+where B.STATUS_CODE = A.CUST_STAT_CODE;
+commit work;*/
+  update #NRISR_NEW as A
+    set A.MAB_LIMIT = B.CNTRCT_MAB from
+    neerajs.E2E_CA_CNTRCT_MAB_MSTR as B
+    where B.STATUS_CODE = A.CUST_STAT_CODE;
+  commit work;
+  update #NRISR_NEW as A
+    set A.MAB_LIMIT = 0
+    where MAB_LIMIT is null;
+  commit work;
+  drop table MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR;
+  commit work;
+  select * into MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR1 from #NRISR_NEW;
+  commit work;
+  alter table MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR1 delete
+    BENE_CUST_ID;
+  commit work;
+  select * into MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR from MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR1;
+  commit work;
+  drop table MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR1;
+  commit work;
+  create table #UPS_LIABILITY_ACCT_MASTER_NRISR(
+    SOURCE_ACCOUNT_NBR varchar(50) null,
+    SYB_SOURCE_ACCOUNT_NBR varchar(50) null,
+    SOURCE_SYSTEM_CODE smallint null,
+    SYB_SOURCE_SYSTEM_CODE smallint null,
+    );
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.UCIC_CODE = B.UCIC_CODE,
+    A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID,
+    A.ACCOUNT_NBR = B.ACCOUNT_NBR,
+    A.ACCOUNT_DERIVE_DATE = B.ACCOUNT_DERIVE_DATE,
+    A.ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE,
+    A.ACCOUNT_TYPE = B.ACCOUNT_TYPE,
+    A.PRODUCT_TYPE = B.PRODUCT_TYPE,
+    A.ACCOUNT_SOURCING_CHANNEL = B.ACCOUNT_SOURCING_CHANNEL,
+    A.acc_holder = B.acc_holder,
+    A.BRANCH_SOL_ID = B.BRANCH_SOL_ID,
+    A.CUST_STAT_CODE = B.CUST_STAT_CODE,
+    A.CUST_CONST_CODE = B.CUST_CONST_CODE,
+    A.NRI_FLAG = B.NRI_FLAG,
+    A.DORMANCY_STATUS = B.DORMANCY_STATUS,
+    A.EOD_BALANCE = B.EOD_BALANCE,
+    A.TRANSACTING_SOLID = B.TRANSACTING_SOLID,
+    A.AS_OF_DATE = B.AS_OF_DATE,
+    A.MTD = B.MTD,
+    A.UN_CLR_BAL_AMT = B.UN_CLR_BAL_AMT,
+    A.CLR_BAL_AMT = B.CLR_BAL_AMT,
+    A.MAB_MONTH1 = B.MAB_MONTH1,
+    A.MAB_MONTH2 = B.MAB_MONTH2,
+    A.MAB_MONTH3 = B.MAB_MONTH3,
+    A.MAB_NOT_MET = B.MAB_NOT_MET,
+    A.ELB_MONTH1 = B.ELB_MONTH1,
+    A.ELB_MONTH2 = B.ELB_MONTH2,
+    A.ELB_MONTH3 = B.ELB_MONTH3,
+    A.AQB_MONTH1 = B.AQB_MONTH1,
+    A.AQB_MONTH2 = B.AQB_MONTH2,
+    A.AQB_MONTH3 = B.AQB_MONTH3,
+    A.SALARY_MONTH1 = B.SALARY_MONTH1,
+    A.SALARY_MONTH2 = B.SALARY_MONTH2,
+    A.SALARY_MONTH3 = B.SALARY_MONTH3,
+    A.DOMICILE_CHANNEL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_TYPE_CODE = B.DOMICILE_CHANNEL_TYPE_CODE,
+    A.SCHEME_CODE = B.SCHEME_CODE,
+    A.FD_MATURITY_DATE = B.FD_MATURITY_DATE,
+    A.FD_MATURITY_AMOUNT = B.FD_MATURITY_AMOUNT,
+    A.FD_DEPOSIT_AMOUNT = B.FD_DEPOSIT_AMOUNT,
+    A.RD_MATURITY_DATE = B.RD_MATURITY_DATE,
+    A.RD_MATURITY_AMOUNT = B.RD_MATURITY_AMOUNT,
+    A.RD_DEPOSIT_AMOUNT = B.RD_DEPOSIT_AMOUNT,
+    A.IWISH_MATURITY_DATE = B.IWISH_MATURITY_DATE,
+    A.IWISH_MATURITY_AMOUNT = B.IWISH_MATURITY_AMOUNT,
+    A.IWISH_DEPOSIT_AMOUNT = B.IWISH_DEPOSIT_AMOUNT,
+    A.LIMIT_STATUS = B.LIMIT_STATUS,
+    A.LIMIT_EXP_DATE = B.LIMIT_EXP_DATE,
+    A.LIMIT_SANCT_LMT = B.LIMIT_SANCT_LMT,
+    A.CUSTOMER_TYPE = B.CUSTOMER_TYPE,
+    A.GL_SUB_HEAD_CODE = B.GL_SUB_HEAD_CODE,
+    A.LIMIT_B2KID = B.LIMIT_B2KID,
+    A.LAST_UNFREZ_DATE = B.LAST_UNFREZ_DATE,
+    A.LAST_FREZ_DATE = B.LAST_FREZ_DATE,
+    A.FREZ_CODE = B.FREZ_CODE,
+    A.CONTRACTED_ACCOUNT_BALANCE = B.CONTRACTED_ACCOUNT_BALANCE,
+    A.MAB_LIMIT = B.MAB_LIMIT,
+    A.ACCT_OWNERSHIP = B.ACCT_OWNERSHIP,
+    A.RTL_NONRTL = B.RTL_NONRTL,
+    A.DEL_FLG = B.DEL_FLG,
+    A.STATUS = B.STATUS,
+    A.DATE_OF_EXPIRY = B.DATE_OF_EXPIRY,
+    A.CONTRACTED_MAB = B.CONTRACTED_MAB,
+    A.ACTUAL_MTDMAB = B.ACTUAL_MTDMAB,
+    A.MAB_DATE = B.MAB_DATE,
+    A.MAB_DAYS_LEFT = B.MAB_DAYS_LEFT,
+    A.ONE_KYC = B.ONE_KYC,
+    A.Linked_User_ID = B.Linked_User_ID,
+    A.source_feed_identifier = B.source_feed_identifier from
+    MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into #UPS_LIABILITY_ACCT_MASTER_NRISR
+    select A.SOURCE_ACCOUNT_NBR,
+      B.SOURCE_ACCOUNT_NBR as SYB_SOURCE_ACCOUNT_NBR,
+      A.SOURCE_SYSTEM_CODE,
+      B.SOURCE_SYSTEM_CODE as SYB_SOURCE_SYSTEM_CODE
+      from MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR as A left outer join MCCM.LIABILITY_ACCT_MASTER as B
+        on A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+        and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into MCCM.LIABILITY_ACCT_MASTER
+    select distinct A.*
+      from MCCM.LIABILITY_ACCT_MASTER_TEMP_NRISR as A,#UPS_LIABILITY_ACCT_MASTER_NRISR as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+      and B.SYB_SOURCE_ACCOUNT_NBR is null
+      and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+      and B.SYB_SOURCE_SYSTEM_CODE is null;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.EOD_BALANCE = B.TRAN_DATE_BAL from
+    MCCM.LIABILITY_ACCT_MASTER as A,EDW.D03056_EOD_ACC_BAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.FORACID
+    and B.END_EOD_DATE = '2099-12-31';
+  commit work;
+  ------------------------------------------------------------------------------------------------
+  set temporary option noexec = 'ON';
+  if DAY(GETDATE()) = 1 then
+    begin
+      declare MAB_DATE1 date;
+      declare MAB_DATE2 date;
+      declare MAB_DATE3 date;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into MAB_DATE1;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),MAB_DATE1,112)+'01'),112))) into MAB_DATE2;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),MAB_DATE2,112)+'01'),112))) into MAB_DATE3;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.MAB_MONTH1 = B.MONTHLY_AVG_BAL from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from EDW.T0305_ACCOUNT_SUMMARY_DERIVE where ACCOUNT_SUMMARY_DATE = MAB_DATE1) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = MAB_DATE1
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.MAB_MONTH2 = B.MONTHLY_AVG_BAL from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from EDW.T0305_ACCOUNT_SUMMARY_DERIVE where ACCOUNT_SUMMARY_DATE = MAB_DATE2) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = MAB_DATE2
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.MAB_MONTH3 = B.MONTHLY_AVG_BAL from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from EDW.T0305_ACCOUNT_SUMMARY_DERIVE where ACCOUNT_SUMMARY_DATE = MAB_DATE3) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = MAB_DATE3
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work
+    end end if;
+  --------------------------------------------------------------------------------------------------------
+  set temporary option noexec = 'ON';
+  if DAY(GETDATE()) = 1 then
+    begin
+      declare ELB_DATE1 date;
+      declare ELB_DATE2 date;
+      declare ELB_DATE3 date;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into ELB_DATE1;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),ELB_DATE1,112)+'01'),112))) into ELB_DATE2;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),ELB_DATE2,112)+'01'),112))) into ELB_DATE3;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.ELB_MONTH1 = B.ENDING_LEDGER_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from EDW.T0305_ACCOUNT_SUMMARY_DERIVE where ACCOUNT_SUMMARY_DATE = ELB_DATE1) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = ELB_DATE1
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.ELB_MONTH2 = B.ENDING_LEDGER_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from EDW.T0305_ACCOUNT_SUMMARY_DERIVE where ACCOUNT_SUMMARY_DATE = ELB_DATE2) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = ELB_DATE2
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.ELB_MONTH3 = B.ENDING_LEDGER_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from EDW.T0305_ACCOUNT_SUMMARY_DERIVE where ACCOUNT_SUMMARY_DATE = ELB_DATE3) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = ELB_DATE3
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work
+    end end if;
+  --------------------------------------------------------------------------------
+  ---select AQB_DATE3
+  set temporary option noexec = 'ON';
+  if DAY(GETDATE()) = 1 then
+    begin
+      /*create variable AQB_DTE1 date;
+create variable AQB_DTE2 date;
+create variable AQB_DTE3 date;*/
+      declare AQB_DTE1 date;
+      declare AQB_DTE2 date;
+      declare AQB_DTE3 date;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into AQB_DTE1;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),AQB_DTE1,112)+'01'),112))) into AQB_DTE2;
+      select date(dateadd(dd,-1,convert(datetime,(convert(char(6),AQB_DTE2,112)+'01'),112))) into AQB_DTE3;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.AQB_MONTH1 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from edw.T03051_AVERAGE_QTRLY_BAL where ACCOUNT_SUMMARY_DATE = AQB_DTE1) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = AQB_DTE1
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.AQB_MONTH2 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from edw.T03051_AVERAGE_QTRLY_BAL where ACCOUNT_SUMMARY_DATE = AQB_DTE2) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = AQB_DTE2
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work;
+      update MCCM.LIABILITY_ACCT_MASTER as A
+        set A.AQB_MONTH3 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+        MCCM.LIABILITY_ACCT_MASTER as A,(select * from edw.T03051_AVERAGE_QTRLY_BAL where ACCOUNT_SUMMARY_DATE = AQB_DTE3) as B
+        where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+        and ACCOUNT_SUMMARY_DATE = AQB_DTE3
+        and B.SOURCE_SYSTEM_CODE = 150;
+      commit work
+    end end if;
+  commit work;
+  /**************LIABILITY**********M2I********************************/
+  select distinct
+    RR.SOURCE_CUSTID as M2I_CUST_ID,
+    UPPER(SC.EADDRESS) as EMAIL_ID,
+    EX.LOGIN_ID,
+    RR.TRACKING_NBR,
+    SC.instanceid,
+    RP.FINAL_PROCESS_DATE,
+    SC.PARTY_START_DATE as M2I_REG_DATE,
+    RR.REMITTANCE_PRODUCT,
+    RR.REMITTER_TYPE,
+    RR.REQUEST_STATUS,
+    EX.CUSTOMER_CATEGORY,
+    RP.SOURCE_CURRENCY,
+    RP.CONVERT_AMOUNT,
+    RR.REMITT_PURPOSE,
+    RP.SWIFT_AMOUNT,
+    RD.PAYER_BANK,
+    RD.PAYER_BANK_CITY,
+    RP.DESTINATION_CURRENCY,
+    RR.SOURCE_BENEFICIARY_ID,
+    RD.PAYEE_ACCOUNT_NBR,
+    EX.RESIDENT_COUNTRY,
+    RR.REMITTER_COUNTRY,
+    RP.BASE_RATE,
+    RP.COMMISSION,
+    RP.CUSTOMER_RATE,
+    BE.STATE,
+    BE.PINCODE,
+    BE.PERBENE_ID as BENE_ID,
+    BE.STATUS as BENE_ACCOUNT_STATUS,
+    EA.ACHACNID,
+    ACH.ROUTING_NBR,
+    ACH.BANK_ACCOUNT_NBR,
+    ACH.ACCOUNT_TYPE,
+    ACH.ACCOUNT_STATUS,
+    ACH.ACCOUNT_REGISTER_DATE,
+    ACH.ROUTING_DESCRIPTION,
+    (((RP.BASE_RATE-RP.CUSTOMER_RATE)*RP.SWIFT_AMOUNT)+RP.COMMISSION) as REVENUE,
+    (case when M2I_REG_DATE >= '2015-04-01' then 'NCA' else 'ERV' end) as FLAG_CUST,
+    (case when RD.PAYMENT_MODE in( 'Demand Draft','Direct Credit ICICI A/c' ) then 'ICICI' else 'NON-ICICI' end) as BENE_STATUS,
+    (SUBSTR(DATEFORMAT(RP.FINAL_PROCESS_DATE,'DDMMMYY'),3,3) || ' ' || SUBSTR(DATEFORMAT(RP.FINAL_PROCESS_DATE,'DDMMMYY'),6,2)) as MONTH,
+    ---(CASE WHEN SUBSTR(MONTH,1,3) IN ('JAN','FEB','MAR') THEN ('FY' || REVERSE(SUBSTR(REVERSE(MONTH),1,2))) ELSE ('FY'|| CAST(CAST(REVERSE(SUBSTR(REVERSE(MONTH),1,2)) AS INT)+1 AS VARCHAR(2))) END)FY,
+    (case when SUBSTR(MONTH,1,3) in( 'JAN','FEB','MAR' ) then('FY' || SUBSTR(MONTH,5,6)) else('FY' || cast(cast(SUBSTR(MONTH,5,6) as integer)+1 as varchar(2))) end) as FY
+    ---DROP TABLE
+    into #M2I_2
+    from EDW.T095401_REMITTANCE_REQUEST_EVENT as RR
+      ,EDW.T095402_REMITTANCE_PROCESS_EVENT as RP
+      ,EDW.T095403_REMITTANCE_DISBURSE_EVENT as RD
+      ,EDW.T0111_SOURCE_CUSTOMER_DETAILS_M2I as SC
+      ,EDW.T01401_M2I_CUST_EXTENDED_DETAILS as EX
+      ,EDW.B0540_EVENT_ASSOCIATION as EA
+      ,EDW.T0300_ACCOUNT as A
+      ,EDW.T093401_REMITTANCE_ACH_ACCOUNT as ACH
+      ,(select PERBENE_ID,STATE,PINCODE,STATUS
+        from EDW.M014002_PERSONAL_BENEFICIARY union all
+      select REGBENE_ID as PERBENE_ID,
+        STATE,PINCODE,STATUS
+        from EDW.M014003_REGISTERED_BENEFICIARY) as BE
+    where RP.SWIFT_TRACK_NO = RR.TRACKING_NBR
+    and BE.PERBENE_ID = RR.SOURCE_BENEFICIARY_ID
+    and RR.EVENT_ID = EA.EVENT_ID
+    and A.ACCOUNT_NBR = ACH.ACCOUNT_NBR
+    and cast(EA.ACHACNID as varchar(200)) = A.SOURCE_ACCOUNT_NBR
+    and RR.EVENT_ID = RD.EVENT_ID
+    and RR.SOURCE_CUSTID = SC.SOURCE_PARTY_ID
+    and TRIM(SC.SOURCE_PARTY_ID) = TRIM(EX.SOURCE_CUSTOMER_ID)
+    and SC.SOURCE_SYSTEM_CODE = 40
+    and A.SOURCE_SYSTEM_CODE = 40
+    and RP.SWIFT_STATUS not in( 'REJECTED','CHQ_RETURNED' ) 
+    and(SC.instanceid = 1664516100 or SC.instanceid is null)
+    order by EMAIL_ID asc,RP.FINAL_PROCESS_DATE desc; --10478154 
+  commit work;
+  select cast(null as varchar(20)) as UCIC_CODE,
+    cast(null as varchar(20)) as BENE_CUST_ID,
+    cast(null as integer) as SOURCE_SYSTEM_CODE,
+    A.PAYEE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+    cast(null as integer) as ACCOUNT_NBR,
+    cast(null as date) as ACCOUNT_DERIVE_DATE,
+    cast(null as date) as ACCOUNT_CLOSE_DATE,
+    cast(null as varchar(25)) as ACCOUNT_TYPE,
+    cast(null as varchar(20)) as PRODUCT_TYPE,
+    cast(null as varchar(100)) as ACCOUNT_SOURCING_CHANNEL,
+    cast(null as varchar(10)) as acc_holder,
+    cast(null as varchar(20)) as BRANCH_SOL_ID,
+    cast(null as varchar(20)) as CUST_STAT_CODE,
+    cast(null as varchar(20)) as CUST_CONST_CODE,
+    cast(null as varchar(10)) as NRI_FLAG,
+    cast(null as varchar(10)) as DORMANCY_STATUS,
+    cast(null as decimal(25,4)) as EOD_BALANCE,
+    cast(null as varchar(10)) as TRANSACTING_SOLID,
+    DATE(GETDATE()) as AS_OF_DATE,
+    cast(null as decimal(22,4)) as MTD,
+    cast(null as decimal(22,4)) as UN_CLR_BAL_AMT,
+    cast(null as decimal(22,4)) as CLR_BAL_AMT,
+    cast(null as decimal(18,2)) as MAB_MONTH1,
+    cast(null as decimal(18,2)) as MAB_MONTH2,
+    cast(null as decimal(18,2)) as MAB_MONTH3,
+    cast(null as char(5)) as MAB_NOT_MET,
+    cast(null as decimal(18,2)) as ELB_MONTH1,
+    cast(null as decimal(18,2)) as ELB_MONTH2,
+    cast(null as decimal(18,2)) as ELB_MONTH3,
+    cast(null as decimal(18,2)) as AQB_MONTH1,
+    cast(null as decimal(18,2)) as AQB_MONTH2,
+    cast(null as decimal(18,2)) as AQB_MONTH3,
+    cast(null as decimal(18,2)) as SALARY_MONTH1,
+    cast(null as decimal(18,2)) as SALARY_MONTH2,
+    cast(null as decimal(18,2)) as SALARY_MONTH3,
+    cast(null as varchar(20)) as DOMICILE_CHANNEL_ID,
+    cast(null as integer) as DOMICILE_CHANNEL_TYPE_CODE,
+    cast(null as varchar(20)) as SCHEME_CODE,
+    cast(null as date) as FD_MATURITY_DATE,
+    cast(null as decimal(20,4)) as FD_MATURITY_AMOUNT,
+    cast(null as decimal(20,4)) as FD_DEPOSIT_AMOUNT,
+    cast(null as date) as RD_MATURITY_DATE,
+    cast(null as decimal(20,4)) as RD_MATURITY_AMOUNT,
+    cast(null as decimal(20,4)) as RD_DEPOSIT_AMOUNT,
+    cast(null as date) as IWISH_MATURITY_DATE,
+    cast(null as decimal(20,4)) as IWISH_MATURITY_AMOUNT,
+    cast(null as decimal(20,4)) as IWISH_DEPOSIT_AMOUNT,
+    cast(null as varchar(1)) as LIMIT_STATUS,
+    cast(null as date) as LIMIT_EXP_DATE,
+    cast(null as decimal(20,4)) as LIMIT_SANCT_LMT,
+    cast(null as varchar(20)) as CUSTOMER_TYPE,
+    cast(null as varchar(20)) as GL_SUB_HEAD_CODE,
+    cast(null as varchar(20)) as LIMIT_B2KID,
+    cast(null as date) as LAST_UNFREZ_DATE,
+    cast(null as date) as LAST_FREZ_DATE,
+    cast(null as varchar(20)) as FREZ_CODE,
+    cast(null as decimal(20,4)) as CONTRACTED_ACCOUNT_BALANCE,
+    cast(null as decimal(10,4)) as MAB_LIMIT,
+    cast(null as varchar(10)) as ACCT_OWNERSHIP,
+    cast(null as varchar(10)) as RTL_NONRTL,
+    cast(null as varchar(10)) as DEL_FLG,
+    cast(null as varchar(10)) as STATUS,
+    cast(null as date) as DATE_OF_EXPIRY,
+    cast(null as decimal(20,4)) as CONTRACTED_MAB,
+    cast(null as decimal(20,4)) as ACTUAL_MTDMAB,
+    cast(null as integer) as MAB_DATE,
+    cast(null as integer) as MAB_DAYS_LEFT,
+    cast(null as char(5)) as one_KYC,
+    cast(null as varchar(32)) as Linked_User_ID,
+    cast(null as varchar(9)) as source_feed_identifier
+    --DROP TABLE
+    into #M2I_NEW_1
+    from #M2I_2 as A;
+  commit work;
+  update #M2I_NEW_1 as A
+    set BENE_CUST_ID = TRIM(LA.SOURCE_PARTY_ID),
+    SOURCE_SYSTEM_CODE = LA.SOURCE_SYSTEM_CODE,
+    PRODUCT_TYPE = LA.PRODUCT_TYPE,
+    ACCOUNT_DERIVE_DATE = LA.ACCOUNT_DERIVE_DATE,
+    CUST_STAT_CODE = LA.CUST_STAT_CODE,
+    CUST_CONST_CODE = LA.CUST_CONST,
+    LAST_UNFREZ_DATE = la.LAST_UNFREZ_DATE,
+    LAST_FREZ_DATE = la.LAST_FREZ_DATE,
+    CUSTOMER_TYPE = LA.CUSTOMER_TYPE,
+    GL_SUB_HEAD_CODE = LA.GL_SUB_HEAD_CODE,
+    FREZ_CODE = case when LA.FREZ_CODE = 'T' then 'TOTAL FREEZE'
+    when LA.FREZ_CODE = 'C' then 'CREDIT FREEZE' when LA.FREZ_CODE = 'D' then
+      'DEBIT FREEZE' else 'NOT FROZEN' end,
+    NRI_FLAG = case when LA.Customer_type = 'NRI RETAIL' then 'Y' else 'N' end,
+    DORMANCY_STATUS = (case when LA.dormancy_status in( 'A','Z' ) then
+      'ACTIVE' when LA.dormancy_status = 'I' then 'INACTIVE'
+    when LA.dormancy_status = 'D' then 'DORMANT' end) from
+    EDW.T09311_LIABILITY_ACCOUNT_ADDON as LA
+    where A.SOURCE_ACCOUNT_NBR = LA.SOURCE_ACCOUNT_NBR
+    and LA.SOURCE_SYSTEM_CODE = 30; --7725984 record(s) updated
+  commit work;
+  select * --DROP TABLE
+    into #M2I_NEW
+    from #M2I_NEW_1
+    where BENE_CUST_ID is not null; --100 record(s) affected
+  commit work;
+  update #M2I_NEW as A
+    set A.ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE,
+    A.BRANCH_SOL_ID = B.DOMICILE_CHANNEL_ID,
+    A.DOMICILE_CHANNEL_ID = B.DOMICILE_CHANNEL_ID,
+    A.ACCOUNT_NBR = B.ACCOUNT_NBR,
+    A.DOMICILE_CHANNEL_TYPE_CODE = B.DOMICILE_CHANNEL_TYPE_CODE,
+    A.SCHEME_CODE = B.SCHEME_CODE from
+    #M2I_NEW as A,EDW.T0300_ACCOUNT as B
+    where A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR; --7725984 record(s) updated
+  commit work;
+  update #M2I_NEW as A
+    set UCIC_CODE = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and(B.acc_holder is null or B.acc_holder = 'Main Holder')
+    and A.SOURCE_SYSTEM_CODE = 30
+    and B.SOURCE_SYSTEM_CODE = 30;
+  -------------------------------------------------------------------------------------------
+  update #M2I_NEW as A
+    set A.ACCOUNT_TYPE
+     = case when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-1' then 'SELF'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-2' then 'JOINT'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-3' then 'EITHER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-4' then 'FORMER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-5' then 'JOINTLY WITH SATWIK ELEC.'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-6' then 'NO.1 JTLY WITH 2 OR 3'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-7' then 'NO.1 OR ANY 2 JOINTLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-8' then 'OPER. BY 1ST AC HLDR ONLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-9' then 'ANY OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-10' then 'ANY TWO JOINTLY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-11' then 'KARTA'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-12' then 'LETTER OF AUTHORITY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-13' then 'LATTER OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-14' then 'POWER OF ATTORNEY'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-15' then 'PPA-RICOH INDIA LIMITED'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-16' then 'PPA SAN MOTORS'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-17' then 'REFER SPECIMEN SIGNATURE'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-18' then 'SECY WITH CHAIRMAN ORTRSR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-21' then 'AUTHORISED SIGNATORIES'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-22' then 'ANY TWO OR SURVIVOR/S'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-23' then 'BOTH OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30-24' then 'JOINT OR SURVIVOR'
+    when A.SOURCE_SYSTEM_CODE || '-' || B.ACCOUNT_TYPE_CODE = '30_39' then 'SINGLE' else 'SINGLE' end from
+    #M2I_NEW as A,EDW.T0300_ACCOUNT as B
+    where A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ----------------------------------------------------------------------------------------------
+  update #M2I_NEW as A
+    set A.EOD_BALANCE = B.TRAN_DATE_BAL from
+    #M2I_NEW as A,EDW.D03056_EOD_ACC_BAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.FORACID
+    and B.END_EOD_DATE = '2099-12-31';
+  commit work;
+  ------------------------------------------------------------------------------------------------
+  begin
+    declare MAB_DATE1 date;
+    declare MAB_DATE2 date;
+    declare MAB_DATE3 date;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112)))
+      into MAB_DATE1;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),MAB_DATE1,112)+'01'),112)))
+      into MAB_DATE2;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),MAB_DATE2,112)+'01'),112)))
+      into MAB_DATE3;
+    commit work;
+    update #M2I_NEW as A
+      set A.MAB_MONTH1 = B.MONTHLY_AVG_BAL from
+      #M2I_NEW as A,EDW.EDW.T0305_ACCOUNT_SUMMARY_DERIVE as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = MAB_DATE1
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work;
+    update #M2I_NEW as A
+      set A.MAB_MONTH2 = B.MONTHLY_AVG_BAL from
+      #M2I_NEW as A,EDW.T0305_ACCOUNT_SUMMARY_DERIVE as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = MAB_DATE2
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work;
+    update #M2I_NEW as A
+      set A.MAB_MONTH3 = B.MONTHLY_AVG_BAL from
+      #M2I_NEW as A,EDW.T0305_ACCOUNT_SUMMARY_DERIVE as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = MAB_DATE3
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work
+  end;
+  commit work;
+  --------------------------------------------------------------------------------------------------------
+  begin
+    declare ELB_DATE1 date;
+    declare ELB_DATE2 date;
+    declare ELB_DATE3 date;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112)))
+      into ELB_DATE1;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),ELB_DATE1,112)+'01'),112)))
+      into ELB_DATE2;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),ELB_DATE2,112)+'01'),112)))
+      into ELB_DATE3;
+    commit work;
+    update #M2I_NEW as A
+      set A.ELB_MONTH1 = B.ENDING_LEDGER_BALANCE_AMT from
+      #M2I_NEW as A,EDW.T0305_ACCOUNT_SUMMARY_DERIVE as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = ELB_DATE1
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work;
+    update #M2I_NEW as A
+      set A.ELB_MONTH2 = B.ENDING_LEDGER_BALANCE_AMT from
+      #M2I_NEW as A,EDW.T0305_ACCOUNT_SUMMARY_DERIVE as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = ELB_DATE2
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work;
+    update #M2I_NEW as A
+      set A.ELB_MONTH3 = B.ENDING_LEDGER_BALANCE_AMT from
+      #M2I_NEW as A,EDW.T0305_ACCOUNT_SUMMARY_DERIVE as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = ELB_DATE3
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work
+  end;
+  commit work;
+  --------------------------------------------------------------------------------
+  ---select AQB_DATE3
+  begin
+    /*create variable AQB_DATE1 date;
+create variable AQB_DATE2 date;
+create variable AQB_DATE3 date;*/
+    declare AQB_DATE1 date;
+    declare AQB_DATE2 date;
+    declare AQB_DATE3 date;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112)))
+      into AQB_DATE1;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),AQB_DATE1,112)+'01'),112)))
+      into AQB_DATE2;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),AQB_DATE2,112)+'01'),112)))
+      into AQB_DATE3;
+    commit work;
+    update #M2I_NEW as A
+      set A.AQB_MONTH1 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+      #M2I_NEW as A,edw.T03051_AVERAGE_QTRLY_BAL as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = AQB_DATE1
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work;
+    update #M2I_NEW as A
+      set A.AQB_MONTH2 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+      #M2I_NEW as A,EDW.T03051_AVERAGE_QTRLY_BAL as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = AQB_DATE2
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work;
+    update #M2I_NEW as A
+      set A.AQB_MONTH3 = B.AVERAGE_QUARTERLY_BALANCE_AMT from
+      #M2I_NEW as A,EDW.T03051_AVERAGE_QTRLY_BAL as B
+      where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+      and ACCOUNT_SUMMARY_DATE = AQB_DATE3
+      and B.SOURCE_SYSTEM_CODE = 30;
+    commit work
+  end;
+  commit work;
+  -------------------------------------------------------------------------------------------------------------------------------------
+  update #M2I_NEW as A
+    set A.FD_MATURITY_DATE = B.MATURITY_DATE,
+    A.FD_MATURITY_AMOUNT = B.MATURITY_AMOUNT,
+    A.FD_DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    #M2I_NEW as A,EDW.T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.product_type in( 'FD' ) ;
+  commit work;
+  update #M2I_NEW as A
+    set A.RD_MATURITY_DATE = B.MATURITY_DATE,
+    A.RD_MATURITY_AMOUNT = B.MATURITY_AMOUNT,
+    A.RD_DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    #M2I_NEW as A,EDW.T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.product_type in( 'RD' ) ;
+  commit work;
+  -------------------------------------------------------------------------------------------------------------------------------------
+  update #M2I_NEW as A
+    set A.LIMIT_STATUS = B.LIMIT_STATUS,
+    A.LIMIT_EXP_DATE = B.LIMIT_EXP_DATE,
+    A.LIMIT_SANCT_LMT = B.LIMIT_SANCT_LMT from
+    #M2I_NEW as A,EDW.T0313_ACCOUNT_LIMIT_FINCR as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR;
+  commit work;
+  --------------------------------------------------------------------------------------------------------------
+  update #M2I_NEW as A
+    set A.TRANSACTING_SOLID = COALESCE(NEW_RULES_SOLID,FINAL_PORTABLE_SOLID) from
+    #M2I_NEW as A,SIVAB.PBGBWM_TRANSACTING_SOLID_FEB15 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ------------------------------------------------------------------------------------------------------------------
+  update #M2I_NEW as A
+    set A.MTD = B.BAL27 from
+    #M2I_NEW as A
+    ,SWAPNAK.MTD_MAB_FULL_BASE_V3 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  ------------------------------------------------------------------------------------------------------------
+  select cust_id,source_account_nbr,sal_date,total_amount,RANK() over(partition by source_account_nbr order by sal_date desc) as RANK
+    into #sal_dmt3
+    from NEERAJS.JP_SAL_ACCOUNT_DETAILS;
+  commit work;
+  create hg index idx_custid on EDW.#sal_dmt3(source_account_nbr);
+  commit work;
+  update #M2I_NEW as A
+    set A.SALARY_MONTH1 = b.total_amount from
+    #M2I_NEW as A
+    ,#sal_dmt3 as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 1;
+  commit work;
+  update #M2I_NEW as A
+    set A.SALARY_MONTH2 = b.total_amount from
+    #M2I_NEW as A
+    ,#sal_dmt3 as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 2;
+  commit work;
+  update #M2I_NEW as A
+    set A.SALARY_MONTH3 = b.total_amount from
+    #M2I_NEW as A
+    ,#sal_dmt3 as B
+    where a.source_account_nbr = b.source_account_nbr
+    and b.rank = 3;
+  commit work;
+  ------------------------------------------------------------------
+  /* update #M2I_NEW as A
+set A.MAB_LIMIT = B.QAB_REQ from
+neerajs.E2E_HH_CNTRCT_MAB_MSTR as B
+where B.STATUS_CODE = A.CUST_STAT_CODE;
+commit work;*/
+  update #M2I_NEW as A
+    set A.MAB_LIMIT = B.CNTRCT_MAB from
+    neerajs.E2E_CA_CNTRCT_MAB_MSTR as B
+    where B.STATUS_CODE = A.CUST_STAT_CODE;
+  commit work;
+  update #M2I_NEW as A
+    set A.MAB_LIMIT = 0
+    where MAB_LIMIT is null;
+  commit work;
+  drop table MCCM.LIABILITY_ACCT_MASTER_TEMP_M2I;
+  commit work;
+  select * into MCCM.LIABILITY_ACCT_MASTER_TEMP_M2I from #M2I_NEW;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER_TEMP_M2I
+    set source_system_code = 40;
+  commit work;
+  delete from MCCM.LIABILITY_ACCT_MASTER where SOURCE_SYSTEM_CODE = 40;
+  commit work;
+  insert into MCCM.LIABILITY_ACCT_MASTER select * from MCCM.LIABILITY_ACCT_MASTER_TEMP_M2I;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.ONE_KYC = 'Y' from
+    namratach.accountkycinfo as B
+    where A.SOURCE_ACCOUNT_NBR = B.ACCOUNTID;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.UCIC_CODE = B.UCIC_VALUE,
+    A.ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE from
+    (select UCIC_VALUE,ACCOUNT_CLOSE_DATE,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,SOURCE_PARTY_ID from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE in( 30 ) and SOURCE_ACCOUNT_NBR is not null) as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.UCIC_CODE = B.UCIC_VALUE,
+    A.ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE from
+    (select UCIC_VALUE,ACCOUNT_CLOSE_DATE,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,SOURCE_PARTY_ID from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE in( 75,150,40 ) and SOURCE_ACCOUNT_NBR is not null) as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE <> 30;
+  commit work
+end

@@ -1,0 +1,9 @@
+create procedure EDW.PRIME_ACTIVE_ACCOUNTS_LOAD()
+begin
+  commit work;
+  truncate table reconp.TEMP_PRIME_ACTIVE_ACCOUNTS_N_RAM;
+  commit work;
+  load into table reconp.TEMP_PRIME_ACTIVE_ACCOUNTS_N_RAM( ACCT_NUM '^|^',CARD_NUM '^|^',BLOCK_CODE '^|^',CUST_SEGMENT '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/DC/prime_active_accounts.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/DC/prime_active_accounts.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/DC/prime_active_accounts.out.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work
+end

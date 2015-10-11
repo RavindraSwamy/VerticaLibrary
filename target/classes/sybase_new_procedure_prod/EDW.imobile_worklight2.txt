@@ -1,0 +1,32 @@
+create procedure edw.imobile_worklight2()
+begin
+  set temporary option date_order = 'mdy';
+  load into table EDW.MAIN_IMB_APP_AUDITLOGS( ALOG_ID '|^|',USER_ID '|^|',USER_DEVICEID '|^|',ALOG_CHANNEL '|^|',ALOG_TRAN_OPERATION '|^|',ALOG_MESSAGETYPE '|^|',ALOG_TRANSTARTDATE '|^|',APLOG_STAN '|^|',APLOG_DELIVERY_CHANNEL '|^|',ALOG_TRANSREFNO '|^|',ALOG_TRANDATE '|^|',ALOG_TRANDESC '|^|',ALOG_RETURNCODE '|^|',ALOG_ERROR_CODE '|^|',ALOG_SESSIONID '|^|',ALOG_REMOTEIP '|^|',ALOG_APPVER '|^|',APLOG_REQUEST_DATA '|^|',ALOG_RESPONSE_DATE '|^|',ALOG_USERAGENT '|^|',ALOG_CRDATE '|^|',ALOG_UPDATED '|^|',AMOUNT '|^|',DEVICE_MODEL '\x0A' ) using file
+    '/data_extraction2/imb_app_auditlogs.out' quotes off escapes off preview on message log '/data_extraction2/imb_app_auditlogs.out.msg' row log '/data_extraction2/imb_app_auditlogs.out.row' only log all log delimited by '|^|' notify 100000 with checkpoint on;
+  commit work;
+  truncate table edw.main_IMB_USER_DEVICES;
+  set temporary option date_order = 'mdy';
+  load into table edw.main_IMB_USER_DEVICES( USERD_SEQID '|^|',USERD_USER_ID '|^|',USERD_PREF '|^|',USERD_WLDEVICEID '|^|',USERD_IMEI '|^|',USERD_MACID '|^|',USERD_NOTIFTOKEN '|^|',USERD_OSVER '|^|',USERD_OSTYPE '|^|',USERD_APPVER '|^|',USERD_USERAGENT '|^|',USERD_ACTIVEFLAG '|^|',USERD_BLOCKEDBY '|^|',USERD_BLOCKED_REASON '|^|',USER_BLOCKED_DATE '|^|',USERD_CRDATE '|^|',USERD_UPDATED '|^|',USERD_GCAVALIDATION '|^|',USERD_MODEL '|^|',PBO_USERID '|^|',PBO_CRDATE '|^|',USERD_XID '\x0A' ) using file
+    '/data_extraction2/imb_user_devices.out' quotes off escapes off preview on message log '/data_extraction2/imb_user_devices.out_201505271120.msg' row log '/data_extraction2/imb_user_devices.out_201505271120.row' only log all log delimited by '^|^' notify 100000 with checkpoint on;
+  commit work;
+  truncate table EDW.MAIN_IMB_USERS;
+  set temporary option date_order = 'mdy';
+  load into table EDW.MAIN_IMB_USERS( USER_SEQID '|^|',USER_ID '|^|',USER_FNAME '|^|',USER_LNAME '|^|',USER_MOBNO '|^|',USER_EMAIL '|^|',USER_ACTIVE '|^|',USER_PRIMEAC '|^|',USER_LOGONTIME '|^|',USER_CRDATE '|^|',USER_UPDATED '|^|',USER_BAY_ID '|^|',USER_TYPE '\x0A' ) using file
+    '/data_extraction2/imb_users.out' quotes off escapes off preview on message log '/data_extraction2/imb_users.out_201505271120.msg' row log '/data_extraction2/imb_users.out_201505271120.row' only log all log delimited by '^|^' notify 100000 with checkpoint on;
+  commit work;
+  truncate table EDW.MAIN_IMB_USER_ACTIVATION_ACTIVITY;
+  set temporary option date_order = 'mdy';
+  load into table EDW.MAIN_IMB_USER_ACTIVATION_ACTIVITY( USER_ACTID '|^|',USER_MOBILE '|^|',USER_STEP '|^|',USER_WLDEVICEID '|^|',USER_STEP_RESPONSE '|^|',USER_REG_CRDATE '|^|',USER_REG_UPDATE '|^|',STATUS '|^|',USER_ID '|^|',USER_XID '\x0A' ) using file
+    '/data_extraction2/imb_user_activation_activity.out' quotes off escapes off preview on message log '/data_extraction2/imb_user_activation_activity11.out_201505271120.msg' row log '/data_extraction2/imb_user_activation_activity11.out_201505271120.row' only log all log delimited by '^|^' notify 100000 with checkpoint on;
+  commit work;
+  truncate table EDW.MAIN_IMB_USER_FAVTRANSACTION;
+  set temporary option date_order = 'mdy';
+  load into table EDW.MAIN_IMB_USER_FAVTRANSACTION( UFAV_SEQ '|^|',UFAV_USER_ID '|^|',UFAV_NAME '|^|',UFAV_TRANTYPE '|^|',UFAV_TRANDETAIL '|^|',UFAV_CRDATE '|^|',UFAV_UPDATED '|^|',UFAV_TRANSID '\x0A' ) using file
+    '/data_extraction2/imb_user_favtransaction.out' quotes off escapes off preview on message log '/data_extraction2/imb_user_favtransaction.out_201505271120.msg' row log '/data_extraction2/imb_user_favtransaction.out_201505271120.row' only log all log delimited by '^|^' notify 100000 with checkpoint on;
+  commit work;
+  truncate table EDW.MAIN_IMB_APP_SERVICE_DESCRIPTION;
+  set temporary option date_order = 'mdy';
+  load into table EDW.MAIN_IMB_APP_SERVICE_DESCRIPTION( OPERATIOND '|^|',SERVICE_DESC '\x0A' ) using file
+    '/data_extraction2/imb_app_service_description.out' quotes off escapes off preview on message log '/data_extraction2/imb_app_service_description.out_201505271120.msg' row log '/data_extraction2/imb_app_service_description.out_201505271120.row' only log all log delimited by '^|^' notify 100000 with checkpoint on;
+  commit work
+end

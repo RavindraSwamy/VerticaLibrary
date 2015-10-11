@@ -1,0 +1,667 @@
+create procedure EDW.MASTER_EXCLUDE()
+begin
+  ----------------------------------------------------------------
+  truncate table MCCM.EXCLUDECARD_SK0716;
+  commit work;
+  ----------------------------------------------------------------
+  insert into MCCM.EXCLUDECARD_SK0716
+    ( CARD_NBR,SRC_ACCOUNT_NBR,PARTY_ID ) 
+    select AC.CARD_NBR,
+      PA.SRC_ACCOUNT_NBR,
+      PA.PARTY_ID
+      from EDW.T0330_ACCOUNT_CARD as AC
+        left outer join EDW.T0328_PARTY_ACCOUNT as PA
+        on AC.ACCOUNT_NBR = PA.ACCOUNT_NBR
+        and PA.ACCOUNT_PARTY_END_DATE is null
+        and PA.EXPIRY_FLAG is null
+        ,EDW.T0300_ACCOUNT as A
+        ,EDW.T0220_PRODUCT as PR
+      where AC.ACCOUNT_NBR = A.ACCOUNT_NBR
+      and PR.PRODUCT_NAME in( '133','144','146','202','203','309','316','317','319','328','343','345','530','532','533','943','944','1603','1604','1605','1606','2601','2602','2603','149','150','151','152','156','157','158','159','160','161','163','164','165','166','1661','1662','167','168','169','173','249','250','252','259','260','261','262','263','264','2641','265','266','2661','2662','308','910','912','930','940','941' ) 
+      and A.PRODUCT_ID = PR.PRODUCT_ID
+      and A.SOURCE_SYSTEM_CODE = 20
+      and A.ACCOUNT_CLOSE_DATE is null
+      and not PARTY_ID = any(select PARTY_ID from CAMP.MASTER_EXCLUDE
+        where PARTY_ID is not null
+        and(STAFF = 1 or STAFF_BASE = 1 or EMAIL_ICICI = 1 or NAME_ICICI = 1 or ADDRESS_ICICI = 1
+        or ICICI_EMP = 1));
+  commit work;
+  ----------------------------------------------------------------
+  select ACCOUNT_NBR,
+    COUNT() as CNT
+    into #DUPL_ACCNT_NBRS
+    from EDW.T0328_PARTY_ACCOUNT
+    where SOURCE_SYSTEM_CODE in( 20,30,50,51,52,53 ) 
+    and not PARTY_ID = any(select OLD_PARTY_ID from EDW.T0130_MERGER_HISTORY)
+    and EXPIRY_FLAG is null
+    group by ACCOUNT_NBR
+    having CNT > 1;
+  commit work;
+  ----------------------------------------------------------------
+  select A.*
+    into #FINAL_DUP
+    from EDW.T0328_PARTY_ACCOUNT as A
+      ,#DUPL_ACCNT_NBRS as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and not A.PARTY_ID = any(select OLD_PARTY_ID from EDW.T0130_MERGER_HISTORY);
+  commit work;
+  ----------------------------------------------------------------
+  ------TRUNCATE TABLE QDESK.PARTY_ID_ISSUE; COMMIT;
+  ----------------------------------------------------------------
+  --INSERT INTO QDESK.PARTY_ID_ISSUE
+  --(SRC_ACCOUNT_NBR,
+  --PARTY_ID,
+  --SOURCE_SYSTEM_CODE,
+  --ACCOUNT_NBR)
+  --SELECT
+  --DISTINCT SRC_ACCOUNT_NBR,
+  --PARTY_ID,
+  --SOURCE_SYSTEM_CODE,
+  --ACCOUNT_NBR
+  --FROM #FINAL_DUP; COMMIT;
+  ----------------------------------------------------------------
+  select *
+    into #MASTER_EXCLUDE
+    from CAMP.MASTER_EXCLUDE
+    where 1 = 2;
+  commit work;
+  ----------------------------------------------------------------
+  insert into #MASTER_EXCLUDE
+    ( ACCOUNT_NBR,SOURCE_ACCOUNT_NBR ) 
+    select ACCOUNT_NBR,
+      SOURCE_ACCOUNT_NBR
+      from EDW.T0300_ACCOUNT as A
+      where SOURCE_SYSTEM_CODE in( 20,30,50,51,52,53 ) 
+      and ACCOUNT_CLOSE_DATE is null;
+  commit work;
+  ----------------------------------------------------------------
+  create hg index ACCOUNT on EDW.#MASTER_EXCLUDE(ACCOUNT_NBR);
+  create hg index SRC on EDW.#MASTER_EXCLUDE(SOURCE_ACCOUNT_NBR);
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as MX
+    set PARTY_ID = PA.PARTY_ID from
+    EDW.T0328_PARTY_ACCOUNT as PA
+    where MX.ACCOUNT_NBR = PA.ACCOUNT_NBR
+    and PA.SOURCE_SYSTEM_CODE in( 20,30,50,51,52,53 ) 
+    and not PA.PARTY_ID = any(select OLD_PARTY_ID from EDW.T0130_MERGER_HISTORY)
+    and PA.EXPIRY_FLAG is null;
+  commit work;
+  ----------------------------------------------------------------
+  insert into #MASTER_EXCLUDE
+    ( PARTY_ID ) 
+    select PARTY_ID
+      from EDW.T0328_PARTY_ACCOUNT
+      where not PARTY_ID = any(select PARTY_ID from #MASTER_EXCLUDE where PARTY_ID is not null)
+      and SOURCE_SYSTEM_CODE in( 20,30,50,51,52,53 ) 
+      and PARTY_ID is not null;
+  commit work;
+  ----------------------------------------------------------------DNC UPDATION
+  update #MASTER_EXCLUDE as A
+    set DNC = 1 from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR;
+  commit work;
+  ---------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set DNC = 1 from
+    CAMP.NO_CALL_LIST_KS0616 as B
+    where A.PARTY_ID = B.PARTY_ID
+    and A.DNC is null;
+  commit work;
+  ---------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set DNC = 1 from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SRC_ACCOUNT_NBR
+    and A.DNC is null;
+  commit work;
+  ---------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set DNC = 1 from
+    CAMP.DO_NOT_MAIL_NDW_KS0616 as B
+    where A.PARTY_ID = B.PARTY_ID
+    and A.DNC is null;
+  commit work;
+  ---------------------------------------------------------------HNI / Snapshot
+  --UPDATE #MASTER_EXCLUDE A SET
+  --HNI = 1
+  --FROM CAMP.SNAPSHOT_SANJAY_GUPTA_PARABP_20110124 B
+  --WHERE A.ACCOUNT_NBR=B.ACCOUNT_NBR AND
+  --B.SEGMENT IN ('WEALTH','GPCD','IPB');COMMIT;
+  ---------------------------------------------------------------HNI / Addon Party ID
+  update #MASTER_EXCLUDE as MX
+    set HNI = 1 from
+    EDW.T0328_PARTY_ACCOUNT as PA
+    ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as AD
+    ,EDW.T09310_LIABILITY_CUSTOMER_ADDON as AA
+    where MX.PARTY_ID = PA.PARTY_ID
+    and PA.ACCOUNT_NBR = AD.ACCOUNT_NBR
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and TRIM(AD.SOURCE_PARTY_ID) = TRIM(AA.SOURCE_PARTY_ID)
+    and AA.CUST_NRE_FLG = 'N'
+    and(TRIM(AA.CUST_STAT_CODE) like 'HNI%'
+    or TRIM(AA.CUST_STAT_CODE) like 'HNW%'
+    or TRIM(AA.CUST_STAT_CODE) like 'KIDEP%')
+    and MX.HNI is null;
+  commit work;
+  ---------------------------------------------------------------HNI / Addon Account Number
+  update #MASTER_EXCLUDE as MX
+    set HNI = 1 from
+    EDW.T0328_PARTY_ACCOUNT as PA
+    ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as AD
+    ,EDW.T09310_LIABILITY_CUSTOMER_ADDON as AA
+    where MX.ACCOUNT_NBR = PA.ACCOUNT_NBR
+    and PA.ACCOUNT_NBR = AD.ACCOUNT_NBR
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and TRIM(AD.SOURCE_PARTY_ID) = TRIM(AA.SOURCE_PARTY_ID)
+    and AA.CUST_NRE_FLG = 'N'
+    and(TRIM(AA.CUST_STAT_CODE) like 'HNI%'
+    or TRIM(AA.CUST_STAT_CODE) like 'HNW%'
+    or TRIM(AA.CUST_STAT_CODE) like 'KIDEP%')
+    and MX.HNI is null;
+  commit work;
+  ---------------------------------------------------------------NRI / Snapshot
+  ---UPDATE #MASTER_EXCLUDE A SET
+  --NRI = 1
+  --FROM CAMP.SNAPSHOT_SANJAY_GUPTA_PARABP_20110124 B
+  --WHERE A.ACCOUNT_NBR=B.ACCOUNT_NBR AND
+  --B.SEGMENT = 'NRI RET'; COMMIT;
+  ---------------------------------------------------------------NRI / Addon Party ID
+  update #MASTER_EXCLUDE as MX
+    set NRI = 1 from
+    EDW.T0328_PARTY_ACCOUNT as PA
+    ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as AD
+    ,EDW.T09310_LIABILITY_CUSTOMER_ADDON as AA
+    where MX.PARTY_ID = PA.PARTY_ID
+    and PA.ACCOUNT_NBR = AD.ACCOUNT_NBR
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and TRIM(AD.SOURCE_PARTY_ID) = TRIM(AA.SOURCE_PARTY_ID)
+    and AA.CUST_NRE_FLG = 'Y'
+    and MX.NRI is null;
+  commit work;
+  ---------------------------------------------------------------NRI / Addon Account Number
+  update #MASTER_EXCLUDE as MX
+    set NRI = 1 from
+    EDW.T0328_PARTY_ACCOUNT as PA
+    ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as AD
+    ,EDW.T09310_LIABILITY_CUSTOMER_ADDON as AA
+    where MX.ACCOUNT_NBR = PA.ACCOUNT_NBR
+    and PA.ACCOUNT_NBR = AD.ACCOUNT_NBR
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and TRIM(AD.SOURCE_PARTY_ID) = TRIM(AA.SOURCE_PARTY_ID)
+    and AA.CUST_NRE_FLG = 'Y'
+    and MX.NRI is null;
+  commit work;
+  ---------------------------------------------------------------Staff / Snapshot
+  --UPDATE #MASTER_EXCLUDE A SET
+  --STAFF = 1
+  --FROM CAMP.SNAPSHOT_SANJAY_GUPTA_PARABP_20110124 B
+  --WHERE A.ACCOUNT_NBR=B.ACCOUNT_NBR AND
+  --B.SEGMENT = 'ICICI';COMMIT;
+  ---------------------------------------------------------------Staff / Addon Party ID
+  update #MASTER_EXCLUDE as MX
+    set STAFF = 1 from
+    EDW.T0328_PARTY_ACCOUNT as PA
+    ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as AD
+    ,EDW.T09310_LIABILITY_CUSTOMER_ADDON as AA
+    where MX.PARTY_ID = PA.PARTY_ID
+    and PA.ACCOUNT_NBR = AD.ACCOUNT_NBR
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and TRIM(AD.SOURCE_PARTY_ID) = TRIM(AA.SOURCE_PARTY_ID)
+    and(TRIM(AA.CUST_STAT_CODE) like 'STF%'
+    or TRIM(AA.CUST_STAT_CODE) like '1STF%'
+    or TRIM(AA.CUST_STAT_CODE) like '2STF%'
+    or TRIM(AA.CUST_STAT_CODE) like '3STF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'XSTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'ESTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'XFSTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'PSTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'PICIC%'
+    or TRIM(AA.CUST_STAT_CODE) like 'XFSAF%'
+    or TRIM(AA.CUST_STAT_CODE) like '1ICIC%'
+    or TRIM(AA.CUST_STAT_CODE) like '2ICIC%')
+    and MX.STAFF is null;
+  commit work;
+  ---------------------------------------------------------------Staff / Addon Account Number
+  update #MASTER_EXCLUDE as MX
+    set STAFF = 1 from
+    EDW.T0328_PARTY_ACCOUNT as PA
+    ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as AD
+    ,EDW.T09310_LIABILITY_CUSTOMER_ADDON as AA
+    where MX.ACCOUNT_NBR = PA.ACCOUNT_NBR
+    and PA.ACCOUNT_NBR = AD.ACCOUNT_NBR
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and TRIM(AD.SOURCE_PARTY_ID) = TRIM(AA.SOURCE_PARTY_ID)
+    and(TRIM(AA.CUST_STAT_CODE) like 'STF%'
+    or TRIM(AA.CUST_STAT_CODE) like '1STF%'
+    or TRIM(AA.CUST_STAT_CODE) like '2STF%'
+    or TRIM(AA.CUST_STAT_CODE) like '3STF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'XSTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'ESTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'XFSTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'PSTF%'
+    or TRIM(AA.CUST_STAT_CODE) like 'PICIC%'
+    or TRIM(AA.CUST_STAT_CODE) like 'XFSAF%'
+    or TRIM(AA.CUST_STAT_CODE) like '1ICIC%'
+    or TRIM(AA.CUST_STAT_CODE) like '2ICIC%')
+    and MX.STAFF is null;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as PAD
+    set ICICI_EMP = 1 from
+    EDW.T0101_INDIVIDUAL as I
+    where PAD.PARTY_ID = I.INDIVIDUAL_PARTY_ID
+    and I.ICICI_EMP_FLG = 'Y'
+    and PAD.PARTY_ID is not null;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as M
+    set STAFF_BASE = 1 from
+    CAMP.STAFF_BASE_AV1010 as SBA
+    where M.PARTY_ID = SBA.PARTY_ID;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as M
+    set STAFF_BASE = 1 from
+    EDW.T0300_ACCOUNT as A
+    ,CAMP.STAFF_BASE_AV1010 as SBA
+    where M.ACCOUNT_NBR = A.ACCOUNT_NBR
+    and A.SOURCE_ACCOUNT_NBR = SBA.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = 30
+    and STAFF_BASE is null;
+  commit work;
+  ----------------------------------------------------------------NDNC New Query
+  select PARTY_ID,PHONE_01 as PHONE_NBR into #PHONE_BASE_NDNC from QDESK.Q010_INCR_PHONE where PHONE_01 is not null union
+  select PARTY_ID,PHONE_02 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_02 is not null union
+  select PARTY_ID,PHONE_03 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_03 is not null union
+  select PARTY_ID,PHONE_04 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_04 is not null union
+  select PARTY_ID,PHONE_05 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_05 is not null union
+  select PARTY_ID,PHONE_06 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_06 is not null union
+  select PARTY_ID,PHONE_07 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_07 is not null union
+  select PARTY_ID,PHONE_08 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_08 is not null union
+  select PARTY_ID,PHONE_09 as PHONE_NBR from QDESK.Q010_INCR_PHONE where PHONE_09 is not null union
+  select PARTY_ID,MOBILE_PHONE as PHONE_NBR from QDESK.Q010_INCR_PHONE where MOBILE_PHONE is not null;
+  commit work;
+  ----------------------------------------------------------------
+  update #PHONE_BASE_NDNC
+    set PHONE_NBR = RIGHT(TRIM(PHONE_NBR),10)
+    where PHONE_NBR is not null;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set NDNC = 1 from
+    #PHONE_BASE_NDNC as B
+    where A.PARTY_ID = B.PARTY_ID
+    and B.PHONE_NBR = any(select PHONE_NUMBER from CAMP.TRAI_NDNC_AMITKUMAR_PARABP_20110226
+      where PHONE_NUMBER is not null);
+  commit work;
+  ----------------------------------------------------------------Merger History
+  update #MASTER_EXCLUDE as A
+    set MERGER = 1 from
+    EDW.T0130_MERGER_HISTORY as MH
+    where A.PARTY_ID = MH.OLD_PARTY_ID;
+  commit work;
+  ----------------------------------------------------------------Exclude Cards
+  update #MASTER_EXCLUDE as A
+    set EXCLUDE_CARD = 1 from
+    CAMP.EXCLUDECARD_SK0716 as MH
+    where A.PARTY_ID = MH.PARTY_ID
+    and A.PARTY_ID is not null;
+  commit work;
+  ---------------------------------------------------------------- 
+  update #MASTER_EXCLUDE as A
+    set EXCLUDE_CARD = 1 from
+    EDW.T0328_PARTY_ACCOUNT as MH
+    where A.PARTY_ID = MH.PARTY_ID
+    and EXPIRY_FLAG is not null
+    and EXCLUDE_CARD is null;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set EXCLUDE_CARD = 1 from
+    EDW.T0330_ACCOUNT_CARD as AC
+    ,CAMP.EXCLUDECARD_SK0716 as MH
+    where A.ACCOUNT_NBR = AC.ACCOUNT_NBR
+    and AC.CARD_NBR = MH.CARD_NBR
+    and A.EXCLUDE_CARD is null;
+  commit work;
+  ----------------------------------------------------------------Party ID Issues
+  ---UPDATE #MASTER_EXCLUDE A SET 
+  ---PARTY_ID_ISSUE =1
+  ---FROM QDESK.PARTY_ID_ISSUE MH
+  ---WHERE A.PARTY_ID  = MH.PARTY_ID AND
+  ---A.PARTY_ID IS NOT NULL;COMMIT;
+  ----------------------------------------------------------------Name ICICI
+  update #MASTER_EXCLUDE as A
+    set NAME_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 20
+    and SCD.SOURCE_SYSTEM_CODE = 20
+    and(LENGTH(TRIM(SCD.FULL_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.FULL_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.FIRST_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.FIRST_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MIDDLE_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.MIDDLE_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.LAST_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.LAST_NAME)),'ICICI','')) > 0);
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set NAME_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and SCD.SOURCE_SYSTEM_CODE = 30
+    and(LENGTH(TRIM(SCD.FULL_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.FULL_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.FIRST_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.FIRST_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MIDDLE_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.MIDDLE_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.LAST_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.LAST_NAME)),'ICICI','')) > 0)
+    and A.NAME_ICICI is null;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set NAME_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(cast(SCD.SOURCE_PARTY_ID as varchar(30)))
+    and PA.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and SCD.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and A.NAME_ICICI is null
+    and(LENGTH(TRIM(SCD.FULL_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.FULL_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.FIRST_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.FIRST_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MIDDLE_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.MIDDLE_NAME)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.LAST_NAME))-LENGTH(REPLACE(UPPER(TRIM(SCD.LAST_NAME)),'ICICI','')) > 0)
+    and A.NAME_ICICI is null;
+  commit work;
+  ----------------------------------------------------------------Address ICICI
+  update #MASTER_EXCLUDE as A
+    set ADDRESS_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and SCD.SOURCE_SYSTEM_CODE = 30
+    and(LENGTH(TRIM(SCD.BUS_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE4)),'ICICI','')) > 0);
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set ADDRESS_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 20
+    and SCD.SOURCE_SYSTEM_CODE = 20
+    and(LENGTH(TRIM(SCD.BUS_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE4)),'ICICI','')) > 0)
+    and A.ADDRESS_ICICI is null;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set ADDRESS_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(cast(SCD.SOURCE_PARTY_ID as varchar(30)))
+    and PA.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and SCD.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and A.ADDRESS_ICICI is null
+    and(LENGTH(TRIM(SCD.BUS_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.BUS_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.BUS_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.PER_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.PER_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.MAIL_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.MAIL_ADDRESS_LINE4)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE1))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE1)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE2))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE2)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE3))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE3)),'ICICI','')) > 0
+    or LENGTH(TRIM(SCD.CUR_ADDRESS_LINE4))-LENGTH(REPLACE(UPPER(TRIM(SCD.CUR_ADDRESS_LINE4)),'ICICI','')) > 0)
+    and A.ADDRESS_ICICI is null;
+  commit work;
+  ----------------------------------------------------------------Email ICICI
+  update #MASTER_EXCLUDE as A
+    set EMAIL_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 20
+    and SCD.SOURCE_SYSTEM_CODE = 20
+    and LENGTH(TRIM(SCD.EADDRESS))-LENGTH(REPLACE(UPPER(TRIM(SCD.EADDRESS)),'ICICI','')) > 0;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set EMAIL_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and SCD.SOURCE_SYSTEM_CODE = 30
+    and LENGTH(TRIM(SCD.EADDRESS))-LENGTH(REPLACE(UPPER(TRIM(SCD.EADDRESS)),'ICICI','')) > 0;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set EMAIL_ICICI = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(cast(SCD.SOURCE_PARTY_ID as varchar(30)))
+    and PA.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and SCD.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and A.EMAIL_ICICI is null
+    and LENGTH(TRIM(SCD.EADDRESS))-LENGTH(REPLACE(UPPER(TRIM(SCD.EADDRESS)),'ICICI','')) > 0;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set EMAIL_ICICI = 1 from
+    EDW.T09612_EMAIL_MOBILE as EM
+    where A.ACCOUNT_NBR = EM.ACCOUNT_NBR
+    and EM.SOURCE_SYSTEM_CODE in( 20,30 ) 
+    and A.EMAIL_ICICI is null
+    and(LENGTH(TRIM(EM.EMAIL_ADDRESS))-LENGTH(REPLACE(UPPER(TRIM(EM.EMAIL_ADDRESS)),'ICICI','')) > 0);
+  commit work;
+  ----------------------------------------------------------------Advocate & Lawyers
+  update #MASTER_EXCLUDE as A
+    set LAWYER = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and SCD.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and(SCD.PROF_QUALIFICATION like '%ADVOCAT%'
+    or SCD.PROF_QUALIFICATION like '%LAWYER%'
+    or SCD.EMPLOYMENT_TYPE like '%ADVOCAT%'
+    or SCD.EMPLOYMENT_TYPE like '%LAWYER%'
+    or SCD.PROFESSION like '%ADVOCAT%'
+    or SCD.PROFESSION like '%LAWYER%');
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set LAWYER = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 20
+    and SCD.SOURCE_SYSTEM_CODE = 20
+    and(SCD.PROF_QUALIFICATION like '%ADVOCAT%'
+    or SCD.PROF_QUALIFICATION like '%LAWYER%'
+    or SCD.EMPLOYMENT_TYPE like '%ADVOCAT%'
+    or SCD.EMPLOYMENT_TYPE like '%LAWYER%'
+    or SCD.PROFESSION like '%ADVOCAT%'
+    or SCD.PROFESSION like '%LAWYER%');
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set LAWYER = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and SCD.SOURCE_SYSTEM_CODE = 30
+    and(SCD.PROF_QUALIFICATION like '%ADVOCAT%'
+    or SCD.PROF_QUALIFICATION like '%LAWYER%'
+    or SCD.EMPLOYMENT_TYPE like '%ADVOCAT%'
+    or SCD.EMPLOYMENT_TYPE like '%LAWYER%'
+    or SCD.PROFESSION like '%ADVOCAT%'
+    or SCD.PROFESSION like '%LAWYER%');
+  commit work;
+  ----------------------------------------------------------------Housewifes
+  update #MASTER_EXCLUDE as A
+    set HOUSEWIFE = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and SCD.SOURCE_SYSTEM_CODE in( 50,51,52,53 ) 
+    and(SCD.PROF_QUALIFICATION like '%HOUSE%WIFE%'
+    or SCD.PROF_QUALIFICATION like '%HOUSEWIF%'
+    or SCD.PROF_QUALIFICATION like '%HWIFE%'
+    or SCD.EMPLOYMENT_TYPE like '%HOUSE%WIFE%'
+    or SCD.EMPLOYMENT_TYPE like '%HOUSEWIF%'
+    or SCD.EMPLOYMENT_TYPE like '%HWIFE%'
+    or SCD.PROFESSION like '%HOUSE%WIFE%'
+    or SCD.PROFESSION like '%HOUSEWIF%'
+    or SCD.PROFESSION like '%HWIFE%');
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set HOUSEWIFE = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 20
+    and SCD.SOURCE_SYSTEM_CODE = 20
+    and(SCD.PROF_QUALIFICATION like '%HOUSE%WIFE%'
+    or SCD.PROF_QUALIFICATION like '%HOUSEWIF%'
+    or SCD.PROF_QUALIFICATION like '%HWIFE%'
+    or SCD.EMPLOYMENT_TYPE like '%HOUSE%WIFE%'
+    or SCD.EMPLOYMENT_TYPE like '%HOUSEWIF%'
+    or SCD.EMPLOYMENT_TYPE like '%HWIFE%'
+    or SCD.PROFESSION like '%HOUSE%WIFE%'
+    or SCD.PROFESSION like '%HOUSEWIF%'
+    or SCD.PROFESSION like '%HWIFE%');
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE as A
+    set HOUSEWIFE = 1 from
+    EDW.B0328_PARTY_ACCOUNT as PA
+    ,EDW.T0111_SOURCE_CUSTOMER_DETAILS as SCD
+    where A.SOURCE_ACCOUNT_NBR = PA.SOURCE_ACCOUNT_NBR
+    and TRIM(PA.SOURCE_PARTY_ID) = TRIM(SCD.SOURCE_PARTY_ID)
+    and PA.SOURCE_SYSTEM_CODE = 30
+    and SCD.SOURCE_SYSTEM_CODE = 30
+    and(SCD.PROF_QUALIFICATION like '%HOUSE%WIFE%'
+    or SCD.PROF_QUALIFICATION like '%HOUSEWIF%'
+    or SCD.PROF_QUALIFICATION like '%HWIFE%'
+    or SCD.EMPLOYMENT_TYPE like '%HOUSE%WIFE%'
+    or SCD.EMPLOYMENT_TYPE like '%HOUSEWIF%'
+    or SCD.EMPLOYMENT_TYPE like '%HWIFE%'
+    or SCD.PROFESSION like '%HOUSE%WIFE%'
+    or SCD.PROFESSION like '%HOUSEWIF%'
+    or SCD.PROFESSION like '%HWIFE%');
+  commit work;
+  ----------------------------------------------------------------Housewife & Lawyer
+  update #MASTER_EXCLUDE
+    set HOUSEWIFE_LAWYER = 1
+    where HOUSEWIFE is not null;
+  commit work;
+  ----------------------------------------------------------------
+  update #MASTER_EXCLUDE
+    set HOUSEWIFE_LAWYER = 1
+    where LAWYER is not null;
+  commit work;
+  ----------------------------------------------------------------
+  delete from #MASTER_EXCLUDE
+    where(DNC is null
+    and HNI is null
+    and STAFF is null
+    and STAFF_BASE is null
+    and NRI is null
+    and EMAIL_ICICI is null
+    and NAME_ICICI is null
+    and ADDRESS_ICICI is null
+    and ICICI_EMP is null
+    and HOUSEWIFE is null
+    and LAWYER is null
+    and MERGER is null
+    and EXCLUDE_CARD is null
+    and PARTY_ID_ISSUE is null
+    and PREAPPROVED_PARTY is null
+    and NDNC is null
+    and COCC_FLAGGER is null);
+  commit work;
+  alter table MCCM.MASTER_EXCLUDE delete
+    staff_flag;
+  commit work;
+  truncate table MCCM.MASTER_EXCLUDE;
+  insert into MCCM.MASTER_EXCLUDE(
+    select * from #MASTER_EXCLUDE);
+  commit work;
+  alter table MCCM.MASTER_EXCLUDE add
+    staff_flag varchar(5) null;
+  commit work;
+  update MCCM.MASTER_EXCLUDE as a
+    set staff_flag = case when b.cust_stat_code in( 'STF',
+    'STFF',
+    'PSTF',
+    '1STF',
+    '2STF',
+    '3STF',
+    'XSTF',
+    'ESTF',
+    'SBRSL',
+    'HNIST',
+    'HNIPT' ) then 'Y' else 'N' end from
+    edw.t09311_liability_account_addon as b
+    where a.source_account_nbr = b.source_account_nbr;
+  commit work;
+  update MCCM.MASTER_EXCLUDE as a
+    set a.staff_flag = 'N'
+    where staff_flag is null;
+  commit work
+end

@@ -1,0 +1,71 @@
+create procedure EDW.spin_load_p2c_Car_upload_prod_UPD()
+on exception resume
+begin
+  /*Query for Upload table*/
+  select * into #CAR_UPLOAD_TABLE_v1
+    /*Changes*/
+    --p2c.P2C_Customer_Segment_Backup_N_Heena_UPD
+    /*New records*/
+    ----p2c.P2C_Customer_Segment_Final_N_Heena 
+    from(select(case when b.servicesegment = 'GB' and a.servicesegment in( 'GS','TS','WS','CE','GPC','NRI' ) then 'UPGRADE'
+        when b.servicesegment = 'GS' and a.servicesegment in( 'TS','WS','CE','GPC','NRI' ) then 'UPGRADE'
+        when b.servicesegment = 'TS' and a.servicesegment in( 'WS','CE','GPC','NRI' ) then 'UPGRADE'
+        when b.servicesegment = 'WS' and a.servicesegment in( 'CE','GPC','NRI' ) then 'UPGRADE'
+        when b.servicesegment = 'CE' and a.servicesegment in( 'GPC','NRI' ) then 'UPGRADE'
+        when b.servicesegment = 'NRI' and a.servicesegment = 'GPC' then 'UPGRADE'
+        when b.servicesegment = 'GPC' and a.servicesegment in( 'GB','GS','TS','WS','CE','NRI' ) then 'DOWNGRADE'
+        when b.servicesegment = 'NRI' and a.servicesegment in( 'GB','GS','TS','WS','CE' ) then 'DOWNGRADE'
+        when b.servicesegment = 'CE' and a.servicesegment in( 'GB','GS','TS','WS' ) then 'DOWNGRADE'
+        when b.servicesegment = 'WS' and a.servicesegment in( 'GB','GS','TS' ) then 'DOWNGRADE'
+        when b.servicesegment = 'TS' and a.servicesegment in( 'GB','GS' ) then 'DOWNGRADE'
+        when b.servicesegment = 'GS' and a.servicesegment = 'GB' then 'DOWNGRADE' end) as RecType,
+        A.source_system_code,
+        case when A.source_system_code = 20 then A.card_nbr else A.source_account_nbr end as source_account_nbr,
+        A.incomesegment,
+        A.servicesegment,
+        case when A.source_system_code = 30 then A.Cust_id else null end as Cust_id,
+        today() as date_created
+        from p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+          ,p2c.P2C_Customer_Segment_Backup_N_Heena_UPD as B
+          ,edw.t0300_account as C
+        where A.account_nbr = B.account_nbr
+        and(A.incomesegment <> B.incomesegment or A.servicesegment <> B.servicesegment)
+        and A.account_nbr = C.account_nbr and C.account_close_date is null union all
+      select 'NEW' as RecType,A.source_system_code,
+        (case when A.source_system_code = 20 then A.card_nbr else A.source_account_nbr end) as source_account_nbr,
+        A.incomesegment,A.servicesegment,
+        case when A.source_system_code = 30 then A.Cust_id else null end as Cust_id,
+        today() as date_created
+        from p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+          left outer join p2c.P2C_Customer_Segment_Backup_N_Heena_UPD as B
+          on A.account_nbr = B.account_nbr
+        where B.account_nbr is null) as x;
+  ---6301443 row(s) affected
+  commit work;
+  truncate table P2C.car_upload_table_N_HEENA_UPD;
+  commit work;
+  insert into P2C.car_upload_table_N_HEENA_UPD
+    select distinct * from #car_upload_table_v1 where rectype is not null; --6206670 row(s) affected
+  commit work;
+  --- TRUNCATE TABLE P2C.car_upload_table_HISTORY_N_HEENA_UPD
+  insert into P2C.car_upload_table_HISTORY_N_HEENA_UPD
+    select distinct * from #car_upload_table_v1; --6206670 row(s) affected
+  commit work;
+  update P2C.car_upload_table_N_HEENA_UPD as a
+    set incomesegment = 'GPC',servicesegment = 'GPC' from
+    P2C.car_upload_table_N_HEENA_UPD as a,edw.t09311_liability_account_addon as b
+    where a.source_account_nbr = b.source_account_nbr and customer_type in( 'GPCD','IPB' ) 
+    and servicesegment = 'WS'; --0
+  commit work;
+  update P2C.car_upload_table_N_HEENA_UPD as a
+    set incomesegment = 'WM',servicesegment = 'WS' from
+    P2C.car_upload_table_N_HEENA_UPD as a,edw.t09311_liability_account_addon as b
+    where a.source_account_nbr = b.source_account_nbr and customer_type = 'WEALTH'
+    and servicesegment in( 'TS','GS','GB' ) ; ---35 row(s) updated
+  commit work;
+  update P2C.car_upload_table_N_HEENA_UPD as a
+    set a.cust_id = b.source_party_id from
+    P2C.car_upload_table_N_HEENA_UPD as a,edw.t09311_liability_account_addon as b
+    where a.source_account_nbr = b.source_account_nbr and a.source_system_code = 30; --4384710 row(s) updated
+  commit work
+end

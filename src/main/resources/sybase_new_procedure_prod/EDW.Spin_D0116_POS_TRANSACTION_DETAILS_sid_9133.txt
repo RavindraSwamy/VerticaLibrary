@@ -1,0 +1,22 @@
+create procedure EDW.Spin_D0116_POS_TRANSACTION_DETAILS_sid_9133()
+begin
+  select cast(TRANSACTION_DATETIME as date) as TRNX_DATE,
+    SUM((case when REVERSAL_REASON_CODE = '1' then(-1)*(AMOUNT_1/100)
+    else(AMOUNT_1/100)
+    end)) as TRXN_AMT,SUM((case when REVERSAL_REASON_CODE = '1' then(-1) else 1 end)) as TRXN_CNT
+    into #spnds1
+    from EDW.D0116_POS_TRANSACTION_DETAILS
+    where CARD_FIID in( 'ICIP','ICIE' ) 
+    and RESPONSE_CODE in( 0,1 ) 
+    and TRANSACTION_CODE = '10'
+    and TRNX_DATE = date(getdate()-1)
+    and AMOUNT_1/100 > 0
+    group by TRNX_DATE
+    having TRXN_CNT > 0;
+  commit work;
+  truncate table reconp.temp_D0116_POS_TRANSACTION_DETAILS_n_sid_audit;
+  commit work;
+  insert into reconp.temp_D0116_POS_TRANSACTION_DETAILS_n_sid_audit
+    select TRNX_DATE,sum(TRXN_AMT) as Spends from #spnds1 group by TRNX_DATE;
+  commit work
+end

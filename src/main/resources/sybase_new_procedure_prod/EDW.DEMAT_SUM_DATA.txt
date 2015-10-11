@@ -1,0 +1,11 @@
+create procedure EDW.DEMAT_SUM_DATA()
+begin
+  truncate table MCCM.DEMAT_SUM_DATA;
+  commit work;
+  insert into MCCM.DEMAT_SUM_DATA
+    select dpid || dpm_client_id as source_account_nbr,account_nbr,max(DAILY_RATE_DATE) as DAILY_RATE_DATE,sum(value_at_market_price) as value_at_market_price,date_created
+      --into MCCM.DEMAT_SUM_DATA 
+      from EDW.T09564_DEMAT_HOLDING_DETAILS
+      group by source_account_nbr,account_nbr,date_created;
+  commit work
+end

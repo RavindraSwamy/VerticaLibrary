@@ -1,0 +1,104 @@
+create procedure EDW.PRE_QUALIFIED_OFFERS()
+begin
+  truncate table MCCM.PRE_QUALIFIED_OFFERS;
+  commit work;
+  select cast(null as varchar(30)) as UCIC_CODE,
+    cast(null as integer) as SOURCE_SYSTEM_CODE,
+    cast(null as varchar(50)) as SOURCE_PARTY_ID,
+    cast(null as integer) as account_nbr,
+    SOURCE_ACCOUNT_NBR,
+    CUSTOMER_NAME,
+    SOURCE,
+    PRODUCT,
+    EXPIRY_DATE,
+    ASSESSED_INCOME_EMI_CR_LIMIT,
+    MULTIPLIER,
+    TENOR,
+    GCRN_NO,
+    LOAN_AMOUNT,
+    MAX_LIMIT,
+    POS,
+    UNQ
+    into #PRE_QUALIFIED_OFFERS
+    from SWAPNAK.CS_FINAL_OFFER;
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE from
+    edw.t0300_account as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and B.SOURCE_SYSTEM_CODE in( 30,50,51,52,53,54,20 ) ;
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set A.UCIC_CODE = B.UCIC_VALUE,
+    A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE,
+    A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID) from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and B.SOURCE_SYSTEM_CODE = 30
+    and(B.ACC_HOLDER is null or B.ACC_HOLDER = 'Main Holder');
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set A.UCIC_CODE = B.UCIC_VALUE,
+    A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE,
+    A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID) from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and SUBSTR(B.SOURCE_PARTY_ID,1,4) <> 'COB_'
+    and B.SOURCE_SYSTEM_CODE in( 51,52,53 ) ;
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set A.SOURCE_SYSTEM_CODE = 20,
+    ACCOUNT_NBR = B.ACCOUNT_NBR from
+    RECONP.CARD_MASTER_AJ0904 as B
+    where A.SOURCE_ACCOUNT_NBR = B.CARD_NBR
+    and A.SOURCE_SYSTEM_CODE is null;
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set A.SOURCE_SYSTEM_CODE = 20,
+    ACCOUNT_NBR = B.CARD_NBR from
+    EDW.T0330_ACCOUNT_CARD as B
+    where A.SOURCE_ACCOUNT_NBR = B.CARD_NBR
+    and A.SOURCE_SYSTEM_CODE is null;
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR from
+    EDW.T0300_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = 20
+    and B.SOURCE_SYSTEM_cODE = 20;
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID) from
+    EDW.B0328_PARTY_ACCOUNT as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = 20
+    and B.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  update #PRE_QUALIFIED_OFFERS as A
+    set A.UCIC_CODE = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID)
+    and A.SOURCE_SYSTEM_CODE = 20
+    and B.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  insert into MCCM.PRE_QUALIFIED_OFFERS
+    select UCIC_CODE,
+      SOURCE_SYSTEM_CODE,
+      SOURCE_PARTY_ID,
+      SOURCE_ACCOUNT_NBR,
+      CUSTOMER_NAME,
+      SOURCE,
+      PRODUCT,
+      EXPIRY_DATE,
+      ASSESSED_INCOME_EMI_CR_LIMIT,
+      MULTIPLIER,
+      TENOR,
+      GCRN_NO,
+      LOAN_AMOUNT,
+      MAX_LIMIT,
+      POS,
+      UNQ,
+      getdate()
+      from #PRE_QUALIFIED_OFFERS;
+  commit work
+end

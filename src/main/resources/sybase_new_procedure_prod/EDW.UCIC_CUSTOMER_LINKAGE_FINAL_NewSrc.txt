@@ -1,0 +1,707 @@
+create procedure EDW.UCIC_CUSTOMER_LINKAGE_FINAL_NewSrc()
+on exception resume
+begin
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'LFIDX_UCIC_NEWDEV_11') then drop index p2c.UCIC_LINKAGE_TABLE_TEMP_2.LFIDX_UCIC_NEWDEV_11 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_13') then drop index p2c.UCIC_LINKAGE_TABLE_TEMP_2.HGIDX_UCIC_NEWDEV_13 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_10') then drop index p2c.UCIC_SECONDARY_ACCOUNT_HOLDER.HGIDX_UCIC_NEWDEV_10 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'LFIDX_UCIC_NEWDEV_14') then drop index p2c.UCIC_T0300_B0328_BASE.LFIDX_UCIC_NEWDEV_14 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_9') then drop index p2c.UCIC_LINKAGE_TABLE_TEMP_2.UQHGIDX_UCIC_NEWDEV_9 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_8') then drop index p2c.UCIC_T0300_B0328_BASE.UQHGIDX_UCIC_NEWDEV_8 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_7') then drop index p2c.UCIC_T0300_B0328_BASE.HGIDX_UCIC_NEWDEV_7 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_6') then drop index p2c.UCIC_CARD_STATUS_SNAPSHOT.HGIDX_UCIC_NEWDEV_6 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_5') then drop index p2c.UCIC_CARD_STATUS_SNAPSHOT.HGIDX_UCIC_NEWDEV_5 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_4') then drop index p2c.UCIC_LINKAGE_TABLE_TEMP_1.HGIDX_UCIC_NEWDEV_4 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_3') then drop index p2c.UCIC_T0300_B0328_BASE.HGIDX_UCIC_NEWDEV_3 end if;
+  ---IF EXISTS(SELECT 1 FROM SYSINDEX WHERE INDEX_NAME='UQHGIDX_UCIC_NEWDEV_2') then drop index  p2c.UCIC_ITS_PARTY.UQHGIDX_UCIC_NEWDEV_2; END if;  
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_1') then drop index p2c.UCIC_ITS_CUSTOMER.UQHGIDX_UCIC_NEWDEV_1 end if;
+  commit work;
+  truncate table P2C.UCIC_ITS_PARTY;
+  truncate table P2C.UCIC_SECONDARY_ACCOUNT_HOLDER;
+  truncate table P2C.UCIC_T0300_B0328_BASE;
+  truncate table P2C.UCIC_ITS_CUSTOMER;
+  truncate table P2C.UCIC_LINKAGE_TABLE_TEMP_1;
+  truncate table P2C.UCIC_LINKAGE_TABLE_TEMP_2;
+  truncate table P2C.UCIC_CARD_STATUS_SNAPSHOT;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select cast(null as integer) as account_nbr,30 as source_system_code,
+      trim(a.Foracid) as source_account_nbr,
+      TRIM(a.cust_id) as Source_party_ID,
+      a.ACCT_OPN_DATE as ACCOUNT_OPEN_DATE,a.ACCT_CLS_DATE as ACCOUNT_CLOSE_DATE,null as CARD_BLOCK_CODE,
+      a.SCHM_TYPE,
+      b.CUST_CONST,
+      b.CUST_STAT_CODE,
+      b.CUST_NRE_FLG
+      from srcstage.GENERAL_ACCT_MAST_TABLE as A,srcstage.CUST_MAST_GEN_TABLE as B
+      where A.cust_id = B.cust_id;
+  commit work;
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select t0300.account_nbr,b0328.source_system_code,b0328.source_account_nbr,TRIM(B0328.Source_party_ID) as Source_party_ID_1,
+      t0300.ACCOUNT_OPEN_DATE,t0300.ACCOUNT_CLOSE_DATE,cast(null as varchar(10)) as CARD_BLOCK_CODE,
+      (case when b0328.SOURCE_SYSTEM_CODE = 80 then 'DEMAT'
+      when b0328.SOURCE_SYSTEM_CODE in( 51,52,53 ) then
+        SUBSTRING(b0328.SOURCE_ACCOUNT_NBR,2,1)
+      else 'OTHERS'
+      end) as SCHM_TYPE,null as CUST_CONST,null as CUST_STAT_CODE,null as CUST_NRE_FLG from edw.t0300_account as t0300,edw.b0328_party_account as b0328
+      where t0300.SOURCE_SYSTEM_CODE in( 80,51,52,53 ) 
+      and t0300.SOURCE_ACCOUNT_NBR = b0328.SOURCE_ACCOUNT_NBR
+      and t0300.SOURCE_SYSTEM_CODE = b0328.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select t0300.account_nbr,b0328.source_system_code,T0330.CARD_NBR,TRIM(B0328.Source_party_ID) as Source_party_ID,
+      t0300.ACCOUNT_OPEN_DATE,t0300.ACCOUNT_CLOSE_DATE,cast(null as varchar(10)) as CARD_BLOCK_CODE,
+      trim(PRODUCT_NAME) as SCHM_TYPE,
+      null as CUST_CONST,
+      null as CUST_STAT_CODE,
+      null as CUST_NRE_FLG
+      from edw.t0300_account as t0300 join edw.b0328_party_account as b0328
+        on(t0300.SOURCE_SYSTEM_CODE = 20 and t0300.SOURCE_ACCOUNT_NBR = b0328.SOURCE_ACCOUNT_NBR and t0300.SOURCE_SYSTEM_CODE = b0328.SOURCE_SYSTEM_CODE)
+        join EDW.T0330_ACCOUNT_CARD as T0330 on T0300.ACCOUNT_NBR = T0330.ACCOUNT_NBR
+        left outer join edw.t0200_product as t0200
+        on(T0200.SOURCE_SYSTEM_CODE = 20 and t0300.product_id = t0200.product_id);
+  commit work;
+  ----------------- ADDON CARD HOLDER
+  update P2C.UCIC_T0300_B0328_BASE as A
+    set A.Source_party_ID = TRIM(B.CUST_ID) from
+    EDW.MAIN_CARDS_ADDON as B
+    where A.SOURCE_SYSTEM_CODE = 20
+    and TRIM(A.SOURCE_ACCOUNT_NBR) = TRIM(B.CARD_NBR)
+    and A.Source_party_ID <> B.CUST_ID;
+  commit work;
+  --------------- ADDON CARD HOLDER
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select cast(null as integer) as account_nbr,75 as source_system_code,
+      trim(a.Foracid) as source_account_nbr,
+      TRIM(a.cust_id) as Source_party_ID,
+      a.ACCT_OPN_DATE as ACCOUNT_OPEN_DATE,a.ACCT_CLS_DATE as ACCOUNT_CLOSE_DATE,null as CARD_BLOCK_CODE,
+      a.SCHM_TYPE,
+      b.CUST_CONST,
+      b.CUST_STAT_CODE,
+      b.CUST_NRE_FLG
+      from finagri.GENERAL_ACCT_MAST_TABLE as A,finagri.CUST_MAST_GEN_TABLE as B
+      where A.cust_id = B.cust_id;
+  commit work; --5748062 row(s) inserted
+  --------------- PCMS RELATED CHANGES
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select null as account_nbr,
+      A.source_system_code,B.CARD_NUMBER as source_account_nbr,
+      TRIM(A.SOURCE_PARTY_ID) as Source_party_ID_1,
+      B.OPENING_DATE as ACCOUNT_OPEN_DATE,B.CLOSING_DATE as ACCOUNT_CLOSE_DATE,null as CARD_BLOCK_CODE,
+      B.PRODUCT_CODE as SCHM_TYPE,
+      null as CUST_CONST,
+      null as CUST_STAT_CODE,
+      null as CUST_NRE_FLG -- SELECT COUNT(1)
+      from edw.T0111_SOURCE_CUSTOMER_DETAILS_EPMS as a,EDW.MAIN_EPMS_CARD as b
+      --   where TRIM(a.SOURCE_PARTY_ID) = TRIM(b.client_code);
+      where TRIM(a.SOURCE_PARTY_ID) = TRIM(b.CARD_NUMBER);
+  ---5748062 row(s) inserted
+  commit work;
+  --------------- PCMS RELATED CHANGES
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select t0300.account_nbr,b0328.source_system_code,b0328.source_account_nbr,TRIM(B0328.Cust_ID) as Source_party_ID_1,
+      t0300.ACCOUNT_OPEN_DATE,t0300.ACCOUNT_CLOSE_DATE,cast(null as varchar(10)) as CARD_BLOCK_CODE,
+      b0328.SCHM_TYPE,
+      b0328.CUST_CONST,
+      b0328.CUST_STAT_CODE,
+      null as CUST_NRE_FLG
+      from finagri.T0300_ACCOUNT_B2 as t0300,finagri.T09300_ACCOUNT_ADDON_B2 as b0328
+      where t0300.SOURCE_SYSTEM_CODE = 76
+      and b0328.cust_id is not null
+      and t0300.ACCOUNT_NBR = b0328.ACCOUNT_NBR
+      and t0300.SOURCE_SYSTEM_CODE = b0328.SOURCE_SYSTEM_CODE;
+  commit work;
+  create table #AAS_MASTER(
+    CUST_RELTN_CODE varchar(10) null,
+    CUST_RELTN_DESC varchar(80) null,
+    );
+  insert into #AAS_MASTER values( 'DGM','DEPUTY GENERAL MANAGER' ) ;
+  insert into #AAS_MASTER values( '1ST','FIRST HOLDER' ) ;
+  insert into #AAS_MASTER values( '2ND','SECOND HOLDER' ) ;
+  insert into #AAS_MASTER values( '3RD','THIRD HOLDER' ) ;
+  insert into #AAS_MASTER values( '4TH','FOURTH HOLDER' ) ;
+  insert into #AAS_MASTER values( '5TH','FIFTH HOLDER' ) ;
+  insert into #AAS_MASTER values( 'ACOM','ASSISTANT COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'ACT','ACCOUNTANT' ) ;
+  insert into #AAS_MASTER values( 'ADC','ADDITIONAL DISTRICT COLLECTOR' ) ;
+  insert into #AAS_MASTER values( 'ADCOM','ADDITIONAL COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'ADD','ADDITIONAL DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'ADGP','ADDITIONAL DIRECTOR GENERAL OF POLICE' ) ;
+  insert into #AAS_MASTER values( 'ADIR','ALTERNATE DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'ADM','ADDITIONAL DISTRICT MAGISTRATE' ) ;
+  insert into #AAS_MASTER values( 'ADSEC','ADDITIONAL SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'ADV','ADVISOR' ) ;
+  insert into #AAS_MASTER values( 'AGM','ASSI. GENERAL MANAGER' ) ;
+  insert into #AAS_MASTER values( 'AGP','ADDITIONAL GENERAL OF POLICE' ) ;
+  insert into #AAS_MASTER values( 'AO','ACCOUNTS OFFICER' ) ;
+  insert into #AAS_MASTER values( 'APCCF','ADDITIONAL PRINCIPAL CHIEF CONSERVATOR OF FORESTS' ) ;
+  insert into #AAS_MASTER values( 'AS','AUTHORISED SIGNATORY' ) ;
+  insert into #AAS_MASTER values( 'ASEC','ADDITIONAL SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'ASP','ASSISTANCE SUPERINTENDENT OF POLICE' ) ;
+  insert into #AAS_MASTER values( 'AUNT','AUNT' ) ;
+  insert into #AAS_MASTER values( 'AVP','ASSITT. VICE PRESIDENT' ) ;
+  insert into #AAS_MASTER values( 'BDO','BLOCK DEVELOPMENT OFFICER' ) ;
+  insert into #AAS_MASTER values( 'BENE','BENEFICIARIES' ) ;
+  insert into #AAS_MASTER values( 'BIL','BROTHER-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'BNF','BENEFICIARIES' ) ;
+  insert into #AAS_MASTER values( 'BRO','BROTHER' ) ;
+  insert into #AAS_MASTER values( 'CCF','CHIEF CONSERVATOR OF FORESTS' ) ;
+  insert into #AAS_MASTER values( 'CCOM','CHIEF COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'CDPO','CHILD DEVELOPMENT PROJECT OFFICER' ) ;
+  insert into #AAS_MASTER values( 'CE','CHIEF EXECUTIVE' ) ;
+  insert into #AAS_MASTER values( 'CEO','CHIEF EXECUTIVE OFFICER' ) ;
+  insert into #AAS_MASTER values( 'CF','CONSERVATOR OF FORESTS' ) ;
+  insert into #AAS_MASTER values( 'CHR','CHAIRMAN' ) ;
+  insert into #AAS_MASTER values( 'CMD','CHAIRMAN & MD' ) ;
+  insert into #AAS_MASTER values( 'CMO','CHIEF MUNICIPAL OFFICER' ) ;
+  insert into #AAS_MASTER values( 'CNSLT','CONSULTANT' ) ;
+  insert into #AAS_MASTER values( 'COM','COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'COPAR','CO-PARCENER' ) ;
+  insert into #AAS_MASTER values( 'COPR','COPARCENER' ) ;
+  insert into #AAS_MASTER values( 'CPR','CHAIRMAN &PRESIDENT' ) ;
+  insert into #AAS_MASTER values( 'CSEC','CHIEF SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'CTRST','CO-TRUSTEE' ) ;
+  insert into #AAS_MASTER values( 'CVS','CIVIL SURGEON' ) ;
+  insert into #AAS_MASTER values( 'CWD','CHAIRMAN & WHOLETIME DIRC' ) ;
+  insert into #AAS_MASTER values( 'DAO','DISTRICT AGRICULTURE OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DC','DISTRICT COLLECTOR' ) ;
+  insert into #AAS_MASTER values( 'DCF','DEPUTY CONSERVATOR OF FORESTS' ) ;
+  insert into #AAS_MASTER values( 'DCOM','DISTRICT COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'DCOO','DISTRICT CO-OPERATIVE OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DDC','DEPUTY DEVELOPMENT COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'DENG','DISTRICT ENGINEER' ) ;
+  insert into #AAS_MASTER values( 'DEO','DISTRICT EDUCATION OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DGF','DIRECTOR GENERAL OF FOREST' ) ;
+  insert into #AAS_MASTER values( 'DGM','DEPUTY GENERAL MANAGER' ) ;
+  insert into #AAS_MASTER values( 'DGP','DEPUTY INSPECTOR GENERAL OF POLICE' ) ;
+  insert into #AAS_MASTER values( 'DHO','DISTRICT HORTICULTURE OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DIG','DIRECTOR OF INTELLIGENCE BUREAU' ) ;
+  insert into #AAS_MASTER values( 'DIL','DAUGHTER-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'DIR','DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'DIRR','DIRECTORS RELATIVE' ) ;
+  insert into #AAS_MASTER values( 'DM','DISTRICT MAGISTRATE' ) ;
+  insert into #AAS_MASTER values( 'DMD','DEPUTY MANAGING DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'DMHO','DISTRICT MEDICAL & HEALTH OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DOT','DAUGHTER' ) ;
+  insert into #AAS_MASTER values( 'DRDO','DISTRICT RURAL DEVELOPMENT OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DSO','DISTRICT SUPPLY OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DTO','DISTRICT TRANSPORT OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DWO','DISTRICT WELFARE OFFICER' ) ;
+  insert into #AAS_MASTER values( 'DYCOM','DEPUTY COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'DYD','DEPUTY DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'DZM','DEPUTY ZONAL MANAGER' ) ;
+  insert into #AAS_MASTER values( 'ED','EXECUTIVE DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'EXE','EXECUTIVE ENGINEER' ) ;
+  insert into #AAS_MASTER values( 'EXEO','EXECUTIVE OFFICER' ) ;
+  insert into #AAS_MASTER values( 'FAD','FINANCIAL ADVISOR' ) ;
+  insert into #AAS_MASTER values( 'FAM','FINANCIAL MANAGER' ) ;
+  insert into #AAS_MASTER values( 'FC','FINANCIAL CONTROLLER' ) ;
+  insert into #AAS_MASTER values( 'FCOM','FINANCIAL COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'FIL','FATHER-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'FO','FOREST OFFICER' ) ;
+  insert into #AAS_MASTER values( 'FRND','FRIEND' ) ;
+  insert into #AAS_MASTER values( 'FTR','FATHER' ) ;
+  insert into #AAS_MASTER values( 'GDM','GRANDMOTHER' ) ;
+  insert into #AAS_MASTER values( 'GDTR','GRAND DAUGHTER' ) ;
+  insert into #AAS_MASTER values( 'GFTR','GRAND FATHER' ) ;
+  insert into #AAS_MASTER values( 'GM','GENERAL MANAGER' ) ;
+  insert into #AAS_MASTER values( 'GMTR','GRAND MOTHER' ) ;
+  insert into #AAS_MASTER values( 'GRD','GRANDDAUGHTER' ) ;
+  insert into #AAS_MASTER values( 'GRS','GRANDSON' ) ;
+  insert into #AAS_MASTER values( 'GSON','GRANDSON' ) ;
+  insert into #AAS_MASTER values( 'HUS','HUSBAND' ) ;
+  insert into #AAS_MASTER values( 'I-SEC','CUSTOMER OF I-SEC' ) ;
+  insert into #AAS_MASTER values( 'ICICI','CUSTOMER OF ICICI' ) ;
+  insert into #AAS_MASTER values( 'IGP','INSPECTOR GENERAL OF POLICE' ) ;
+  insert into #AAS_MASTER values( 'JMD','JT.MANAGING DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'JNCOM','JOINT COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'JSEC','JOINT SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'JT1','JOINT HOLDER - FIRST' ) ;
+  insert into #AAS_MASTER values( 'JT2','JOINT HOLDER - SECOND' ) ;
+  insert into #AAS_MASTER values( 'JT3','JOINT HOLDER - THIRD' ) ;
+  insert into #AAS_MASTER values( 'JT4','JOINT HOLDER - FOURTH' ) ;
+  insert into #AAS_MASTER values( 'JT5','JOINT HOLDER - FIFTH' ) ;
+  insert into #AAS_MASTER values( 'JTM','JOINT HOLDER - MINOR' ) ;
+  insert into #AAS_MASTER values( 'JTSEC','JOINT SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'KARTA','KARTA' ) ;
+  insert into #AAS_MASTER values( 'LAO','LAND ACQUISITION OFFICER' ) ;
+  insert into #AAS_MASTER values( 'LEGAL','LEGAL GUARDIAN' ) ;
+  insert into #AAS_MASTER values( 'MAND','MANDATE HOLDER' ) ;
+  insert into #AAS_MASTER values( 'MC','MUNICIPAL COMMISSIONER' ) ;
+  insert into #AAS_MASTER values( 'MD','MANAGING DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'MEM','MEMBER' ) ;
+  insert into #AAS_MASTER values( 'MGT','MANAGING TRUSTEE' ) ;
+  insert into #AAS_MASTER values( 'MIL','MOTHER-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'MOIC','MEDICAL OFFICER INCHARGE' ) ;
+  insert into #AAS_MASTER values( 'MR-FI','MANAGER FINANCE' ) ;
+  insert into #AAS_MASTER values( 'MTR','MOTHER' ) ;
+  insert into #AAS_MASTER values( 'MTU','MANAGING TRUSTEE' ) ;
+  insert into #AAS_MASTER values( 'NAG','NATURAL GUARDIAN' ) ;
+  insert into #AAS_MASTER values( 'NC','NIECE' ) ;
+  insert into #AAS_MASTER values( 'NDIR','NOMINEE DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'NMD','NOMINEE DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'NOR','NO RELATION' ) ;
+  insert into #AAS_MASTER values( 'NRIJT','NON RESIDENT JOINT HOLDER' ) ;
+  insert into #AAS_MASTER values( 'NW','NEPHEW' ) ;
+  insert into #AAS_MASTER values( 'OTHER','OTHERS' ) ;
+  insert into #AAS_MASTER values( 'PCC','PRINCIPLE CHIEF CONTROLLER' ) ;
+  insert into #AAS_MASTER values( 'PCCF','PRINCIPAL CHIEF CONSERVATOR OF FORESTS' ) ;
+  insert into #AAS_MASTER values( 'PRE','PRESIDENT' ) ;
+  insert into #AAS_MASTER values( 'PRES','PRESIDENT' ) ;
+  insert into #AAS_MASTER values( 'PRESD','PRESIDENT' ) ;
+  insert into #AAS_MASTER values( 'PRNS','PRINCIPLE SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'PROJC','PROJECT CONVEYOR' ) ;
+  insert into #AAS_MASTER values( 'PROJD','PROJECT DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'PROP','PROPRIETOR' ) ;
+  insert into #AAS_MASTER values( 'PRP','PROPRIETOR' ) ;
+  insert into #AAS_MASTER values( 'PTR','PARTNER' ) ;
+  insert into #AAS_MASTER values( 'RESJT','RESIDENT JOINT HOLDER' ) ;
+  insert into #AAS_MASTER values( 'SCAL','SCALE IV & ABOVE RELATIVE' ) ;
+  insert into #AAS_MASTER values( 'SCICI','CUSTOMER OF SCICI' ) ;
+  insert into #AAS_MASTER values( 'SDM','SUB DIVISIONAL MAGISTRATE' ) ;
+  insert into #AAS_MASTER values( 'SEC','SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'SECR','SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'SETT','SETTLOR' ) ;
+  insert into #AAS_MASTER values( 'SHAR','SHAREHOLDERS' ) ;
+  insert into #AAS_MASTER values( 'SIL','SON-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'SIS','SISTER' ) ;
+  insert into #AAS_MASTER values( 'SLAO','SPECIAL LAND ACQUISITION OFFICER' ) ;
+  insert into #AAS_MASTER values( 'SOIL','SON-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'SON','SON' ) ;
+  insert into #AAS_MASTER values( 'SONL','SON-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'SP','SUPERINTENDENT OF POLICE' ) ;
+  insert into #AAS_MASTER values( 'SPO','SPOUSE' ) ;
+  insert into #AAS_MASTER values( 'SPSEC','SPECIAL SECRETARY' ) ;
+  insert into #AAS_MASTER values( 'SRACT','SENIOR ACCOUNTANT' ) ;
+  insert into #AAS_MASTER values( 'SSL','SISTER-IN-LAW' ) ;
+  insert into #AAS_MASTER values( 'SSP','SENIOR SUPERINTENDENT OF POLICE' ) ;
+  insert into #AAS_MASTER values( 'STLR','SETTLOR' ) ;
+  insert into #AAS_MASTER values( 'TAH','TAHSILDER' ) ;
+  insert into #AAS_MASTER values( 'TECDI','TECHNICAL DIRECTOR' ) ;
+  insert into #AAS_MASTER values( 'TR','TREASURER' ) ;
+  insert into #AAS_MASTER values( 'TRST','TRUSTEE' ) ;
+  insert into #AAS_MASTER values( 'TRU','TRUSTEE' ) ;
+  insert into #AAS_MASTER values( 'TRUST','TRUSTEE' ) ;
+  insert into #AAS_MASTER values( 'UNC','UNCLE' ) ;
+  insert into #AAS_MASTER values( 'VCM','VICE CHAIRMAN' ) ;
+  insert into #AAS_MASTER values( 'VP','VICE-PRESIDENT' ) ;
+  insert into #AAS_MASTER values( 'WFE','WIFE' ) ;
+  insert into #AAS_MASTER values( 'ZM','ZONAL MANAGER' ) ;
+  insert into #AAS_MASTER values( 'GUARD','GUARDIAN' ) ;
+  insert into #AAS_MASTER values( 'MNDT','MANDATE HOLDER' ) ;
+  commit work;
+  select ACID,trim(cust_id) as cust_id,
+    (case when trim(ACCT_POA_AS_REC_TYPE) = 'M' then 'Main Holder'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'J' then 'Joint Holder'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'A' then 'Authorised Signatory'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'P' then 'Power of Attorney'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'L' then 'Letter of Authority'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'G' then 'Guarantor'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'H' then 'Legal Hirer'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'V' then 'LHV Hirer'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'C' then 'Co-Obligant'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'D' then 'DSA'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'S' then 'Portfolio Stmt'
+    when trim(ACCT_POA_AS_REC_TYPE) = 'B' then 'Beneficial Owners'
+    else 'Others'
+    end) as ACCT_POA,CUST_RELTN_DESC as RELATION_TYPE
+    into #ABC
+    from srcstage.ACCT_AUTH_SIGN_TABLE as A left outer join #AAS_MASTER as B
+      on TRIM(A.CUST_RELTN_CODE) = B.CUST_RELTN_CODE
+    where A.cust_id is not null and A.del_flg = 'N';
+  commit work;
+  create hg index HGIDX_ABC_ICIC on EDW.#ABC(ACID asc);
+  commit work;
+  insert into P2C.UCIC_SECONDARY_ACCOUNT_HOLDER
+    select cast(null as integer) as account_nbr,30 as source_system_code,
+      trim(a.Foracid) as source_account_nbr,
+      TRIM(B.cust_id) as SECONDARY_CUST_ID,
+      a.ACCT_OPN_DATE as ACCOUNT_OPEN_DATE,a.ACCT_CLS_DATE as ACCOUNT_CLOSE_DATE,null as CARD_BLOCK_CODE,X.ACCT_POA,
+      a.SCHM_TYPE,
+      b.CUST_CONST,
+      b.CUST_STAT_CODE,
+      b.CUST_NRE_FLG,
+      X.RELATION_TYPE
+      from #ABC as X,srcstage.GENERAL_ACCT_MAST_TABLE as A,srcstage.CUST_MAST_GEN_TABLE as B
+      where X.ACID = A.ACID
+      and X.cust_id = B.cust_id;
+  commit work;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_10') then
+    create hg index HGIDX_UCIC_NEWDEV_10 on P2C.UCIC_SECONDARY_ACCOUNT_HOLDER(SECONDARY_CUST_ID asc,SOURCE_SYSTEM_CODE asc,source_account_nbr asc)
+  end if;
+  commit work;
+  delete from P2C.UCIC_SECONDARY_ACCOUNT_HOLDER as A from
+    P2C.UCIC_SECONDARY_ACCOUNT_HOLDER as A
+    ,(select MAX(ROWID(C)) as ROW_ID,SOURCE_SYSTEM_CODE,SECONDARY_CUST_ID,SOURCE_ACCOUNT_NBR
+      from P2C.UCIC_SECONDARY_ACCOUNT_HOLDER as C
+      group by SOURCE_SYSTEM_CODE,SECONDARY_CUST_ID,SOURCE_ACCOUNT_NBR) as B
+    where A.SECONDARY_CUST_ID = B.SECONDARY_CUST_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ROWID(A) <> B.ROW_ID;
+  commit work;
+  select ACCOUNT_NBR,SOURCE_SYSTEM_CODE,SOURCE_ACCOUNT_NBR,SECONDARY_CUST_ID,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,CARD_BLOCK_CODE,
+    SCHM_TYPE,CUST_CONST,CUST_STAT_CODE,CUST_NRE_FLG
+    into #XYZ from P2C.UCIC_SECONDARY_ACCOUNT_HOLDER where ACCT_POA_AS_REC_TYPE <> 'Main Holder';
+  delete from #XYZ
+    where SECONDARY_CUST_ID = any(select SOURCE_PARTY_ID from P2C.UCIC_T0300_B0328_BASE where SOURCE_SYSTEM_CODE = 30);
+  commit work;
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select * from #XYZ;
+  commit work;
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select B.ACCOUNT_NBR,
+      A.SOURCE_SYSTEM_CODE,
+      A.AGREEMENTNO as SOURCE_ACCOUNT_NBR,
+      A.CO_SOURCE_PARTY_ID as SECONDARY_CUST_ID,
+      B.ACCOUNT_OPEN_DATE,
+      B.ACCOUNT_CLOSE_DATE,
+      null as CARD_BLOCK_CODE,
+      null as SCHM_TYPE,
+      null as CUST_CONST,
+      null as CUST_STAT_CODE,
+      null as CUST_NRE_FLG
+      from EDW.T0300_ACCOUNT as B
+        ,EDW.FINNONE_CO_APPLICANT_DETAILS as A
+      where A.AGREEMENTNO = B.SOURCE_ACCOUNT_NBR
+      and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+      and B.SOURCE_SYSTEM_CODE in( 51,52,53 ) ;
+  commit work;
+  ------------- ADD Ebor,Mobo,Mpesa,Travel card
+  insert into P2C.UCIC_T0300_B0328_BASE
+    select distinct
+      t0300.account_nbr,b0328.source_system_code,b0328.source_account_nbr,TRIM(B0328.Source_party_ID) as Source_party_ID_1,
+      t0300.ACCOUNT_OPEN_DATE,t0300.ACCOUNT_CLOSE_DATE,cast(null as varchar(10)) as CARD_BLOCK_CODE,
+      (case when b0328.SOURCE_SYSTEM_CODE = 301 then 'EBOR_DPSecure'
+      when b0328.SOURCE_SYSTEM_CODE = 302 then 'MoboMoney'
+      when b0328.SOURCE_SYSTEM_CODE = 303 then 'MPesa'
+      when b0328.SOURCE_SYSTEM_CODE = 304 then 'TravelCard_MultiCurr'
+      when b0328.SOURCE_SYSTEM_CODE = 305 then 'TravelCard_SingleCurr'
+      else 'OTHERS'
+      end) as SCHM_TYPE,null as CUST_CONST,
+      null as CUST_STAT_CODE,
+      null as CUST_NRE_FLG
+      from edw.T0300_ACCOUNT_EXTERNAL_SYSTEM as t0300,edw.B0328_PARTY_ACCOUNT_EXTERNAL_SYSTEM as b0328
+      where t0300.SOURCE_SYSTEM_CODE in( 301,302,303,304,305 ) 
+      and trim(t0300.SOURCE_ACCOUNT_NBR)
+       = trim(b0328.SOURCE_ACCOUNT_NBR)
+      and t0300.SOURCE_SYSTEM_CODE = b0328.SOURCE_SYSTEM_CODE;
+  commit work;
+  -----------END Ebor,Mobo,Mpesa,Travel card
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'LFIDX_UCIC_NEWDEV_14') then
+    create lf index LFIDX_UCIC_NEWDEV_14 on P2C.UCIC_T0300_B0328_BASE(SOURCE_SYSTEM_CODE asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_7') then
+    create hg index HGIDX_UCIC_NEWDEV_7 on P2C.UCIC_T0300_B0328_BASE(SOURCE_ACCOUNT_NBR asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_8') then
+    create unique hg index UQHGIDX_UCIC_NEWDEV_8 on P2C.UCIC_T0300_B0328_BASE(SOURCE_PARTY_ID asc,SOURCE_SYSTEM_CODE asc,SOURCE_ACCOUNT_NBR asc)
+  end if;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update P2C.UCIC_T0300_B0328_BASE as A
+    set A.ACCOUNT_NBR = B.ACCOUNT_NBR from
+    EDW.T0300_ACCOUNT as b
+    where A.SOURCE_SYSTEM_CODE = 30
+    and B.SOURCE_SYSTEM_CODE = 30
+    and A.SOURCE_ACCOUNT_NBR = TRIM(B.SOURCE_ACCOUNT_NBR);
+  commit work;
+  update P2C.UCIC_T0300_B0328_BASE as A
+    set A.ACCOUNT_NBR = B.ACCOUNT_NBR from
+    FINAGRI.T0300_ACCOUNT as b
+    where A.SOURCE_SYSTEM_CODE = 75
+    and B.SOURCE_SYSTEM_CODE = 75
+    and A.SOURCE_ACCOUNT_NBR = TRIM(B.SOURCE_ACCOUNT_NBR);
+  commit work;
+  insert into P2C.UCIC_CARD_STATUS_SNAPSHOT
+    select card_nbr,max(card_status_start_date) as status_start_date
+      from EDW.D03081_CARD_STATUS_HISTORY group by card_nbr;
+  commit work;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_5') then
+    create hg index HGIDX_UCIC_NEWDEV_5 on P2C.UCIC_CARD_STATUS_SNAPSHOT(card_nbr asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_6') then
+    create hg index HGIDX_UCIC_NEWDEV_6 on P2C.UCIC_CARD_STATUS_SNAPSHOT(status_start_date asc)
+  end if;
+  commit work;
+  update P2C.UCIC_T0300_B0328_BASE as CC
+    set CC.CARD_BLOCK_CODE = TRIM(A.card_status_code) from
+    EDW.D03081_CARD_STATUS_HISTORY as A,P2C.UCIC_CARD_STATUS_SNAPSHOT as B
+    where CC.SOURCE_SYSTEM_CODE = 20
+    and CC.SOURCE_ACCOUNT_NBR = A.CARD_NBR
+    and A.CARD_NBR = B.CARD_NBR
+    and A.card_status_start_date = B.status_start_date;
+  commit work;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_4') then drop index p2c.UCIC_ITS_PARTY.UQHGIDX_UCIC_NEWDEV_4 end if;
+  commit work;
+  --TRUNCATE TABLE P2C.UCIC_ITS_PARTY;  
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_4') then
+    create unique hg index UQHGIDX_UCIC_NEWDEV_4 on P2C.UCIC_ITS_PARTY(feedcustid asc,feedsysid asc)
+  end if;
+  commit work;
+  insert into P2C.UCIC_ITS_PARTY
+    select feedsysid,TRIM(feedcustid) as feedcustid,cast(party_id as varchar) as party_id from edw.b0100_party_WEB;
+  commit work;
+  --- reject party 
+  select cast(feed_sys_id as integer) as feedsysid,TRIM(feed_cust_id) as feedcustid,customer_id as party_id into #REJECT
+    from edw.T0114_DC_WEB_REJ_CUST_MASTER
+    where feed_sys_id in( '20','30','80','51','52','53','75','76','90','301','302','303','304','305' ) 
+    and not TRIM(feed_cust_id) || '_' || TRIM(feed_sys_id) = any(select TRIM(feedcustid) || '_' || convert(varchar,feedsysid) from edw.b0100_party_WEB); --50 99 114 row(s) affected
+  commit work;
+  create hg index HGIDX_REJECt on EDW.#REJECT(feedcustid asc,feedsysid asc);
+  commit work;
+  delete from #REJECT as A from -- SELECT COUNT(1)
+    #REJECT as A
+    ,(select MAX(ROWID(C)) as ROW_ID,feedcustid,feedsysid
+      from #REJECT as C
+      group by feedcustid,feedsysid) as B
+    where A.feedcustid = B.feedcustid
+    and A.feedsysid = B.feedsysid
+    and ROWID(A) <> B.ROW_ID; --7049
+  commit work;
+  insert into P2C.UCIC_ITS_PARTY select * from #REJECT;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into P2C.UCIC_ITS_CUSTOMER
+    select SOURCE_SYSTEM_CODE,TRIM(SOURCE_PARTY_ID) as SOURCE_PARTY_ID,ISNULL(FULL_NAME,FIRST_NAME+' '+MIDDLE_NAME+' '+LAST_NAME) as FULL_NAME_1
+      from edw.T0111_SOURCE_CUSTOMER_DETAILS where SOURCE_SYSTEM_CODE in( 20,80,30 ) ;
+  commit work;
+  insert into P2C.UCIC_ITS_CUSTOMER
+    select SOURCE_SYSTEM_CODE,TRIM(SOURCE_PARTY_ID) as SOURCE_PARTY_ID,ISNULL(FULL_NAME,FIRST_NAME+' '+MIDDLE_NAME+' '+LAST_NAME) as FULL_NAME_1
+      from edw.T0111_SOURCE_CUSTOMER_DETAILS_FINONE where SOURCE_SYSTEM_CODE in( 50,51,52,53 ) ;
+  commit work;
+  commit work;
+  insert into P2C.UCIC_ITS_CUSTOMER
+    select SOURCE_SYSTEM_CODE,TRIM(SOURCE_PARTY_ID) as SOURCE_PARTY_ID,ISNULL(FULL_NAME,FIRST_NAME+' '+MIDDLE_NAME+' '+LAST_NAME) as FULL_NAME_1
+      from finagri.T0111_SOURCE_CUSTOMER_DETAILS where SOURCE_SYSTEM_CODE = 75;
+  commit work;
+  insert into P2C.UCIC_ITS_CUSTOMER
+    select SOURCE_SYSTEM_CODE,TRIM(SOURCE_PARTY_ID) as SOURCE_PARTY_ID,FULL_NAME
+      from finagri.T0111_SOURCE_CUSTOMER_DETAILS_b2 where SOURCE_SYSTEM_CODE = 76;
+  commit work;
+  insert into P2C.UCIC_ITS_CUSTOMER( SOURCE_SYSTEM_CODE,SOURCE_PARTY_ID,FULL_NAME ) 
+    select SOURCE_SYSTEM_CODE,TRIM(SOURCE_PARTY_ID) as SOURCE_PARTY_ID,ISNULL(FULL_NAME,FIRST_NAME+' '+MIDDLE_NAME+' '+LAST_NAME) as FULL_NAME_1
+      from EDW.CO_APPLICANT_CUSTOMER_DETAILS_FINONE
+      where SOURCE_SYSTEM_CODE in( 51,52,53 ) ;
+  commit work;
+  -------------  PCMS RELATED CHANGES
+  insert into P2C.UCIC_ITS_CUSTOMER
+    select SOURCE_SYSTEM_CODE,TRIM(SOURCE_PARTY_ID) as SOURCE_PARTY_ID,FULL_NAME
+      from edw.T0111_SOURCE_CUSTOMER_DETAILS_EPMS where SOURCE_SYSTEM_CODE = 90;
+  commit work;
+  -------------  PCMS RELATED CHANGES
+  ------------- ADD Ebor,Mobo,Mpesa,Travel card
+  insert into P2C.UCIC_ITS_CUSTOMER
+    select distinct SOURCE_SYSTEM_CODE,TRIM(SOURCE_PARTY_ID) as SOURCE_PARTY_ID,ISNULL(FULL_NAME,FIRST_NAME+' '+MIDDLE_NAME+' '+LAST_NAME) as FULL_NAME
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EXTERNAL_SYSTEM
+      where SOURCE_SYSTEM_CODE in( 301,302,303,304,305 ) ;
+  commit work;
+  -------------END ADD Ebor,Mobo,Mpesa,Travel card
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_1') then
+    create unique hg index UQHGIDX_UCIC_NEWDEV_1 on P2C.UCIC_ITS_CUSTOMER(source_party_id asc,source_system_code asc)
+  end if;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_3') then
+    create hg index HGIDX_UCIC_NEWDEV_3 on P2C.UCIC_T0300_B0328_BASE(source_party_id asc,source_system_code asc)
+  end if;
+  commit work;
+  insert into P2C.UCIC_LINKAGE_TABLE_TEMP_1
+    select(case when L1.GP_ID is not null then cast(L1.GP_ID as varchar)
+      else
+        (case when(B.party_id = L1.party_id and L1.GP_ID is null) then
+          'P' || B.party_id
+        else(case when(L1.party_id is null and B.party_id is not null) then 'P' || B.party_id else 'SP'
+             || A.SOURCE_SYSTEM_CODE || A.SOURCE_PARTY_ID end)
+        end)
+      end) as UCIC_VALUE,
+      A.SOURCE_PARTY_ID,A.SOURCE_SYSTEM_CODE,L1.CRITERIA,A.FULL_NAME
+      from P2C.UCIC_ITS_CUSTOMER as A left outer join P2C.UCIC_ITS_PARTY as B
+        on(A.source_party_id = B.feedcustid and A.source_system_code = B.feedsysid)
+        left outer join edw.B0100_PARTY_GROUPS_WEB as L1
+        on(B.party_id = L1.party_id);
+  commit work;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_4') then
+    create hg index HGIDX_UCIC_NEWDEV_4 on P2C.UCIC_LINKAGE_TABLE_TEMP_1(source_party_id asc,source_system_code asc)
+  end if;
+  commit work;
+  insert into P2C.UCIC_LINKAGE_TABLE_TEMP_2
+    select REPLICATE('0',16-LENGTH(TRIM(A.UCIC_VALUE)))+TRIM(A.UCIC_VALUE),
+      B.ACCOUNT_NBR,A.SOURCE_PARTY_ID,A.SOURCE_SYSTEM_CODE,B.SOURCE_ACCOUNT_NBR,B.ACCOUNT_OPEN_DATE,B.ACCOUNT_CLOSE_DATE,A.CRITERIA,A.FULL_NAME,
+      B.CARD_BLOCK_CODE,
+      B.SCHM_TYPE,
+      B.CUST_CONST,
+      B.CUST_STAT_CODE,
+      B.CUST_NRE_FLG,
+      null as ACC_HOLDER,
+      null as DORMANCY_STATUS,
+      null as INCOME_SEGMENT,
+      null as SERVICE_SEGMENT,
+      null as RELATION_TYPE,
+      null as PRODUCT_TYPE,
+      null as LINKED_USERID
+      from P2C.UCIC_LINKAGE_TABLE_TEMP_1 as A left outer join P2C.UCIC_T0300_B0328_BASE as B
+        on(A.source_party_id = B.source_party_id and A.source_system_code = B.source_system_code);
+  commit work;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'UQHGIDX_UCIC_NEWDEV_9') then
+    create unique hg index UQHGIDX_UCIC_NEWDEV_9 on P2C.UCIC_LINKAGE_TABLE_TEMP_2(SOURCE_PARTY_ID asc,SOURCE_SYSTEM_CODE asc,source_account_nbr asc)
+  end if;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'LFIDX_UCIC_NEWDEV_11') then
+    create lf index LFIDX_UCIC_NEWDEV_11 on P2C.UCIC_LINKAGE_TABLE_TEMP_2(SOURCE_SYSTEM_CODE asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_12') then
+    create hg index HGIDX_UCIC_NEWDEV_12 on P2C.UCIC_LINKAGE_TABLE_TEMP_2(SOURCE_PARTY_ID asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_13') then
+    create hg index HGIDX_UCIC_NEWDEV_13 on P2C.UCIC_LINKAGE_TABLE_TEMP_2(account_nbr asc)
+  end if;
+  commit work;
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.ACC_HOLDER = B.ACCT_POA_AS_REC_TYPE,
+    A.RELATION_TYPE = B.RELATION_TYPE from
+    P2C.UCIC_SECONDARY_ACCOUNT_HOLDER as B
+    where A.SOURCE_PARTY_ID = B.SECONDARY_CUST_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.RELATION_TYPE = B.COAPPL_TYPE,
+    a.ACC_HOLDER = B.COAPPL_TYPE from
+    EDW.FINNONE_CO_APPLICANT_DETAILS as B
+    where A.SOURCE_PARTY_ID = B.CO_SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.SOURCE_ACCOUNT_NBR = B.AGREEMENTNO
+    and A.SOURCE_SYSTEM_CODE in( 51,52,53 ) ;
+  commit work;
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.ACCOUNT_OPEN_DATE = (case when B.ACCOUNT_DERIVE_DATE is not null then
+      B.ACCOUNT_DERIVE_DATE else A.ACCOUNT_OPEN_DATE end),
+    A.DORMANCY_STATUS = B.DORMANCY_STATUS,
+    A.PRODUCT_TYPE = trim(B.PRODUCT_TYPE) from
+    EDW.T09311_LIABILITY_ACCOUNT_ADDON as B
+    where A.account_nbr is not null
+    and A.SOURCE_SYSTEM_CODE = 30
+    and A.account_nbr = B.account_nbr;
+  commit work;
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.DORMANCY_STATUS = B.DORMANCY_STATUS from
+    finagri.T09300_ACCOUNT_ADDON_B2 as B
+    where A.account_nbr is not null
+    and A.SOURCE_SYSTEM_CODE = 76
+    and A.account_nbr = B.account_nbr;
+  commit work;
+  -------------- ADDON CARD HOLDER
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.ACC_HOLDER = TRIM(B.CARD_FLAG) from
+    reconp.Temp_Cards_Custid_Base_UAT_N_SUR as B
+    where A.SOURCE_SYSTEM_CODE = 20
+    and A.SOURCE_PARTY_ID = TRIM(B.CUST_ID)
+    and A.SOURCE_ACCOUNT_NBR = TRIM(B.CARD_NBR);
+  commit work;
+  --------------- ADDON CARD HOLDER
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.INCOME_SEGMENT = B.incomesegment,
+    A.SERVICE_SEGMENT = B.servicesegment from
+    p2c.P2C_Customer_Segment_Final_N_Heena as B
+    where A.account_nbr = B.account_nbr
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and(a.ACC_HOLDER in( 'Main Holder','Others','PRIMARY' ) or a.ACC_HOLDER is null);
+  commit work;
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set PRODUCT_TYPE
+     = (case when SOURCE_SYSTEM_CODE = 20 then 'CARD'
+    when SOURCE_SYSTEM_CODE = 80 then 'DEMAT'
+    when SOURCE_SYSTEM_CODE = 75 then 'AGRI'
+    when SOURCE_SYSTEM_CODE = 51 then 'LOAN_RAPG'
+    when SOURCE_SYSTEM_CODE = 52 then 'LOAN_BANK'
+    when SOURCE_SYSTEM_CODE = 53 then 'LOAN_HFC'
+    when SOURCE_SYSTEM_CODE = 90 then 'PREPAID CARD'
+    when SOURCE_SYSTEM_CODE = 76 then 'B2'
+    -------- Changes for add Ebor,Mobo,Mpesa,Travel card
+    when SOURCE_SYSTEM_CODE = 301 then 'EBOR_DPSecure'
+    when SOURCE_SYSTEM_CODE = 302 then 'MoboMoney'
+    when SOURCE_SYSTEM_CODE = 303 then 'MPesa'
+    when SOURCE_SYSTEM_CODE = 304 then 'TravelCard_MultiCurr'
+    when SOURCE_SYSTEM_CODE = 305 then 'TravelCard_SingleCurrr'
+    else
+      ------ END Changes for Ebor,Mobo,Mpesa,Travel card
+      'OTHERS'
+    end) where SOURCE_SYSTEM_CODE <> 30;
+  commit work;
+  -------- Internet Banking UserID
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.LINKED_USERID = TRIM(B.linked_user_id) from
+    EDW.D0122_CAR_CUST_LINKAGE as B
+    where A.SOURCE_SYSTEM_CODE
+     = (case when b.source_feed_identifier = '3' then 20
+    when b.source_feed_identifier = '2' then 30
+    when b.source_feed_identifier = '10' then 51
+    when b.source_feed_identifier = '21' then 53
+    when b.source_feed_identifier = '22' then 52
+    when b.source_feed_identifier = '7' then 80
+    when b.source_feed_identifier = '69' then 75
+    else null
+    end)
+    and A.SOURCE_ACCOUNT_NBR = TRIM(B.SOURCE_ACCOUNT_NBR);
+  commit work;
+  update P2C.UCIC_LINKAGE_TABLE_TEMP_2 as A
+    set A.LINKED_USERID = TRIM(B.linked_user_id) from
+    EDW.D0122_CAR_CUST_LINKAGE as B
+    where A.SOURCE_SYSTEM_CODE = 20
+    and b.source_feed_identifier = '3'
+    and length(a.SOURCE_ACCOUNT_NBR) = 15
+    and '0'+A.SOURCE_ACCOUNT_NBR = TRIM(B.SOURCE_ACCOUNT_NBR)
+    and A.LINKED_USERID is null;
+  commit work;
+  -------------- Internet Banking UserID
+  truncate table P2C.UCIC_Linkage_Table_HIST;
+  commit work;
+  insert into P2C.UCIC_Linkage_Table_HIST
+    select * from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'LFIDX_UCIC_NEWDEV_F1') then drop index p2c.UCIC_LINKAGE_TABLE_UPDATED_FINAL.LFIDX_UCIC_NEWDEV_F1 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F2') then drop index p2c.UCIC_LINKAGE_TABLE_UPDATED_FINAL.HGIDX_UCIC_NEWDEV_F2 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F3') then drop index p2c.UCIC_LINKAGE_TABLE_UPDATED_FINAL.HGIDX_UCIC_NEWDEV_F3 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F4') then drop index p2c.UCIC_LINKAGE_TABLE_UPDATED_FINAL.HGIDX_UCIC_NEWDEV_F4 end if;
+  if exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F5') then drop index p2c.UCIC_LINKAGE_TABLE_UPDATED_FINAL.HGIDX_UCIC_NEWDEV_F5 end if;
+  truncate table P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL;
+  commit work;
+  insert into P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+    select UCIC_VALUE,SOURCE_SYSTEM_CODE,ACCOUNT_NBR,trim(SOURCE_ACCOUNT_NBR),trim(SOURCE_PARTY_ID),
+      FULL_NAME,CRITERIA,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,CARD_BLOCK_CODE,trim(ACC_HOLDER),CUST_CONST,CUST_STAT_CODE,SCHM_TYPE,
+      PRODUCT_TYPE,DORMANCY_STATUS,CUST_NRE_FLG as NRI_STATUS,INCOME_SEGMENT,SERVICE_SEGMENT,RELATION_TYPE,LINKED_USERID
+      from P2C.UCIC_LINKAGE_TABLE_TEMP_2;
+  commit work;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'LFIDX_UCIC_NEWDEV_F1') then
+    create lf index LFIDX_UCIC_NEWDEV_F1 on P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL(SOURCE_SYSTEM_CODE asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F2') then
+    create hg index HGIDX_UCIC_NEWDEV_F2 on P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL(SOURCE_PARTY_ID asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F3') then
+    create hg index HGIDX_UCIC_NEWDEV_F3 on P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL(source_account_nbr asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F4') then
+    create hg index HGIDX_UCIC_NEWDEV_F4 on P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL(UCIC_Value asc)
+  end if;
+  if not exists(select 1 from SYSINDEX where INDEX_NAME = 'HGIDX_UCIC_NEWDEV_F5') then
+    create hg index HGIDX_UCIC_NEWDEV_F5 on P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL(account_nbr asc)
+  end if;
+  commit work
+end

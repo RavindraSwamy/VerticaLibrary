@@ -1,0 +1,12 @@
+create procedure RECONP.MAIN_icici_digibank_customers_LOAD_PROC()
+begin
+  commit work;
+  truncate table RECONP.MAIN_icici_digibank_customers;
+  commit work;
+  load into table RECONP.MAIN_icici_digibank_customers( CUSTOMER_ID '|~|',CUSTOMER_ALIAS '|~|',CUSTOMER_FNAME '|~|',CUSTOMER_LNAME '|~|',CUSTOMER_DOB '|~|',CUSTOMER_MOBILE '|~|',CUSTOMER_EMAIL '|~|',CUSTOMER_GENDER '|~|',CUSTOMER_ADDRESS1 '|~|',CUSTOMER_ADDRESS2 '|~|',CUSTOMER_CITY '|~|',CUSTOMER_STATE '|~|',CUSTOMER_PINCODE '|~|',CUSTOMER_PHOTO_PATH '|~|',CUSTOMER_STATUS '|~|',CUSTOMER_THEME_ID '|~|',CUSTOMER_CARDPHOTO_ID '|~|',CUSTOMER_CRDATE '|~|',CUSTOMER_UPDATED '|~|',CUSTOMER_UPDATEMOBILE '|~|',DEVICE_ID '|~|',SECRET_TOKEN '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/DC/main_icici_digibank_customers.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/DC/main_icici_digibank_customers.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/DC/main_icici_digibank_customers.out.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  insert into RECONP.MAIN_icici_digibank_customers_AUDIT
+    select 'MAIN_icici_digibank_customers_AUDIT',@@rowcount,getdate();
+  commit work
+end

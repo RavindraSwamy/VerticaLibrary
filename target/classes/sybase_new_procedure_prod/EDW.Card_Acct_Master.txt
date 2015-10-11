@@ -1,0 +1,1013 @@
+create procedure edw.Card_Acct_Master()
+begin
+  truncate table mccm.Base_Card_Acct_Master;
+  commit work;
+  --------- Taking Credit cards data from P2C--------------
+  insert into mccm.Base_Card_Acct_Master
+    select UCIC_LINKAGE.Account_nbr,
+      UCIC_LINKAGE.UCIC_VALUE as UCIC_CODE,
+      UCIC_LINKAGE.SOURCE_PARTY_ID,
+      UCIC_LINKAGE.SOURCE_SYSTEM_CODE,
+      cast(null as varchar(25)) as SOURCE_ACCOUNT_NBR,
+      UCIC_LINKAGE.ACCOUNT_OPEN_DATE,
+      UCIC_LINKAGE.ACCOUNT_CLOSE_DATE,
+      UCIC_LINKAGE.SOURCE_ACCOUNT_NBR as CARD_NUMBER,
+      cast(null as decimal(20,4)) as CASH_WITHDRAWAL_LIMIT,
+      cast(null as decimal(20,4)) as CREDIT_LIMIT,
+      (case when(UCIC_LINKAGE.source_system_code = 20 and substr(UCIC_LINKAGE.SOURCE_ACCOUNT_NBR,-3,1) = '0') then 'Primary'
+      when(UCIC_LINKAGE.source_system_code = 20 and substr(UCIC_LINKAGE.SOURCE_ACCOUNT_NBR,-3,1) <> '0') then 'Addon' end) as CARD_TYPE,
+      cast(null as varchar(10)) as CARD_LOGO,
+      UCIC_LINKAGE.CARD_BLOCK_CODE,
+      cast(null as varchar(5)) as BILLING_CYCLE,
+      cast(null as integer) as DPD,
+      cast(null as date) as DEFAULTER_SINCE,
+      getdate() as ASOF_DATE,
+      cast(null as integer) as TYPESERNO_GLEDGER,
+      cast(null as date) as EVENT_START_DATE,
+      cast(null as varchar(5)) as FINANCIAL_IND,
+      cast(null as varchar(30)) as CARD_STATUS_CODE,
+      cast(null as varchar(30)) as NAME_ON_CARD,
+      cast(null as varchar(3)) as SERVICECODE,
+      cast(null as date) as LIMIT_APPLICABLE_DATE,
+      cast(null as varchar(50)) as PRODUCT_NAME,
+      cast(null as varchar(5)) as PROMO_CODE,
+      UCIC_LINKAGE.ACCOUNT_CLOSE_DATE as CARD_FREEZE_DATE,
+      null as BLOCK_DATE,
+      cast(null as varchar(20)) as Linked_Cust_Id,
+      cast(null as varchar(50)) as Linked_User_Id,
+      cast(null as varchar(9)) as Source_Feed_Identifier,
+      cast(null as varchar(15)) as New_Existing_Flag,
+      cast(null as varchar(50)) as email_id,
+      cast(null as varchar(65)) as Mobile_Nbr,
+      cast(null as date) as Trandate,
+      cast(null as decimal(20,4)) as Tranamount,
+      cast(null as varchar(50)) as Source,
+      cast(null as varchar(100)) as Txn_Type,
+      cast(null as varchar(100)) as Final_Txn_Type,
+      cast(null as varchar(20)) as Stat,
+      cast(null as date) as Card_Issue_Date,
+      cast(null as date) as Card_Expiry_Date,
+      cast(null as varchar(20)) as Status
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+        left outer join mccm.Card_Acct_Master as b
+        on UCIC_LINKAGE.source_account_nbr = b.card_number
+      where UCIC_LINKAGE.source_system_code = 20
+      and UCIC_LINKAGE.SOURCE_ACCOUNT_NBR is not null
+      and b.card_number is null;
+  commit work;
+  --------- Taking Prepaid and Forex card data --------------
+  insert into mccm.Base_Card_Acct_Master
+    select UCIC_LINKAGE.Account_nbr,
+      UCIC_LINKAGE.UCIC_VALUE as UCIC_CODE,
+      UCIC_LINKAGE.SOURCE_PARTY_ID,
+      UCIC_LINKAGE.SOURCE_SYSTEM_CODE,
+      UCIC_LINKAGE.SOURCE_PARTY_ID as SOURCE_ACCOUNT_NBR,
+      UCIC_LINKAGE.ACCOUNT_OPEN_DATE,
+      UCIC_LINKAGE.ACCOUNT_CLOSE_DATE,
+      UCIC_LINKAGE.SOURCE_PARTY_ID as CARD_NUMBER,
+      cast(null as decimal(20,4)) as CASH_WITHDRAWAL_LIMIT,
+      cast(null as decimal(20,4)) as CREDIT_LIMIT,
+      (case when(UCIC_LINKAGE.source_system_code = 90) then 'Prepaid'
+      when(UCIC_LINKAGE.source_system_code = 304) then 'TravelCard_MultiCurr'
+      when(UCIC_LINKAGE.source_system_code = 305) then 'TravelCard_SingleCurr' end) as CARD_TYPE,
+      cast(null as varchar(10)) as CARD_LOGO,
+      UCIC_LINKAGE.CARD_BLOCK_CODE,
+      cast(null as varchar(5)) as BILLING_CYCLE,
+      cast(null as integer) as DPD,
+      cast(null as date) as DEFAULTER_SINCE,
+      getdate() as ASOF_DATE,
+      cast(null as integer) as TYPESERNO_GLEDGER,
+      cast(null as date) as EVENT_START_DATE,
+      cast(null as varchar(5)) as FINANCIAL_IND,
+      cast(null as varchar(30)) as CARD_STATUS_CODE,
+      cast(null as varchar(30)) as NAME_ON_CARD,
+      cast(null as varchar(3)) as SERVICECODE,
+      cast(null as date) as LIMIT_APPLICABLE_DATE,
+      cast(null as varchar(50)) as PRODUCT_NAME,
+      cast(null as varchar(5)) as PROMO_CODE,
+      UCIC_LINKAGE.ACCOUNT_CLOSE_DATE as CARD_FREEZE_DATE,
+      null as BLOCK_DATE,
+      cast(null as varchar(20)) as Linked_Cust_Id,
+      cast(null as varchar(50)) as Linked_User_Id,
+      cast(null as varchar(9)) as Source_Feed_Identifier,
+      cast(null as varchar(15)) as New_Existing_Flag,
+      cast(null as varchar(50)) as email_id,
+      cast(null as varchar(65)) as Mobile_Nbr,
+      cast(null as date) as Trandate,
+      cast(null as decimal(20,4)) as Tranamount,
+      cast(null as varchar(50)) as Source,
+      cast(null as varchar(100)) as Txn_Type,
+      cast(null as varchar(100)) as Final_Txn_Type,
+      cast(null as varchar(20)) as Stat,
+      cast(null as date) as Card_Issue_Date,
+      cast(null as date) as Card_Expiry_Date,
+      cast(null as varchar(20)) as Status
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+        left outer join mccm.Card_Acct_Master as b
+        on UCIC_LINKAGE.source_account_nbr = b.card_number
+      where UCIC_LINKAGE.source_system_code in( 90,304,305 ) 
+      and UCIC_LINKAGE.SOURCE_ACCOUNT_NBR is not null
+      and not UCIC_LINKAGE.SOURCE_ACCOUNT_NBR = any(select CARD_NUMBER from mccm.Base_Card_Acct_Master)
+      and b.card_number is null;
+  commit work;
+  -----------Taking CA, SA for finacle ----------------------
+  insert into mccm.Base_Card_Acct_Master
+    select a.Account_nbr,
+      a.UCIC_VALUE as UCIC_CODE,
+      a.SOURCE_PARTY_ID,
+      a.SOURCE_SYSTEM_CODE,
+      a.SOURCE_ACCOUNT_NBR,
+      a.ACCOUNT_OPEN_DATE,
+      a.ACCOUNT_CLOSE_DATE,
+      null as CARD_NUMBER,
+      cast(null as decimal(20,4)) as CASH_WITHDRAWAL_LIMIT,
+      cast(null as decimal(20,4)) as CREDIT_LIMIT,
+      'Debit' as CARD_TYPE,
+      cast(null as varchar(10)) as CARD_LOGO,
+      a.CARD_BLOCK_CODE,
+      cast(null as varchar(5)) as BILLING_CYCLE,
+      cast(null as integer) as DPD,
+      cast(null as date) as DEFAULTER_SINCE,
+      getdate() as ASOF_DATE,
+      cast(null as integer) as TYPESERNO_GLEDGER,
+      cast(null as date) as EVENT_START_DATE,
+      cast(null as varchar(5)) as FINANCIAL_IND,
+      cast(null as varchar(30)) as CARD_STATUS_CODE,
+      cast(null as varchar(30)) as NAME_ON_CARD,
+      cast(null as varchar(3)) as SERVICECODE,
+      cast(null as date) as LIMIT_APPLICABLE_DATE,
+      cast(null as varchar(50)) as PRODUCT_NAME,
+      cast(null as varchar(5)) as PROMO_CODE,
+      a.ACCOUNT_CLOSE_DATE as CARD_FREEZE_DATE,
+      null as BLOCK_DATE,
+      cast(null as varchar(20)) as Linked_Cust_Id,
+      cast(null as varchar(50)) as Linked_User_Id,
+      cast(null as varchar(9)) as Source_Feed_Identifier,
+      cast(null as varchar(15)) as New_Existing_Flag,
+      cast(null as varchar(50)) as email_id,
+      cast(null as varchar(65)) as Mobile_Nbr,
+      cast(null as date) as Trandate,
+      cast(null as decimal(20,4)) as Tranamount,
+      cast(null as varchar(50)) as Source,
+      cast(null as varchar(100)) as Txn_Type,
+      cast(null as varchar(100)) as Final_Txn_Type,
+      cast(null as varchar(20)) as Stat,
+      cast(null as date) as Card_Issue_Date,
+      cast(null as date) as Card_Expiry_Date,
+      cast(null as varchar(20)) as Status
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as a
+        join(select UCIC_LINKAGE.source_account_nbr as source_account_nbr,max(account_open_date) as max_acct_opn_dt
+          from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+          where source_system_code = 30 and product_type = 'SA' and ACCOUNT_CLOSE_DATE is null and ACC_HOLDER = 'Main Holder'
+          and UCIC_LINKAGE.SOURCE_ACCOUNT_NBR is not null group by UCIC_LINKAGE.source_account_nbr) as b
+        on a.source_account_nbr = b.source_account_nbr
+        left outer join mccm.Card_Acct_Master as c
+        on b.source_account_nbr = c.source_account_nbr
+      where a.account_open_date = b.max_acct_opn_dt
+      and a.source_system_code = 30
+      and a.product_type = 'SA'
+      and a.ACCOUNT_CLOSE_DATE is null
+      and a.ACC_HOLDER = 'Main Holder'
+      and a.SOURCE_ACCOUNT_NBR is not null
+      and c.source_account_nbr is null;
+  commit work;
+  insert into mccm.Base_Card_Acct_Master
+    select a.Account_nbr,
+      a.UCIC_VALUE as UCIC_CODE,
+      a.SOURCE_PARTY_ID,
+      a.SOURCE_SYSTEM_CODE,
+      a.SOURCE_ACCOUNT_NBR,
+      a.ACCOUNT_OPEN_DATE,
+      a.ACCOUNT_CLOSE_DATE,
+      null as CARD_NUMBER,
+      cast(null as decimal(20,4)) as CASH_WITHDRAWAL_LIMIT,
+      cast(null as decimal(20,4)) as CREDIT_LIMIT,
+      'Debit' as CARD_TYPE,
+      cast(null as varchar(10)) as CARD_LOGO,
+      a.CARD_BLOCK_CODE,
+      cast(null as varchar(5)) as BILLING_CYCLE,
+      cast(null as integer) as DPD,
+      cast(null as date) as DEFAULTER_SINCE,
+      getdate() as ASOF_DATE,
+      cast(null as integer) as TYPESERNO_GLEDGER,
+      cast(null as date) as EVENT_START_DATE,
+      cast(null as varchar(5)) as FINANCIAL_IND,
+      cast(null as varchar(30)) as CARD_STATUS_CODE,
+      cast(null as varchar(30)) as NAME_ON_CARD,
+      cast(null as varchar(3)) as SERVICECODE,
+      cast(null as date) as LIMIT_APPLICABLE_DATE,
+      cast(null as varchar(50)) as PRODUCT_NAME,
+      cast(null as varchar(5)) as PROMO_CODE,
+      a.ACCOUNT_CLOSE_DATE as CARD_FREEZE_DATE,
+      null as BLOCK_DATE,
+      cast(null as varchar(20)) as Linked_Cust_Id,
+      cast(null as varchar(50)) as Linked_User_Id,
+      cast(null as varchar(9)) as Source_Feed_Identifier,
+      cast(null as varchar(15)) as New_Existing_Flag,
+      cast(null as varchar(50)) as email_id,
+      cast(null as varchar(65)) as Mobile_Nbr,
+      cast(null as date) as Trandate,
+      cast(null as decimal(20,4)) as Tranamount,
+      cast(null as varchar(50)) as Source,
+      cast(null as varchar(100)) as Txn_Type,
+      cast(null as varchar(100)) as Final_Txn_Type,
+      cast(null as varchar(20)) as Stat,
+      cast(null as date) as Card_Issue_Date,
+      cast(null as date) as Card_Expiry_Date,
+      cast(null as varchar(20)) as Status
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as a
+        join(select UCIC_LINKAGE.source_account_nbr as source_account_nbr,max(account_open_date) as max_acct_opn_dt
+          from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+          where source_system_code = 30 and product_type = 'CA' and ACCOUNT_CLOSE_DATE is null
+          and ACC_HOLDER is null and SOURCE_ACCOUNT_NBR is not null group by UCIC_LINKAGE.source_account_nbr) as b
+        on a.source_account_nbr = b.source_account_nbr
+        left outer join mccm.Card_Acct_Master as c
+        on b.source_account_nbr = c.source_account_nbr
+      where a.account_open_date = b.max_acct_opn_dt
+      and a.source_system_code = 30
+      and a.product_type = 'CA'
+      and a.ACCOUNT_CLOSE_DATE is null
+      and a.ACC_HOLDER is null
+      and a.SOURCE_ACCOUNT_NBR is not null
+      and not a.source_account_nbr = any(select source_account_nbr from mccm.Base_Card_Acct_Master where source_system_code = 30)
+      and c.source_account_nbr is null;
+  commit work;
+  insert into mccm.Base_Card_Acct_Master
+    select a.Account_nbr,
+      a.UCIC_VALUE as UCIC_CODE,
+      a.SOURCE_PARTY_ID,
+      a.SOURCE_SYSTEM_CODE,
+      a.SOURCE_ACCOUNT_NBR,
+      a.ACCOUNT_OPEN_DATE,
+      a.ACCOUNT_CLOSE_DATE,
+      null as CARD_NUMBER,
+      cast(null as decimal(20,4)) as CASH_WITHDRAWAL_LIMIT,
+      cast(null as decimal(20,4)) as CREDIT_LIMIT,
+      'Debit' as CARD_TYPE,
+      cast(null as varchar(10)) as CARD_LOGO,
+      a.CARD_BLOCK_CODE,
+      cast(null as varchar(5)) as BILLING_CYCLE,
+      cast(null as integer) as DPD,
+      cast(null as date) as DEFAULTER_SINCE,
+      getdate() as ASOF_DATE,
+      cast(null as integer) as TYPESERNO_GLEDGER,
+      cast(null as date) as EVENT_START_DATE,
+      cast(null as varchar(5)) as FINANCIAL_IND,
+      cast(null as varchar(30)) as CARD_STATUS_CODE,
+      cast(null as varchar(30)) as NAME_ON_CARD,
+      cast(null as varchar(3)) as SERVICECODE,
+      cast(null as date) as LIMIT_APPLICABLE_DATE,
+      cast(null as varchar(50)) as PRODUCT_NAME,
+      cast(null as varchar(5)) as PROMO_CODE,
+      a.ACCOUNT_CLOSE_DATE as CARD_FREEZE_DATE,
+      null as BLOCK_DATE,
+      cast(null as varchar(20)) as Linked_Cust_Id,
+      cast(null as varchar(50)) as Linked_User_Id,
+      cast(null as varchar(9)) as Source_Feed_Identifier,
+      cast(null as varchar(15)) as New_Existing_Flag,
+      cast(null as varchar(50)) as email_id,
+      cast(null as varchar(65)) as Mobile_Nbr,
+      cast(null as date) as Trandate,
+      cast(null as decimal(20,4)) as Tranamount,
+      cast(null as varchar(50)) as Source,
+      cast(null as varchar(100)) as Txn_Type,
+      cast(null as varchar(100)) as Final_Txn_Type,
+      cast(null as varchar(20)) as Stat,
+      cast(null as date) as Card_Issue_Date,
+      cast(null as date) as Card_Expiry_Date,
+      cast(null as varchar(20)) as Status
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as a
+        join(select UCIC_LINKAGE.source_account_nbr as source_account_nbr,max(account_open_date) as max_acct_opn_dt
+          from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+          where source_system_code = 30 and product_type = 'SA' and ACCOUNT_CLOSE_DATE is null
+          and ACC_HOLDER is null and SOURCE_ACCOUNT_NBR is not null group by UCIC_LINKAGE.source_account_nbr) as b
+        on a.source_account_nbr = b.source_account_nbr
+        left outer join mccm.Card_Acct_Master as c
+        on b.source_account_nbr = c.source_account_nbr
+      where a.account_open_date = b.max_acct_opn_dt
+      and a.source_system_code = 30
+      and a.product_type = 'SA'
+      and a.ACCOUNT_CLOSE_DATE is null
+      and a.ACC_HOLDER is null
+      and a.SOURCE_ACCOUNT_NBR is not null
+      and not a.source_account_nbr = any(select source_account_nbr from mccm.Base_Card_Acct_Master where source_system_code = 30)
+      and c.source_account_nbr is null;
+  commit work;
+  insert into mccm.Base_Card_Acct_Master
+    select a.Account_nbr,
+      a.UCIC_VALUE as UCIC_CODE,
+      a.SOURCE_PARTY_ID,
+      a.SOURCE_SYSTEM_CODE,
+      a.SOURCE_ACCOUNT_NBR,
+      a.ACCOUNT_OPEN_DATE,
+      a.ACCOUNT_CLOSE_DATE,
+      null as CARD_NUMBER,
+      cast(null as decimal(20,4)) as CASH_WITHDRAWAL_LIMIT,
+      cast(null as decimal(20,4)) as CREDIT_LIMIT,
+      'Debit' as CARD_TYPE,
+      cast(null as varchar(10)) as CARD_LOGO,
+      a.CARD_BLOCK_CODE,
+      cast(null as varchar(5)) as BILLING_CYCLE,
+      cast(null as integer) as DPD,
+      cast(null as date) as DEFAULTER_SINCE,
+      getdate() as ASOF_DATE,
+      cast(null as integer) as TYPESERNO_GLEDGER,
+      cast(null as date) as EVENT_START_DATE,
+      cast(null as varchar(5)) as FINANCIAL_IND,
+      cast(null as varchar(30)) as CARD_STATUS_CODE,
+      cast(null as varchar(30)) as NAME_ON_CARD,
+      cast(null as varchar(3)) as SERVICECODE,
+      cast(null as date) as LIMIT_APPLICABLE_DATE,
+      cast(null as varchar(50)) as PRODUCT_NAME,
+      cast(null as varchar(5)) as PROMO_CODE,
+      a.ACCOUNT_CLOSE_DATE as CARD_FREEZE_DATE,
+      null as BLOCK_DATE,
+      cast(null as varchar(20)) as Linked_Cust_Id,
+      cast(null as varchar(50)) as Linked_User_Id,
+      cast(null as varchar(9)) as Source_Feed_Identifier,
+      cast(null as varchar(15)) as New_Existing_Flag,
+      cast(null as varchar(50)) as email_id,
+      cast(null as varchar(65)) as Mobile_Nbr,
+      cast(null as date) as Trandate,
+      cast(null as decimal(20,4)) as Tranamount,
+      cast(null as varchar(50)) as Source,
+      cast(null as varchar(100)) as Txn_Type,
+      cast(null as varchar(100)) as Final_Txn_Type,
+      cast(null as varchar(20)) as Stat,
+      cast(null as date) as Card_Issue_Date,
+      cast(null as date) as Card_Expiry_Date,
+      cast(null as varchar(20)) as Status
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as a
+        join(select UCIC_LINKAGE.source_account_nbr as source_account_nbr,max(account_open_date) as max_acct_opn_dt
+          from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+          where source_system_code = 30 and product_type = 'CA' and ACCOUNT_CLOSE_DATE is null
+          and ACC_HOLDER is null and SOURCE_ACCOUNT_NBR is not null group by UCIC_LINKAGE.source_account_nbr) as b
+        on a.source_account_nbr = b.source_account_nbr
+        left outer join mccm.Card_Acct_Master as c
+        on b.source_account_nbr = c.source_account_nbr
+      where a.account_open_date = b.max_acct_opn_dt
+      and a.source_system_code = 30
+      and a.product_type = 'CA'
+      and a.ACCOUNT_CLOSE_DATE is null
+      and a.ACC_HOLDER is null
+      and a.SOURCE_ACCOUNT_NBR is not null
+      and not a.source_account_nbr = any(select source_account_nbr from mccm.Base_Card_Acct_Master where source_system_code = 30)
+      and c.source_account_nbr is null;
+  commit work;
+  update mccm.Card_Acct_Master as a
+    set UCIC_CODE = b.ucic_value,
+    ACCOUNT_CLOSE_DATE = b.ACCOUNT_CLOSE_DATE,
+    CARD_BLOCK_CODE = b.CARD_BLOCK_CODE,
+    CARD_FREEZE_DATE = b.ACCOUNT_CLOSE_DATE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as b
+    where a.card_number = b.source_account_nbr
+    and a.source_system_code = 20
+    and b.source_system_code = 20;
+  commit work;
+  update mccm.Card_Acct_Master as a
+    set UCIC_CODE = b.ucic_value,
+    ACCOUNT_CLOSE_DATE = b.ACCOUNT_CLOSE_DATE,
+    CARD_BLOCK_CODE = b.CARD_BLOCK_CODE,
+    CARD_FREEZE_DATE = b.ACCOUNT_CLOSE_DATE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as b
+    where a.card_number = b.source_account_nbr
+    and a.source_system_code in( 90,304,305 ) 
+    and b.source_system_code in( 90,304,305 ) ;
+  commit work;
+  update mccm.Card_Acct_Master as a
+    set UCIC_CODE = b.ucic_value,
+    ACCOUNT_CLOSE_DATE = b.ACCOUNT_CLOSE_DATE,
+    CARD_BLOCK_CODE = b.CARD_BLOCK_CODE,
+    CARD_FREEZE_DATE = b.ACCOUNT_CLOSE_DATE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as b
+    where a.source_account_nbr = b.source_account_nbr
+    and a.source_system_code = 30
+    and b.source_system_code = 30;
+  commit work;
+  ------Updating source_account_nbr for Credit cards from Main_Cards_Addon table--------------
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set SOURCE_ACCOUNT_NBR = card_adon.SOURCE_ACCOUNT_NBR from
+    edw.Main_Cards_Addon as card_adon
+    where card_adon.account_nbr = UCIC_LINKAGE.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  ---------Updating cash_withdrawl_limit for Credit cards from Traid_Master table------------------
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CASH_WITHDRAWAL_LIMIT = T10.TI_LICS from
+    EDW.TRIAD_MASTER_T10 as T10
+    ,B03201_account_prime as B03201
+    where T10.TI_ACCT_NUM = B03201.numberx
+    and B03201.account_nbr = UCIC_LINKAGE.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  --------Updating credit_limit for credit cards ------------------
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CREDIT_LIMIT = T093083.CREDIT_LIMIT from
+    T093083_CREDIT_CARD_CUST_DETAILS as T093083
+    where T093083.ACCOUNT_NBR = UCIC_LINKAGE.ACCOUNT_NBR
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CARD_LOGO = t0220.PRODUCT_NAME from
+    EDW.T0308_CARD as t0308
+    ,EDW.T0220_PRODUCT as t0220
+    where UCIC_LINKAGE.CARD_NUMBER = t0308.CARD_NBR
+    and t0308.PRODUCT_ID = t0220.PRODUCT_ID
+    and t0220.SOURCE_SYSTEM_CODE = 20
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set BILLING_CYCLE = substr(cast(T0930.max_stmt_dt as varchar),9,2) from
+    (select account_nbr,max(stmt_generate_date) as max_stmt_dt
+      from EDW.T0930_STATEMENT_SUMMARY
+      group by account_nbr) as T0930
+    where UCIC_LINKAGE.account_nbr = T0930.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set BILLING_CYCLE = substr(cast(T0930.max_stmt_dt as varchar),9,2) from
+    (select account_nbr,max(stmt_generate_date) as max_stmt_dt
+      from EDW.T0930_statement_summary_history
+      group by account_nbr) as T0930
+    where UCIC_LINKAGE.account_nbr = T0930.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20
+    and BILLING_CYCLE is null;
+  commit work;
+  drop table mccm.Temp_Master_D0123_DPD_max;
+  commit work;
+  commit work;
+  select numberx,
+    max(
+    cast(substr(month,6,4) || '-'
+     || (case substr(month,3,3)
+    when 'JAN' then '01'
+    when 'FEB' then '02'
+    when 'MAR' then '03'
+    when 'APR' then '04'
+    when 'MAY' then '05'
+    when 'JUN' then '06'
+    when 'JUL' then '07'
+    when 'AUG' then '08'
+    when 'SEP' then '09'
+    when 'OCT' then '10'
+    when 'NOV' then '11'
+    when 'DEC' then '12' end)
+     || '-'
+     || substr(month,1,2) as date)) as max_month
+    into mccm.Temp_Master_D0123_DPD_max
+    from EDW.D0123_FINBAL_DUMP where cast(substr(month,6,4) || '-'
+     || (case substr(month,3,3)
+    when 'JAN' then '01'
+    when 'FEB' then '02'
+    when 'MAR' then '03'
+    when 'APR' then '04'
+    when 'MAY' then '05'
+    when 'JUN' then '06'
+    when 'JUL' then '07'
+    when 'AUG' then '08'
+    when 'SEP' then '09'
+    when 'OCT' then '10'
+    when 'NOV' then '11'
+    when 'DEC' then '12' end)
+     || '-'
+     || substr(month,1,2) as date) > (select max(max_month) from mccm.Master_D0123_DPD_max)
+    group by numberx;
+  commit work;
+  alter table mccm.Temp_Master_D0123_DPD_max add
+    month varchar(10) null;
+  alter table mccm.Temp_Master_D0123_DPD_max add
+    DPD integer null;
+  update mccm.Temp_Master_D0123_DPD_max as a
+    set DPD = b.DPD,
+    month = b.month from
+    EDW.D0123_FINBAL_DUMP as b
+    where a.numberx = b.numberx
+    and a.max_month = cast(substr(b.month,6,4) || '-'
+     || (case substr(b.month,3,3)
+    when 'JAN' then '01'
+    when 'FEB' then '02'
+    when 'MAR' then '03'
+    when 'APR' then '04'
+    when 'MAY' then '05'
+    when 'JUN' then '06'
+    when 'JUL' then '07'
+    when 'AUG' then '08'
+    when 'SEP' then '09'
+    when 'OCT' then '10'
+    when 'NOV' then '11'
+    when 'DEC' then '12' end)
+     || '-'
+     || substr(b.month,1,2) as date);
+  commit work;
+  update mccm.Master_D0123_DPD_max as a
+    set DPD = b.DPD,
+    month = b.month,
+    max_month = b.max_month from
+    mccm.Temp_Master_D0123_DPD_max as b
+    where a.numberx = b.numberx;
+  commit work;
+  insert into mccm.Master_D0123_DPD_max
+    select a.*
+      from mccm.Temp_Master_D0123_DPD_max as a
+        left outer join mccm.Master_D0123_DPD_max as b
+        on a.numberx = b.numberx
+      where b.numberx is null;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set DPD = b.DPD from
+    mccm.Temp_Master_D0123_DPD_max as b
+    where UCIC_LINKAGE.CARD_NUMBER = b.numberx
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set DEFAULTER_SINCE = T0930.max_genrdate from
+    (select account_nbr,max(stmt_generate_date) as max_genrdate
+      from(select * from EDW.T0930_STATEMENT_SUMMARY where overduecycles = 4 union all
+        select * from EDW.T0930_STATEMENT_SUMMARY_history where overduecycles = 4) as a
+      group by account_nbr) as T0930
+    where UCIC_LINKAGE.account_nbr = T0930.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  drop table mccm.Temp_Master_T0952_Max_Card_Event;
+  commit work;
+  select card_nbr,max(event_id) as max_eventid
+    into mccm.Temp_Master_T0952_Max_Card_Event
+    from edw.T0952_CARD_EVENT_2014_karu where event_id > (select max(max_eventid) from mccm.Master_T0952_Max_Card_Event)
+    group by card_nbr;
+  commit work;
+  alter table mccm.Temp_Master_T0952_Max_Card_Event add
+    TYPESERNO_GLEDGER integer null;
+  update mccm.Temp_Master_T0952_Max_Card_Event as a
+    set TYPESERNO_GLEDGER = b.TYPESERNO_GLEDGER from
+    edw.T0952_CARD_EVENT_2014_karu as b
+    where a.card_nbr = b.card_nbr
+    and a.max_eventid = b.event_id;
+  commit work;
+  update mccm.Master_T0952_Max_Card_Event as a
+    set max_eventid = b.max_eventid,
+    TYPESERNO_GLEDGER = b.TYPESERNO_GLEDGER from
+    mccm.Temp_Master_T0952_Max_Card_Event as b
+    where a.card_nbr = b.card_nbr;
+  commit work;
+  insert into mccm.Master_T0952_Max_Card_Event
+    select a.*
+      from mccm.Temp_Master_T0952_Max_Card_Event as a
+        left outer join mccm.Master_T0952_Max_Card_Event as b
+        on a.card_nbr = b.card_nbr
+        and b.card_nbr is null;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set TYPESERNO_GLEDGER = b.TYPESERNO_GLEDGER from
+    mccm.Temp_Master_T0952_Max_Card_Event as b
+    where UCIC_LINKAGE.card_number = b.card_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  drop table mccm.temp_Master_T05001_Max_Card_Event;
+  commit work;
+  select account_nbr,max(event_id) as max_eventid into mccm.Temp_Master_T05001_Max_Card_Event
+    from edw.T05001_ALL_CONSUMER_EVENTS where event_id > (select max(max_eventid) from mccm.Master_T05001_Max_Card_Event)
+    and source_system_code = 20
+    group by account_nbr;
+  commit work;
+  alter table mccm.Temp_Master_T05001_Max_Card_Event add
+    EVENT_START_DATE date null;
+  alter table mccm.Temp_Master_T05001_Max_Card_Event add
+    FINANCIAL_IND varchar(5) null;
+  update mccm.Temp_Master_T05001_Max_Card_Event as a
+    set EVENT_START_DATE = b.EVENT_START_DATE,
+    FINANCIAL_IND = b.FINANCIAL_IND from
+    edw.T05001_ALL_CONSUMER_EVENTS as b
+    where a.account_nbr = b.account_nbr
+    and a.max_eventid = b.event_id
+    and source_system_code = 20;
+  commit work;
+  update mccm.Master_T05001_Max_Card_Event as a
+    set max_eventid = b.max_eventid,
+    EVENT_START_DATE = b.EVENT_START_DATE,
+    FINANCIAL_IND = b.FINANCIAL_IND from
+    mccm.Temp_Master_T05001_Max_Card_Event as b
+    where a.account_nbr = b.account_nbr;
+  commit work;
+  insert into mccm.Master_T05001_Max_Card_Event
+    select a.*
+      from mccm.Temp_Master_T05001_Max_Card_Event as a
+        left outer join mccm.Master_T05001_Max_Card_Event as b
+        on a.account_nbr = b.account_nbr
+      where b.account_nbr is null;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set EVENT_START_DATE = b.EVENT_START_DATE,
+    FINANCIAL_IND = b.FINANCIAL_IND from
+    mccm.Temp_Master_T05001_Max_Card_Event as b
+    where UCIC_LINKAGE.account_nbr = b.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CARD_STATUS_CODE = cardx.stgeneral from
+    edw.cardx
+    where UCIC_LINKAGE.CARD_NUMBER = cardx.numberx
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set NAME_ON_CARD = T0308_CARD.NAME_ON_CARD,
+    SERVICECODE = T0308_CARD.SERVICECODE from
+    edw.T0308_CARD
+    where UCIC_LINKAGE.CARD_NUMBER = T0308_CARD.card_nbr;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set LIMIT_APPLICABLE_DATE = T0313.LIMIT_APPLICABLE_DATE from
+    edw.T0313_ACCOUNT_LIMIT_FINCR as T0313
+    where UCIC_LINKAGE.account_nbr = T0313.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set PRODUCT_NAME = AJ0904.PRODUCT_NAME,
+    PROMO_CODE = AJ0904.PROMO_CODE,
+    BLOCK_DATE = AJ0904.Account_Block_Start_Date from
+    RECONP.CARD_MASTER_AJ0904 as AJ0904
+    where UCIC_LINKAGE.account_nbr = AJ0904.account_nbr
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  select SOURCE_ACCOUNT_NBR,DB_CARD_NBR
+    into #DB_CARD
+    from manjushag.QCM51_CAF as B
+    where cast(DATE_OF_EXPIRY as date) > cast(GETDATE() as date)
+    and STATUS in( '1','5' ) ;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CARD_NUMBER = DB_CARD.DB_CARD_NBR from
+    #DB_CARD as DB_CARD
+    where UCIC_LINKAGE.source_account_nbr = DB_CARD.SOURCE_ACCOUNT_NBR
+    and UCIC_LINKAGE.source_system_code = 30;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CARD_ISSUE_DATE = createdate,
+    CARD_EXPIRY_DATE = expirydate,
+    status = stgeneral from
+    cardx
+    where UCIC_LINKAGE.card_number = cardx.numberx
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CARD_ISSUE_DATE = activation_date,
+    status = card_status from
+    edw.main_stage_Forex_Cards_N_DEB as a
+    where UCIC_LINKAGE.card_number = a.card_number
+    and UCIC_LINKAGE.source_system_code = 304;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CARD_ISSUE_DATE = issuance_date,
+    status = card_status from
+    edw.main_stage_Forex_Cards_SINGLE_N_DEB as a
+    where UCIC_LINKAGE.card_number = a.card_no
+    and UCIC_LINKAGE.source_system_code = 305;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set CARD_ISSUE_DATE = a.date_of_issue,
+    CARD_EXPIRY_DATE = a.date_of_expiry,
+    status = a.status from
+    QDESK.QCM51_CAF as a
+    where UCIC_LINKAGE.SOURCE_ACCOUNT_NBR = a.SOURCE_ACCOUNT_NBR
+    and UCIC_LINKAGE.source_system_code = 30;
+  commit work;
+  --------------------------- Total pocket base -----------------------------------------
+  ---------------------populating user id, oldnet user id,linked user id , mobile no and email id -----------------------
+  select *,cast(null as varchar(50)) as linked_user_id,cast(null as varchar(50)) as user_id,cast(null as varchar(50)) as old_net_user_id
+    into #pockets
+    from edw.main_epms_card
+    where card_number like '433662%'
+    and len(CARD_NUMBER) = 16;
+  commit work;
+  update #pockets as a
+    set a.linked_user_id = b.linked_user_id from
+    edw.D0122_CAR_CUST_LINKAGE as b
+    where a.card_number = b.source_account_nbr;
+  commit work;
+  update #pockets as a
+    set a.user_id = b.user_id from
+    edw.D0122_CAR_CUST_LINKAGE as b
+    where a.linked_user_id = b.linked_user_id
+    and b.user_id is not null;
+  commit work;
+  update #pockets as a
+    set a.old_net_user_id = b.old_net_user_id from
+    edw.T09315_CAR_Accounts as b
+    where a.user_id = b.User_ID
+    and b.Old_Net_User_ID is not null;
+  commit work;
+  update #pockets as a
+    set a.old_net_user_id = b.user_id from
+    edw.T09315_CAR_Accounts as b
+    where a.user_id = b.old_net_User_ID
+    and b.user_id is not null
+    and a.old_net_user_id is null;
+  commit work;
+  select card_number,email_id,linked_user_id,user_id,old_net_user_id,cast(null as varchar(15)) as mobile_nbr
+    into #pockets_v2 from #pockets;
+  commit work;
+  update #pockets_v2 as a
+    set a.mobile_nbr = b.mobile_nbr from
+    edw.T09525_Mobile_Pull_Reg as b
+    where trim(a.linked_user_id) = trim(b.user_id);
+  commit work;
+  update #pockets_v2 as a
+    set a.mobile_nbr = b.mobile_nbr from
+    edw.T09525_Mobile_Pull_Reg as b
+    where trim(a.user_id) = trim(b.user_id)
+    and a.mobile_nbr is null;
+  commit work;
+  update #pockets_v2 as a
+    set a.mobile_nbr = b.mobile_nbr from
+    edw.T09525_Mobile_Pull_Reg as b
+    where trim(a.old_net_user_id) = trim(b.user_id)
+    and a.mobile_nbr is null;
+  commit work;
+  select * into #blocked_cards from edw.main_epms_card
+    where card_number like '433662%' and len(CARD_NUMBER) = 16 and STATUS_CODE = 15;
+  commit work;
+  select a.* into #pockets_v2_1 from #pockets_v2 as a
+    where not card_number = any(select card_number from #blocked_cards);
+  commit work;
+  update mccm.Base_Card_Acct_Master as a
+    set Linked_User_Id = b.Linked_User_Id,
+    email_id = b.email_id,
+    Mobile_Nbr = b.Mobile_Nbr from
+    #pockets_v2_1 as b
+    where a.card_number = b.card_number
+    and a.source_system_code = 90;
+  commit work;
+  ------------------------------Existing and new customers flag   SR82977986-----------------------------------------
+  --------for SR82977986 ------liability accounts with standard exclusion of NRI and GPC and below accounts  where new_existing_flag in the below is existing ----------------------
+  commit work;
+  select source_account_nbr,Customer_Id,Ref_no,user_id,old_net_user_id,Status,cast(null as varchar(50)) as linked_user_id,cast(null as varchar(15)) as new_existing_flag
+    into #wallet from edw.T09315_CAR_Accounts
+    where Source_account_nbr like '433662%'
+    and length(Source_account_nbr) = 16;
+  commit work;
+  update #wallet as a
+    set a.linked_user_id = b.linked_user_id from
+    EDW.D0122_CAR_CUST_LINKAGE as b
+    where trim(a.source_account_nbr) = trim(b.source_Account_nbr);
+  commit work;
+  commit work;
+  update #wallet
+    set new_existing_flag = 'New'
+    where user_id = old_net_user_id;
+  commit work;
+  commit work;
+  update #wallet
+    set new_existing_flag = 'Existing'
+    where new_existing_flag is null;
+  commit work;
+  select *,cast(null as varchar(30)) as cust_stat_code
+    into #linked
+    from EDW.D0122_CAR_CUST_LINKAGE
+    where linked_user_id = any(select distinct linked_user_id from #wallet)
+    and not source_Account_nbr = any(select distinct source_Account_nbr from #wallet where source_Account_nbr is not null);
+  commit work;
+  update #linked as a
+    set a.cust_stat_code = b.cust_stat_code from
+    edw.T09311_liability_account_addon as b
+    where trim(a.source_account_nbr) = trim(b.source_account_nbr);
+  commit work;
+  update mccm.Base_Card_Acct_Master as a
+    set Linked_Cust_Id = b.Linked_Cust_Id,
+    Source_Feed_Identifier = b.Source_Feed_Identifier from
+    #linked as b
+    where a.card_number = b.source_account_nbr;
+  commit work;
+  update mccm.Base_Card_Acct_Master as a
+    set New_Existing_Flag = b.New_Existing_Flag from
+    #wallet as b
+    where a.card_number = b.source_account_nbr;
+  commit work;
+  select b.source_Account_nbr as Account_Number,pmt_id,ubp_user_id,instance_pmt_dt,merchant_id,amount_transacted,pmt_stat,payee_name,payee_type,cust_brch_id,
+    (case when MERCHANT_ID = '000000001004' then 'Gifting' when MERCHANT_ID = '000000001005' then 'PMR' end) as txn_type,cast(null as varchar(50)) as final_txn_type,
+    (case when pmt_stat = 'S' then 'Success' else 'Failure' end) as stat
+    into #pockets_v3
+    from edw.T09531_REAL_TIME_PAYMENT as a,edw.T09315_CAR_Accounts as b
+    where a.ubp_user_id = b.user_id
+    and b.Source_account_nbr like '433662%'
+    and length(b.Source_account_nbr) = 16
+    and a.MERCHANT_ID in( '000000001005','000000001004' ) 
+    and a.r_cre_id like 'BWY/%'
+    and instance_pmt_dt >= '2015-02-10';
+  commit work;
+  update #pockets_v3
+    set final_txn_type = (case when txn_type = 'Gifting' and cust_brch_id = 'DB' then 'Gifting from Wallet'
+    when txn_type = 'Gifting' and cust_brch_id <> 'DB' then 'Gifting from Savings'
+    when txn_type = 'PMR' and cust_brch_id = 'DB' then 'PMR from Wallet'
+    when txn_type = 'PMR' and cust_brch_id <> 'DB' then 'PMR from Savings' end);
+  commit work;
+  select b.source_Account_nbr as Account_Number,pmt_id,ubp_user_id,instance_pmt_dt,merchant_id,
+    amount_transacted,pmt_stat,payee_name,payee_type,cust_brch_id,
+    cast(null as varchar(50)) as txn_type,cast(null as varchar(50)) as final_txn_type,(case when pmt_stat = 'S' then 'Success' else 'Failure' end) as stat
+    into #pockets_v3_1
+    from edw.T09531_REAL_TIME_PAYMENT as a,edw.T09315_CAR_Accounts as b
+    where a.ubp_user_id = b.user_id
+    and b.Source_account_nbr like '433662%'
+    and length(b.Source_account_nbr) = 16
+    and a.MERCHANT_ID in( '000000001005','000000001004' ) 
+    and a.r_cre_id like 'BWY/%'
+    and instance_pmt_dt >= '2015-02-10'
+    and a.cust_brch_id = 'DB';
+  commit work;
+  update #pockets_v3_1
+    set txn_type
+     = (case when Payee_Type = 'N' then
+      'Fund Transfer- Within ICICI Bank'
+    when(Payee_Name in( 'QUICK PAY BILLDESK','TECH PROCESS SOLUTIONS LTD QUICK PAY' ) and Payee_Type = 'M') then
+      'Quick Pay'
+    when Payee_Type = 'M' then
+      'Quick Bill Pay from Wallet'
+    when Payee_Name in( 'RBI-NEFT','RBI-EFT' ) then
+      'Fund Transfer- Outside ICICI Bank'
+    when Payee_Name = 'PREPAID MOBILE RECHARGE' then
+      'PMR'
+    when Payee_Name = 'ICICI BANK CREDIT CARDS' then
+      'Bill Pay'
+    when Payee_Name in( 'VISA MONEY TRANSFER','Pay Any Visa Credit Card' ) then
+      'Bill Pay'
+    when Payee_Name = 'MONEY ORDER TRANSFER' then
+      'Money Order'
+    when Payee_Name = 'RTGS' then
+      'RTGS'
+    when Payee_Name = 'MONEY MANAGER' then
+      'MM Fees'
+    else 'Bill Pay'
+    end);
+  commit work;
+  update #pockets_v3_1
+    set final_txn_type = (case when(Payee_Name = 'FOREX@CLICK' and Payee_Type = 'M') then 'Bill Pay for registered billers from Wallet'
+    when(payee_Name = 'DIRECT TO HOME RECHARGE' and Payee_Type = 'S') then 'Bill Pay for registered billers from Wallet'
+    when payee_Name = 'BOOK MY SHOW' then 'Movie Ticketing from Wallet'
+    else txn_type
+    end);
+  commit work;
+  select v.* into #total
+    from(select * from #pockets_v3 union all
+      select * from #pockets_v3_1) as v;
+  commit work;
+  update mccm.Base_Card_Acct_Master as a
+    set Txn_Type = b.Txn_Type,
+    Final_Txn_Type = b.Final_Txn_Type,
+    Stat = b.Stat from
+    #total as b
+    where a.card_number = b.Account_Number;
+  commit work;
+  ------------------for customers who has funded wallet  --- for SR82976223 cut 1 ----------------------------
+  select right(tranparticular,14) as Account_Number,trandate,tranamount,
+    (case when tranparticular like 'PKT%' then 'Funding from Other Banks'
+    when tranparticular like 'IFK%' then 'Funding from linked SB A/c' end) as source
+    into #funding1 from EDW.FINACLE_TRANSACTION_DETAILS as a
+    where TRANDATE >= '2015-02-10'
+    and parttrantype = 'C' and(tranparticular like 'PKT%' or tranparticular like 'IFK%')
+    and SOURCE_ACCOUNT_NBR = '102205005682'
+    and delflg = 'N' and right(tranparticular,14) like '433662%';
+  commit work;
+  select b.Source_account_nbr as Account_Number,instance_pmt_dt as trandate,amount_transacted as tranamount,('Funding from ICICI Bank A/c') as source
+    into #funding2
+    from edw.T09531_REAL_TIME_PAYMENT as a,edw.T09315_CAR_Accounts as b
+    where a.ubp_user_id = b.user_id
+    and b.Source_account_nbr like '433662%'
+    and length(b.Source_account_nbr) = 16
+    and a.merchant_id like '000000001009'
+    and R_CRE_ID like 'BWY/%'
+    and pmt_stat = 'S'
+    and instance_pmt_dt >= '2015-02-10';
+  commit work;
+  select v.* into #funding_total
+    from(select * from #funding1 union all
+      select * from #funding2) as v;
+  commit work;
+  update mccm.Base_Card_Acct_Master as a
+    set Trandate = b.Trandate,
+    Tranamount = b.Tranamount,
+    Source = b.Source from
+    #funding_total as b
+    where a.card_number = b.Account_Number;
+  commit work;
+  -----------updating linked_user_id and linked_cust_id for Prime and Finacle from d0122----------------
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set linked_user_id = isnull(d0122.linked_user_id,d0122.user_id,d0122.linked_user_id),
+    linked_cust_id = isnull(d0122.linked_cust_id,d0122.customer_id,d0122.linked_cust_id),
+    source_feed_identifier = d0122.source_feed_identifier from
+    edw.d0122_car_cust_linkage as d0122
+    where(case when len(UCIC_LINKAGE.CARD_NUMBER) = 15 then '0' || UCIC_LINKAGE.CARD_NUMBER
+    else UCIC_LINKAGE.CARD_NUMBER
+    end) = d0122.source_account_nbr
+    and d0122.source_feed_identifier = '3'
+    and UCIC_LINKAGE.source_system_code = 20;
+  commit work;
+  update mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+    set linked_user_id = isnull(d0122.linked_user_id,d0122.user_id,d0122.linked_user_id),
+    linked_cust_id = isnull(d0122.linked_cust_id,d0122.customer_id,d0122.linked_cust_id),
+    source_feed_identifier = d0122.source_feed_identifier from
+    edw.d0122_car_cust_linkage as d0122
+    where UCIC_LINKAGE.source_account_nbr = d0122.source_account_nbr
+    and d0122.source_feed_identifier = '2'
+    and UCIC_LINKAGE.source_system_code = 30;
+  commit work;
+  ----Updating flg for Pockets--------------
+  update mccm.Base_Card_Acct_Master
+    set Card_Type = 'Pocket'
+    where source_system_code = 90
+    and len(CARD_NUMBER) = 16
+    and card_number like '433662%';
+  commit work;
+  -------Updating mobile and email -----------------
+  update mccm.Base_Card_Acct_Master as A
+    set A.mobile_nbr = (case when R_MOBILE is null then(case when CUR_MOBILENUMBER is null then
+        (case when PER_MOBILENUMBER is null then(case when BUS_MOBILENUMBER is null then
+            (case when MOBILENUMBER is null then null else MOBILENUMBER end) else BUS_MOBILENUMBER end)
+        else PER_MOBILENUMBER
+        end)
+      else CUR_MOBILENUMBER
+      end)
+    else R_MOBILE
+    end),A.email_id = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end) from
+    mccm.cust_contact_master as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  update mccm.Card_Acct_Master as A
+    set A.mobile_nbr = (case when R_MOBILE is null then(case when CUR_MOBILENUMBER is null then
+        (case when PER_MOBILENUMBER is null then(case when BUS_MOBILENUMBER is null then
+            (case when MOBILENUMBER is null then null else MOBILENUMBER end) else BUS_MOBILENUMBER end)
+        else PER_MOBILENUMBER
+        end)
+      else CUR_MOBILENUMBER
+      end)
+    else R_MOBILE
+    end),A.email_id = (case when R_EMAIL is null then(case when CUR_EADDRESS is null then
+        (case when PER_EADDRESS is null then(case when BUS_EADDRESS is null then
+            (case when EADDRESS is null then null else EADDRESS end) else BUS_EADDRESS end)
+        else PER_EADDRESS
+        end)
+      else CUR_EADDRESS
+      end)
+    else R_EMAIL
+    end) from
+    mccm.cust_contact_master as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  update MCCM.CARD_ACCT_MASTER
+    set asof_date = getdate();
+  commit work;
+  insert into MCCM.CARD_ACCT_MASTER
+    select UCIC_LINKAGE.UCIC_CODE,
+      UCIC_LINKAGE.SOURCE_PARTY_ID,
+      UCIC_LINKAGE.SOURCE_SYSTEM_CODE,
+      UCIC_LINKAGE.SOURCE_ACCOUNT_NBR,
+      UCIC_LINKAGE.ACCOUNT_OPEN_DATE,
+      UCIC_LINKAGE.ACCOUNT_CLOSE_DATE,
+      UCIC_LINKAGE.CARD_NUMBER,
+      UCIC_LINKAGE.CASH_WITHDRAWAL_LIMIT,
+      UCIC_LINKAGE.CREDIT_LIMIT,
+      UCIC_LINKAGE.CARD_TYPE,
+      UCIC_LINKAGE.CARD_LOGO,
+      UCIC_LINKAGE.CARD_BLOCK_CODE,
+      UCIC_LINKAGE.BILLING_CYCLE,
+      UCIC_LINKAGE.DPD,
+      UCIC_LINKAGE.DEFAULTER_SINCE,
+      UCIC_LINKAGE.ASOF_DATE,
+      UCIC_LINKAGE.TYPESERNO_GLEDGER,
+      UCIC_LINKAGE.EVENT_START_DATE,
+      UCIC_LINKAGE.FINANCIAL_IND,
+      UCIC_LINKAGE.CARD_STATUS_CODE,
+      UCIC_LINKAGE.NAME_ON_CARD,
+      UCIC_LINKAGE.SERVICECODE,
+      UCIC_LINKAGE.LIMIT_APPLICABLE_DATE,
+      UCIC_LINKAGE.PRODUCT_NAME,
+      UCIC_LINKAGE.PROMO_CODE,
+      UCIC_LINKAGE.CARD_FREEZE_DATE,
+      UCIC_LINKAGE.BLOCK_DATE,
+      UCIC_LINKAGE.Linked_Cust_Id,
+      UCIC_LINKAGE.Linked_User_Id,
+      UCIC_LINKAGE.Source_Feed_Identifier,
+      UCIC_LINKAGE.New_Existing_Flag,
+      UCIC_LINKAGE.email_id,
+      UCIC_LINKAGE.Mobile_Nbr,
+      UCIC_LINKAGE.Trandate,
+      UCIC_LINKAGE.Tranamount,
+      UCIC_LINKAGE.Source,
+      UCIC_LINKAGE.Txn_Type,
+      UCIC_LINKAGE.Final_Txn_Type,
+      UCIC_LINKAGE.Stat,
+      UCIC_LINKAGE.Card_Issue_Date,
+      UCIC_LINKAGE.Card_Expiry_Date,
+      UCIC_LINKAGE.Status
+      from mccm.Base_Card_Acct_Master as UCIC_LINKAGE
+        left outer join mccm.Card_Acct_Master as b
+        on UCIC_LINKAGE.card_number = b.card_number
+      where UCIC_LINKAGE.CARD_NUMBER is not null
+      and b.card_number is null;
+  commit work
+end

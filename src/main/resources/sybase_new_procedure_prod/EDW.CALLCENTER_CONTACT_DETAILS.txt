@@ -1,0 +1,161 @@
+create procedure edw.CALLCENTER_CONTACT_DETAILS()
+begin
+  select sub.*
+    into #UCIC_LINKAGE
+    from(select UCIC_VALUE as UCIC_CODE,
+        SOURCE_ACCOUNT_NBR,
+        cast(null as varchar(15)) as MOBILENUMBER,
+        cast(null as varchar(80)) as EADDRESS,
+        cast(null as date) as LAST_CONTACT_DATE,
+        cast(null as varchar(10)) as AHT,
+        cast(null as varchar(5)) as FD_OPEN,
+        cast(null as varchar(5)) as RD_OPEN,
+        cast(null as varchar(5)) as Cheque_Book_Request,
+        date(getdate()) as ASOF_DATE,
+        date(dateadd(month,1,getdate())) as EXPIRY_REVIEW_DATE,
+        null as SCORE
+        from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+        where source_system_code not in( 30,50,51,52,53,54 ) union all
+      select UCIC_VALUE as UCIC_CODE,
+        SOURCE_ACCOUNT_NBR,
+        cast(null as varchar(15)) as MOBILENUMBER,
+        cast(null as varchar(80)) as EADDRESS,
+        cast(null as date) as LAST_CONTACT_DATE,
+        cast(null as varchar(10)) as AHT,
+        cast(null as varchar(5)) as FD_OPEN,
+        cast(null as varchar(5)) as RD_OPEN,
+        cast(null as varchar(5)) as Cheque_Book_Request,
+        date(getdate()) as ASOF_DATE,
+        date(dateadd(month,1,getdate())) as EXPIRY_REVIEW_DATE,
+        null as SCORE
+        from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+        where source_system_code = 30
+        and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder') union all
+      select UCIC_VALUE as UCIC_CODE,
+        SOURCE_ACCOUNT_NBR,
+        cast(null as varchar(15)) as MOBILENUMBER,
+        cast(null as varchar(80)) as EADDRESS,
+        cast(null as date) as LAST_CONTACT_DATE,
+        cast(null as varchar(10)) as AHT,
+        cast(null as varchar(5)) as FD_OPEN,
+        cast(null as varchar(5)) as RD_OPEN,
+        cast(null as varchar(5)) as Cheque_Book_Request,
+        date(getdate()) as ASOF_DATE,
+        date(dateadd(month,1,getdate())) as EXPIRY_REVIEW_DATE,
+        null as SCORE
+        from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+        where source_system_code in( 50,51,52,53,54 ) 
+        and SUBSTR(SOURCE_PARTY_ID,1,4) <> 'COB_') as sub;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set LAST_CONTACT_DATE = max_lastupdateddate from
+    (select accountnumber,max_lastupdateddate
+      -- changed
+      from(select accountnumber,max(lastupdateddate) as max_lastupdateddate from EDW.T401_FCRM_INCIDENTS_STATIC as T401
+            ,EDW.T402_FCRM_INCIDENTS_DYNAMIC as T402
+          where T401.srno = T402.srno
+          and T401.channel like '%PhBG%'
+          group by T401.accountnumber) as x) as y
+    where UCIC_LINKAGE.source_account_nbr = y.accountnumber;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.FD_OPEN = (case when srno is not null then 'Y' else 'N' end) from
+    #UCIC_LINKAGE as UCIC_LINKAGE left outer join EDW.T401_FCRM_INCIDENTS_STATIC as T401
+    on UCIC_LINKAGE.source_account_nbr = T401.accountnumber
+    where((Servicerequesttype = 'LI_FD RELATED_Request for opening FD-STP' and channel in( 'PhBG-Sales','PhBG-Video-Call','PhBG-Voice' ) )
+    or(Servicerequesttype = 'LI_FD RELATED_Request for Tax Saver FD' and channel in( 'PHBG-CB Voice','PhBG-Chat','PhBG-Video Banking',
+    'PhBG-Video-Call','PhBG-Voice','PhBG-Voice-NRI INTL' ) )
+    or(Servicerequesttype = 'SING_TRANSACTION RELATED-SING_REQUEST FOR FD CREATION' and channel = 'PhBG-Voice'));
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.RD_OPEN = (case when srno is not null then 'Y' else 'N' end) from
+    #UCIC_LINKAGE as UCIC_LINKAGE left outer join EDW.T401_FCRM_INCIDENTS_STATIC as T401
+    on UCIC_LINKAGE.source_account_nbr = T401.accountnumber
+    where Servicerequesttype = 'LI_FD RELATED_Request for opening RD-STP'
+    and channel in( 'PhBG BOR','PHBG-CB Voice','PhBG-Chat','PhBG-Correspondance','PhBG-Correspondent Banks',
+    'PhBG-Email','PhBG-Exchange House','PhBG-Sales','PhBG-Video Banking','PhBG-Video-Call','PhBG-Voice','PhBG-Voice-NRI INTL' ) ;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.CHEQUE_BOOK_REQUEST = (case when srno is not null then 'Y' else 'N' end) from
+    #UCIC_LINKAGE as UCIC_LINKAGE left outer join EDW.T401_FCRM_INCIDENTS_STATIC as T401
+    on UCIC_LINKAGE.source_account_nbr = T401.accountnumber
+    where productline = 'LI'
+    and srtype = 'Deliverable Related LI'
+    and subsrtype = 'Request for Cheque Book-LI'
+    and channel like '%PhBG%'; -- changed
+  commit work;
+  select UCIC_CODE,
+    SOURCE_ACCOUNT_NBR,
+    MOBILENUMBER,
+    EADDRESS,
+    date(getdate()) as ASOF_DATE,
+    date(dateadd(month,1,getdate())) as EXPIRY_REVIEW_DATE,
+    cast(null as integer) as SCORE,
+    1 as seq_no
+    into #CALLCENTER_CONTACT
+    from #UCIC_LINKAGE;
+  commit work;
+  create hg index hg_idx_src_act on #CALLCENTER_CONTACT(SOURCE_ACCOUNT_NBR);
+  create table #ATT_NAMES(
+    ATTRIB_NAME varchar(50) null,
+    seq_no smallint null,);
+  commit work;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'LAST_CONTACT_DATE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'AHT',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'FD_OPEN',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'RD_OPEN',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'Cheque_Book_Request',1 ) ;
+  commit work;
+  select A.UCIC_CODE,
+    A.SOURCE_ACCOUNT_NBR,
+    A.MOBILENUMBER,
+    A.EADDRESS,
+    B.ATTRIB_NAME,
+    cast(null as integer) as ATTRIB_VALUE_NUMERIC,
+    cast(null as varchar(15)) as ATTRIB_VALUE_CHARACTER,
+    cast(null as date) as ATTRIB_VALUE_DATE,
+    A.ASOF_DATE,
+    A.EXPIRY_REVIEW_DATE,
+    A.SCORE
+    into #CALLCENTER_CONTACT_1
+    from #CALLCENTER_CONTACT as A,#ATT_NAMES as B
+    where a.seq_no = b.seq_no;
+  commit work;
+  create hg index hg_idx_src_act on #CALLCENTER_CONTACT_1(SOURCE_ACCOUNT_NBR);
+  commit work;
+  update #CALLCENTER_CONTACT_1 as A
+    set A.ATTRIB_VALUE_DATE = B.LAST_CONTACT_DATE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'LAST_CONTACT_DATE'
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update #CALLCENTER_CONTACT_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.AHT from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'AHT'
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update #CALLCENTER_CONTACT_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FD_OPEN from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'FD_OPEN'
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update #CALLCENTER_CONTACT_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.RD_OPEN from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'RD_OPEN'
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update #CALLCENTER_CONTACT_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.Cheque_Book_Request from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'Cheque_Book_Request'
+    and A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  delete from MCCM.CALLCENTER_CONTACT_Details where ATTRIB_VALUE_NUMERIC is null and ATTRIB_VALUE_CHARACTER is null and ATTRIB_VALUE_DATE is null;
+  commit work;
+  truncate table MCCM.CALLCENTER_CONTACT_Details;
+  commit work;
+  insert into MCCM.CALLCENTER_CONTACT_Details select * from #CALLCENTER_CONTACT_1;
+  commit work
+end

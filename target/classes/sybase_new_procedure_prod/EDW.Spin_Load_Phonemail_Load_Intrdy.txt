@@ -1,0 +1,50 @@
+create procedure edw.Spin_Load_Phonemail_Load_Intrdy()
+begin
+  truncate table srcstage.s_cmg_phoneemail_intrdy;
+  commit work;
+  load into table srcstage.s_cmg_phoneemail_intrdy( PHONEEMAILID '~^',BANK_ID '~^',PHONEEMAILTYPE '~^',PHONENO '~^',EMAIL '~^',START_DATE '~^',END_DATE '~^',ORGKEY '~^',TMDATE '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/phoneemail_intrdy.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/phoneemail_intrdy.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/phoneemail_intrdy.out.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work;
+  update srcstage.cmg_phoneemail_intrdy as a
+    set a.PHONEEMAILID = b.PHONEEMAILID,
+    a.BANK_ID = b.BANK_ID,
+    a.PHONENO = b.PHONENO,
+    a.EMAIL = b.EMAIL,
+    a.START_DATE = b.START_DATE,
+    a.END_DATE = b.END_DATE,
+    a.TMDATE = b.TMDATE from
+    srcstage.s_cmg_phoneemail_intrdy as b
+    where a.ORGKEY = b.ORGKEY
+    and a.PHONEEMAILTYPE = b.PHONEEMAILTYPE;
+  commit work;
+  insert into srcstage.cmg_phoneemail_intrdy
+    select b_PHONEEMAILID,
+      b_BANK_ID,
+      b_PHONEEMAILTYPE,
+      b_PHONENO,
+      b_EMAIL,
+      b_START_DATE,
+      b_END_DATE,
+      b_ORGKEY,
+      b_TMDATE
+      from(select a.PHONEEMAILTYPE,
+          b.PHONEEMAILID as b_PHONEEMAILID,
+          b.BANK_ID as b_BANK_ID,
+          b.PHONEEMAILTYPE as b_PHONEEMAILTYPE,
+          b.PHONENO as b_PHONENO,
+          b.EMAIL as b_EMAIL,
+          b.START_DATE as b_START_DATE,
+          b.END_DATE as b_END_DATE,
+          b.ORGKEY as b_ORGKEY,
+          b.TMDATE as b_TMDATE
+          from srcstage.cmg_phoneemail_intrdy as a
+            right outer join srcstage.s_cmg_phoneemail_intrdy as b
+            on a.ORGKEY = b.ORGKEY
+            and a.PHONEEMAILTYPE = b.PHONEEMAILTYPE
+          where a.PHONEEMAILTYPE is null) as x;
+  commit work;
+  insert into srcstage.cmg_phoneemail_intrdy
+    select * from srcstage.s_cmg_phoneemail_intrdy as b
+      where not b.ORGKEY = any(select ORGKEY from srcstage.cmg_phoneemail_intrdy);
+  commit work
+end

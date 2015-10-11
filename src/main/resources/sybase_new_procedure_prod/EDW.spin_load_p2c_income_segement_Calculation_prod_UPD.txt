@@ -1,0 +1,365 @@
+create procedure EDW.spin_load_p2c_income_segement_Calculation_prod_UPD()
+begin
+  ----------------- INcremental all source stsem record base
+  select distinct UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE into #new_accounts
+    from(select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE from p2c.CARDS_SEGMENT_TABLE_INCR_n_heena_UPD union all
+      select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE from p2c.LOANS_SEGMENT_TABLE_INCR_n_heena_UPD union all
+      select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE from p2c.LIABILITY_SEGMENT_SA_TABLE_INCR_n_heena_UPD union all
+      select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE from p2c.LIABILITY_SEGMENT_CA_TABLE_INCR_n_heena_UPD union all
+      select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE from p2c.P2c_demat_Segment_table_INCR_n_heena_UPD union all
+      select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE from P2C.LIABILTY_OTHER_PRODUCT_INCR_n_heena_UPD) as AA;
+  --56065634 row(s) affected
+  ---account which not have UCIC  
+  select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE
+    into #only_accounts
+    from #new_accounts where substr(UCIC_VALUE,1,1) = 'A'; --UNIQUE_ID
+  ---account which have UCIC
+  select distinct account_nbr into #temp_B from #new_accounts where substr(UCIC_VALUE,1,1) <> 'A'; -- 5 60 65 634 row(s) affected
+  select distinct B.UCIC_VALUE into #temp_C
+    from #temp_b as a
+      ,P2C.p2c_UCIC_table as b
+    where a.account_nbr = b.account_nbr; -- 4 08 18 831 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,A.unique_id,A.account_nbr,a.source_Account_nbr,a.SOURCE_SYSTEM_CODE
+    into #temp_base
+    from P2C.p2c_UCIC_table as A
+      ,#temp_c as BB
+    where A.UCIC_VALUE = BB.UCIC_VALUE; --11 06 97 361 row(s) affected
+  commit work;
+  delete from #temp_base
+    where account_nbr = any(select account_nbr from EDW.T0300_ACCOUNT where account_close_date is not null and source_system_code = 30); --- 5 08 38 068 row(s) deleted
+  commit work;
+  -- DROP TABLE #full_base
+  select UCIC_VALUE,unique_id,account_nbr,source_Account_nbr,SOURCE_SYSTEM_CODE
+    into #full_base
+    from(select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE from #only_accounts union all
+      select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE from #temp_base) as AA;
+  --59859293 row(s) affected
+  commit work;
+  create hg index HGIDX_New_Full_Base_1 on #full_base(account_nbr asc);
+  commit work;
+  select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE
+    into #from_old_data
+    from #full_base as A
+      left outer join #new_accounts as B on A.account_nbr = B.account_nbr
+    where B.account_nbr is null; --3822332 row(s) affected
+  commit work;
+  --check usage
+  -------------------------------  exsist account which are segmented
+  select MAIN.*,B.source_party_id as Cust_id,'' as card_nbr
+    into #T1_daily
+    from(select BB.UCIC_VALUE,BB.UNIQUE_ID,AA.ACCOUNT_NBR,AA.SOURCE_ACCOUNT_NBR,AA.SOURCE_SYSTEM_CODE,AA.ACCOUNT_OPEN_DATE,AA.PROFESSION_TYPE as Profession,
+        AA.hh_income,AA.Acct_Segment,AA.Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,'SA' as Product
+        from P2C.p2c_SA_n_heena_UPD as AA
+          ,#from_old_data as BB
+        where AA.account_nbr = BB.account_nbr union
+      select BB.UCIC_VALUE,BB.UNIQUE_ID,AA.ACCOUNT_NBR,AA.SOURCE_ACCOUNT_NBR,AA.SOURCE_SYSTEM_CODE,AA.ACCOUNT_OPEN_DATE,AA.PROFESSION_TYPE as Profession,
+        cast(null as numeric) as hh_income,AA.Acct_Segment,AA.Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        AA.MAB as Turnover,'CA' as Product
+        from P2C.p2c_CA_n_heena_UPD as AA
+          ,#from_old_data as BB
+        where AA.account_nbr = BB.account_nbr) as MAIN
+      ,edw.T09311_LIABILITY_ACCOUNT_ADDON as B
+    where MAIN.Account_nbr = B.account_nbr;
+  commit work;
+  select * into #T2_daily
+    from(select BB1.UCIC_VALUE,BB1.UNIQUE_ID,AA1.ACCOUNT_NBR,AA1.SOURCE_ACCOUNT_NBR,AA1.SOURCE_SYSTEM_CODE,AA1.ACCOUNT_OPEN_DATE,AA1.SEP_SENP as profession,
+        AA1.hh_income,AA1.Acct_Segment,AA1.Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,AA1.LOAN_PRODUCT as product,'' as Cust_id,'' as Card_Nbr
+        from P2C.p2c_LOANS_n_heena_UPD as AA1
+          ,#from_old_data as BB1
+        where AA1.account_nbr = BB1.account_nbr union all
+      select BB2.UCIC_VALUE,BB2.UNIQUE_ID,AA2.ACCOUNT_NBR,AA2.SOURCE_ACCOUNT_NBR,AA2.SOURCE_SYSTEM_CODE,AA2.ACCOUNT_OPEN_DATE,AA2.PROFESSION_TYPE as profession,
+        AA2.hh_income,AA2.Acct_Segment,AA2.Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,'CC' as product,'' as Cust_id,AA2.PRIMARY_CARD_NBR as Card_Nbr
+        from P2C.p2c_CARDS_n_heena_UPD as AA2
+          ,#from_old_data as BB2
+        where AA2.account_nbr = BB2.account_nbr) as TP;
+  commit work;
+  select * into #T3_daily
+    from(select BB3.UCIC_VALUE,BB3.UNIQUE_ID,AA3.ACCOUNT_NBR,AA3.SOURCE_ACCOUNT_NBR,AA3.SOURCE_SYSTEM_CODE,AA3.ACCOUNT_OPEN_DATE,
+        AA3.profession,AA3.hh_income,AA3.Acct_Segment,AA3.Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,'DMT' as product,'' as Cust_id,'' as Card_Nbr
+        from P2C.p2c_DEMAT_n_heena_UPD as AA3
+          ,#from_old_data as BB3
+        where AA3.account_nbr = BB3.account_nbr) as TP;
+  commit work;
+  select * into #T4_daily
+    from(select BB.UCIC_VALUE,BB.UNIQUE_ID,AA.ACCOUNT_NBR,AA.SOURCE_ACCOUNT_NBR,AA.SOURCE_SYSTEM_CODE,AA.ACCOUNT_OPEN_DATE,AA.PROFESSION_TYPE as Profession,
+        cast(null as numeric) as hh_income,AA.Acct_Segment,AA.Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,AA.LIAB_PRODUCT as Product,AA.source_party_id,'' as card_nbr
+        from p2c.p2c_Other_Liability_Product_n_heena_UPD as AA
+          ,#from_old_data as BB
+        where AA.account_nbr = BB.account_nbr) as MAIN;
+  commit work;
+  ----------------------------------- cureent incremental  of base calculation base
+  select MAIN.*,
+    B.source_party_id as Cust_id,'' as card_nbr
+    into #T1
+    from(select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,PROFESSION_TYPE as Profession,
+        hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,'SA' as Product
+        from p2c.SA_Basic_calculation_UPD union
+      select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,PROFESSION_TYPE as Profession,
+        cast(null as numeric) as hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,cast(null as numeric) as Turnover,'CA' as Product
+        from p2c.CA_basic_calculation_UPD) as MAIN
+      ,edw.T09311_LIABILITY_ACCOUNT_ADDON as B
+    where MAIN.Account_nbr = B.account_nbr; --27552262 row(s) affected
+  commit work;
+  select * into #T2
+    from(select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,SEP_SENP as profession,
+        hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,LOAN_PRODUCT as product,'' as Cust_id,'' as Card_Nbr
+        from p2c.LOANS_basic_calculation_UPD union all
+      select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,PROFESSION_TYPE as profession,
+        hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,'CC' as product,'' as Cust_id,PRIMARY_CARD_NBR as Card_Nbr
+        from p2c.CARDS_basic_calculation_UPD) as TP; --2 14 11 836 row(s) affected
+  select * into #T3
+    from(select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,PROFESSION,
+        hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,
+        cast(null as numeric) as Turnover,'DMT' as product,CUST_ID,'' as Card_Nbr
+        from p2c.DEMAT_basic_calculation_UPD) as TP;
+  select * into #T4
+    from(select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,PROFESSION_TYPE as Profession,
+        hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,cast(null as numeric) as Turnover,
+        LIAB_PRODUCT as Product,source_party_id,'' as card_nbr
+        from P2C.OTHLIAB_Basic_calculation_UPD) as XX;
+  commit work;
+  select M1.* into #APP1
+    from(select * from #T1 union all select * from #T2 union all select * from #T3 union all select * from #T4) as M1
+      ,#NEW_ACCOUNTS as M2 where M1.ACCOUNT_NBR = M2.ACCOUNT_NBR; --5 60 65 640 ROW(S) AFFECTED
+  commit work;
+  select * into #APPXXX
+    from(select * from #T1_DAILY union all select * from #T2_DAILY union all select * from #T3_DAILY union all select * from #T4_DAILY union all select * from #APP1) as X; --56065640 ROW(S) AFFECTED
+  commit work;
+  create hg index HGIDX_TEMP_1RUN_2 on #APPXXX(ACCOUNT_NBR asc);
+  commit work;
+  -- DROP TABLE #C8
+  select distinct A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE
+    into #C8
+    from P2C.P2C_UCIC_TABLE as A,#APPXXX as B
+    where A.UCIC_VALUE = B.UCIC_VALUE; ---110697361 ROW(S) AFFECTED
+  commit work;
+  create hg index HGIDX_TEMP_1RUN_1 on #C8(ACCOUNT_NBR asc);
+  commit work;
+  delete from #C8 as C
+    where exists((select 1 from EDW.T0300_ACCOUNT as A where A.ACCOUNT_NBR = C.ACCOUNT_NBR and account_close_date is not null and source_system_code = 30)); --5 08 38 068 row(s) deleted
+  --account_nbr = any(select account_nbr from EDW.T0300_ACCOUNT where account_close_date is not null and source_system_code = 30);
+  commit work;
+  -- SELECT COUNT(1) FROM #C8 --59859293
+  -- DROP TABLE  #C77
+  select distinct b.UCIC_VALUE,b.UNIQUE_ID,a.ACCOUNT_NBR,a.SOURCE_ACCOUNT_NBR,a.SOURCE_SYSTEM_CODE,a.ACCOUNT_OPEN_DATE,
+    a.Profession,a.hh_income,a.Acct_Segment,a.Acct_rule,a.date_created,a.date_modified,a.Turnover,a.Product,
+    a.Cust_id,a.card_nbr
+    into #C77 from p2c.p2c_base_data19_UPD as a,#C8 as B
+    where a.account_nbr = b.account_nbr;
+  commit work; ---- new accounts NCA with existing UCICs ---eg: aaditya sa --- -----sa 
+  create hg index HGIDX_TEMP_1RUN_3 on #C77(account_nbr asc);
+  commit work; ---- 0 row(s) affected
+  delete from #C77
+    where account_nbr = any(select account_nbr from #APPXXX);
+  commit work;
+  insert into #C77
+    select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,Profession,hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,Turnover,Product,Cust_id,card_nbr
+      from #APPXXX; --5 60 65 640 row(s) inserted
+  commit work;
+  select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,Profession,hh_income,Acct_Segment,Acct_rule,DATE_CREATED,DATE_MODIFIED,
+    Turnover,Product,Cust_id,card_nbr,
+    case when Acct_rule is not null then
+      case when substr(ACCT_Rule,1,1) = 'P' then(500000000000+(ACCT_Segment*1000000000))
+      when substr(ACCT_Rule,1,1) = 'N' and account_open_date is not null then(300000000000+(ACCT_Segment*1000000000)+(cast(account_open_date as integer)*100))
+      when substr(ACCT_Rule,1,1) = 'N' and account_open_date is null then(300000000000+(ACCT_Segment*1000000000))
+      else ACCT_SEGMENT
+      end
+    else-1
+    end as segment_code_12digit,
+    case when profession in( 'SE','SEP','SENP' ) then 5
+    when profession in( 'SAL','Salaried' ) then 4
+    when profession in( 'NOINCOME','NONINCOME' ) then 3 else 0 end as profession_Code
+    into #C1
+    from #C77; -- 5 60 65 640 row(s) affected
+  /*---old logic FY-15-16 
+select  UCIC_VALUE,
+max(profession_Code) as C_profession,
+max(case when segment_code_12digit >= 500000000000 then segment_code_12digit else-1 end) as product_segment_max,
+max(case when segment_code_12digit >= 300000000000 and segment_code_12digit < 500000000000 then segment_code_12digit else-1 end) as income_segment_max,
+max(case when segment_code_12digit < 300000000000 then segment_code_12digit else-1 end) as imputed_segment_max,
+min(case when segment_code_12digit < 300000000000 then segment_code_12digit else-1 end) as imputed_segment_min
+into #c2
+from #C1 
+group by UCIC_VALUE; -- 4 08 18 831 row(s) affected
+commit work;
+select * from #c2 where source_account_nbr='039301518119'
+UCIC_VALUE,C_profession,product_segment_max,income_segment_max,imputed_segment_max,imputed_segment_min
+'0000000000000006',4,-1,-1,1,-1
+*/
+  commit work;
+  create hg index UID on #C1(ucic_value);
+  commit work;
+  -- DROP TABLE   #c2 
+  commit work;
+  select UCIC_VALUE,max(profession_Code) as C_profession,cast(null as integer) as MAX_IMPUTED_CASA, --t1 ca sa
+    max(case when segment_code_12digit >= 500000000000 then segment_code_12digit else-1 end) as product_segment_max,
+    max(case when segment_code_12digit >= 300000000000 and segment_code_12digit < 500000000000 then segment_code_12digit else-1 end) as income_segment_max,
+    max(case when segment_code_12digit < 300000000000 then segment_code_12digit else-1 end) as imputed_segment_max,
+    min(case when segment_code_12digit < 300000000000 then segment_code_12digit else-1 end) as imputed_segment_min --DROP TABLE
+    into #c2
+    from #C1 group by UCIC_VALUE; ---4 08 18 831 row(s) affected
+  commit work;
+  ----------------------CALC OF CASA Imputation
+  select *,cast(null as integer) as MAX_IMPUTED --drop table
+    into #T11 from #T1 where ACCT_RULE in( 'ISA1','ICA1' ) ; --14808664 row(s) affected
+  commit work;
+  select UCIC_VALUE,MAX(ACCT_SEGMENT) as MAX_ACCT_SEGMENT --DROP TABLE 
+    into #T111 from #T11 group by ucic_VALUE; -- 1 39 24 398 row(s) affected
+  commit work;
+  update #T11 as A
+    set A.MAX_IMPUTED = B.MAX_ACCT_SEGMENT from #T111 as B where A.UCIC_VALUE = B.UCIC_VALUE; --14808664 row(s) updated
+  commit work;
+  update #C2 as A
+    set A.MAX_IMPUTED_CASA = B.MAX_IMPUTED from #T11 as B where A.UCIC_VALUE = B.UCIC_VALUE; -- 1 39 24 398 row(s) updated
+  commit work;
+  ----------------------------------------------------------  finalize cust  rule
+  select UCIC_VALUE,C_profession,MAX_IMPUTED_CASA,product_segment_max,income_segment_max,imputed_segment_max,imputed_segment_min,
+    (case when(product_segment_max >= 0 and income_segment_max >= 0
+    and imputed_segment_max >= 0) and((product_segment_max-500000000000)/1000000000) >= floor((income_segment_max-300000000000)/1000000000) then
+      product_segment_max
+    when(product_segment_max >= 0 and income_segment_max >= 0
+    and imputed_segment_max >= 0) and((product_segment_max-500000000000)/1000000000) < floor((income_segment_max-300000000000)/1000000000) then
+      income_segment_max
+    when(product_segment_max >= 0 and income_segment_max >= 0 and imputed_segment_max >= 0)
+    and((product_segment_max-500000000000)/1000000000) = floor((income_segment_max-300000000000)/1000000000) then
+      income_segment_max
+    when(product_segment_max >= 0 and income_segment_max >= 0
+    and imputed_segment_max < 0) and((product_segment_max-500000000000)/1000000000) >= floor((income_segment_max-300000000000)/1000000000) then
+      product_segment_max
+    when(product_segment_max >= 0 and income_segment_max >= 0
+    and imputed_segment_max < 0) and((product_segment_max-500000000000)/1000000000) < floor((income_segment_max-300000000000)/1000000000) then
+      income_segment_max
+    when(product_segment_max >= 0 and income_segment_max >= 0
+    and imputed_segment_max < 0) and((product_segment_max-500000000000)/1000000000) = floor((income_segment_max-300000000000)/1000000000) then
+      income_segment_max
+    when(product_segment_max >= 0 and income_segment_max < 0
+    and imputed_segment_max >= 0) and((product_segment_max-500000000000)/1000000000) >= isnull(MAX_IMPUTED_CASA,0) then
+      product_segment_max
+    when(product_segment_max >= 0 and income_segment_max < 0
+    and imputed_segment_max >= 0) and((product_segment_max-500000000000)/1000000000) < isnull(MAX_IMPUTED_CASA,0) then
+      MAX_IMPUTED_CASA
+    when(product_segment_max >= 0 and income_segment_max < 0
+    and imputed_segment_max >= 0) and((product_segment_max-500000000000)/1000000000) = floor((imputed_segment_max)/1000000000) then
+      product_segment_max
+    when(product_segment_max >= 0 and income_segment_max < 0
+    and imputed_segment_max < 0) then
+      product_segment_max
+    when(product_segment_max < 0 and income_segment_max >= 0
+    and imputed_segment_max < 0) then
+      income_segment_max
+    when(product_segment_max < 0 and income_segment_max < 0
+    and imputed_segment_max >= 0) then
+      imputed_segment_max
+    when(product_segment_max < 0 and income_segment_max >= 0
+    and imputed_segment_max >= 0) then
+      income_segment_max
+    when(product_segment_max < 0 and income_segment_max < 0
+    and imputed_segment_max < 0) then
+      -1 --drop table
+    end) as C_segment into #C3
+    from #C2; --- 4 08 18 831 row(s) affected
+  commit work;
+  select A.UCIC_VALUE,b.unique_id,A.C_profession,A.product_segment_max,A.income_segment_max,A.imputed_segment_max,A.imputed_segment_min,A.C_segment,
+    B.account_nbr as c_account_nbr,B.source_Account_nbr as c_source_account_nbr,B.Acct_Segment as Cust_Segment,B.Acct_rule as Cust_Rule
+    into #C4
+    from #C3 as A
+      ,#c1 as B
+    where A.UCIC_VALUE = B.UCIC_VALUE and A.C_segment = B.segment_code_12digit; --43714938 row(s) affected
+  commit work;
+  create hg index HGIDX1 on #C4(UCIC_VALUE asc);
+  commit work;
+  update #C4
+    set CUST_RULE = TRIM(CUST_RULE);
+  commit work;
+  select UCIC_VALUE,c_account_nbr,rank() over(order by UCIC_VALUE asc,(case when CUST_RULE = 'ISA1' or CUST_RULE = 'ICA1' then 1 else 0 end) desc) as RRank,NUMBER()-RRank+1 as Final_Rank
+    --DROP TABLE 
+    into #C5
+    from #C4
+    order by UCIC_VALUE asc,(case when CUST_RULE = 'ISA1' or CUST_RULE = 'ICA1' then 1 else 0 end) desc; ---43630714 row(s) affected
+  commit work;
+  select A.* --drop table SELECT count(1) FROM 
+    into #C6
+    from #C4 as a
+      ,#C5 as B
+    where a.UCIC_VALUE = b.UCIC_VALUE and A.c_account_nbr = b.c_account_nbr and B.final_rank = 1; --40818834
+  select A.*,B.C_profession,
+    B.C_segment,B.c_account_nbr,B.c_source_account_nbr,B.Cust_Segment,B.Cust_Rule ----drop table --SELECT count(1) FROM 
+    into #C7
+    from #C1 as A
+      ,#C6 as B
+    where A.UCIC_VALUE = B.UCIC_VALUE; -- 5 60 65 664
+  commit work;
+  commit work;
+  drop table p2c.insert_income_segment_n_heena_UPD;
+  select distinct
+    UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,Profession,hh_income,Acct_Segment,Acct_rule,date_created,date_modified,
+    Turnover,Product,Cust_id,card_nbr,segment_code_12digit,profession_Code,C_profession,C_segment,c_account_nbr,c_source_account_nbr,Cust_Segment,
+    Cust_Rule,
+    case when ACCT_Segment = 7 then 'GPC'
+    when ACCT_Segment = 5 then 'HNI'
+    when ACCT_Segment = 4 then 'UPPER AFFLUENT'
+    when ACCT_Segment = 3 then 'LOWER AFFLUENT'
+    when ACCT_Segment = 2 then 'MASS AFFLUENT'
+    when ACCT_Segment = 1 then 'MASS MARKET'
+    when ACCT_Segment = 0 then 'OTHER' else 'NA' end as ACCOUNT_SEGMENT,
+    case when C_profession = 5 then 'SE'
+    when c_profession = 4 then 'SAL'
+    when c_profession = 3 then 'NOINCOME' else 'OTHER' end as customer_profession,
+    case when Cust_Segment = 7 then 'GPC'
+    when Cust_Segment = 5 then 'HNI'
+    when Cust_Segment = 4 then 'UPPER AFFLUENT'
+    when Cust_Segment = 3 then 'LOWER AFFLUENT'
+    when Cust_Segment = 2 then 'MASS AFFLUENT'
+    when Cust_Segment = 1 then 'MASS MARKET'
+    when Cust_Segment = 0 then 'OTHER' else 'NA' end as CUSTOMER_SEGMENT,
+    case when Cust_Segment = 7 then 'GPC'
+    when Cust_Segment = 5 and product = 'CA' then 'CE'
+    when Cust_Segment = 5 then 'WM'
+    when Cust_Segment in( 3,4 ) then 'PB'
+    when Cust_Segment in( 1,2 ) then 'GB' else 'GB' end as incomeSegment
+    into p2c.insert_income_segment_n_heena_UPD
+    from #C7;
+  commit work; --56065634 row(s) affected
+  delete from p2c.insert_income_segment_n_heena_UPD as A from
+    p2c.insert_income_segment_n_heena_UPD as A
+    ,(select MAX(ROWID(insert_income_segment_n_heena_UPD)) as ROW_ID,
+      ACCOUNT_NBR,incomesegment from p2c.insert_income_segment_n_heena_UPD
+      group by ACCOUNT_NBR,incomesegment) as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.incomesegment = B.incomesegment
+    and ROWID(A) <> B.ROW_ID; --0
+  commit work;
+  create unique hg index UQHGIDX_INCOMESEG_1 on p2c.insert_income_segment_n_heena_UPD(account_nbr asc);
+  --- run below code as discussed with Aaditya
+  update p2c.insert_income_segment_n_heena_UPD as A
+    set A.INCOMESEGMENT = 'NRI' from
+    p2c.insert_income_segment_n_heena_UPD as A
+    ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.INCOMESEGMENT not like '%GPC%'
+    and((B.CUST_NRE_FLG = 'Y' and GL_SUB_HEAD_CODE = '05060')
+    or(RTL_NONRTL = 'RTL' and CUST_NRE_FLG = 'Y' and substr(GL_SUB_HEAD_CODE,1,3) <> '050')
+    or(RTL_NONRTL = 'RTL' and CUST_NRE_FLG = 'Y' and GL_SUB_HEAD_CODE in( '05040','08040','20040' ) ));
+  --1527379 row(s) affected
+  commit work;
+  --- run below code as discussed with Aaditya
+  update p2c.insert_income_segment_n_heena_UPD as inc
+    set incomesegment = 'WM' from
+    p2c.insert_income_segment_n_heena_UPD as inc,EDW.T09311_liability_account_addon as AA
+    where inc.Cust_Segment = 5
+    and inc.product = 'CA'
+    and inc.SOURCE_ACCOUNT_NBR = AA.SOURCE_ACCOUNT_NBR
+    and inc.SOURCE_SYSTEM_CODE = 30
+    and AA.customer_type = 'WEALTH'
+    and inc.incomeSegment = 'CE'; --7504 row(s) affected
+  commit work
+end

@@ -1,0 +1,9 @@
+create procedure EDW.DAILY_TRAN_HEADER_TABLE_LOAD()
+begin
+  load into table EDW.DAILY_TRAN_HEADER_TABLE( TRAN_DATE '|~|',TRAN_ID '|~|',DEL_FLG '|~|',TRAN_TYPE '|~|',TRAN_SUB_TYPE '|~|',NUM_CR_TRAN_ENTRY '|~|',NUM_DR_TRAN_ENTRY '|~|',NUM_CR_TRAN_PSTD '|~|',NUM_DR_TRAN_PSTD '|~|',NUM_TRAN_VFD '|~|',NUM_TRAN_DELETED '|~|',TRAN_CRE_MODE '|~|',RESTRICT_MODIFY_IND '|~|',REMARKS '|~|',LCHG_USER_ID '|~|',LCHG_TIME '|~|',RCRE_USER_ID '|~|',RCRE_TIME '|~|',PST_FLG '|~|',DELIVERY_CHANNEL_ID '|~|',INIT_SOL_ID '|~|',IGNORE_XCPN_FLG '|~|',NUM_TRAN_PURGED '|~|',B2K_EVENT_TYPE '|~|',TS_CNT '|~|',SYS_ENTERED_USER_MOD_FLG '|~|',REFERRAL_EVENT_TYPE '|~|',BANK_ID '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/DAILYFIN/ACCOUNT/YET_TO_LOAD_FILES/daily_tran_header_table.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/DAILYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/daily_tran_header_table_TGT.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/DAILYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/daily_tran_header_table_TGT.out.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  insert into EDW.DTH_AUDIT
+    select 'DTH',@@rowcount,getdate();
+  commit work
+end

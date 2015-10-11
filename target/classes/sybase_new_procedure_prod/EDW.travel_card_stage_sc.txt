@@ -1,0 +1,19 @@
+create procedure edw.travel_card_stage_sc()
+begin
+  truncate table edw.s_main_stage_forex_cards_single;
+  commit work;
+  load into table edw.s_main_stage_forex_cards_single( CARD_NO '|^|',F_NAME '|^|' null(zeros,'NULL','null'),M_NAME '|^|' null(zeros,'NULL','null'),L_NAME '|^|' null(zeros,'NULL','null'),PASSPORT_NO '|^|' null(zeros,'NULL','null'),ADDRESS_1 '|^|' null(zeros,'NULL','null'),CITY '|^|' null(zeros,'NULL','null'),STATE '|^|' null(zeros,'NULL','null'),PIN '|^|' null(zeros,'NULL','null'),MOBILENUMBER '|^|' null(zeros,'NULL','null'),PRODUCT_TYPE_CURRENCY '|^|' null(zeros,'NULL','null'),MOTHER_MAIDEN '|^|' null(zeros,'NULL','null'),PAN_NO '|^|' null(zeros,'NULL','null'),CARD_STATUS '|^|' null(zeros,'NULL','null'),DOB '|^|' null(zeros,'NULL','null'),ICICI_ACCOUNT_NO '|^|' null(zeros,'NULL','null'),MAIN_ACCT_NO '|^|' null(zeros,'NULL','null'),MAIL_ID '|^|' null(zeros,'NULL','null'),EMB_DATE '|^|' null(zeros,'NULL','null'),ACTIVATION_DATE '|^|' null(zeros,'NULL','null'),ISSUANCE_DATE '|^|' null(zeros,'NULL','null'),date_created '\x0A' null(zeros,'NULL','null') ) using file
+    '/sybase_load/LOAD_MANAGEMENT/TRAVELCARD_SC/ACCOUNT/YET_TO_LOAD_FILES/stage_forex_cards_single_curr.out' quotes off escapes off preview on message log '/sybase_load/LOAD_MANAGEMENT/TRAVELCARD_SC/ACCOUNT/LOAD_LOGS/Single_currency.txt1.msg' row log '/sybase_load/LOAD_MANAGEMENT/TRAVELCARD_SC/ACCOUNT/LOAD_LOGS/Single_currency.txt1.row' only log all log delimited by '|^|' notify 100000 with checkpoint on;
+  commit work;
+  delete from edw.s_main_stage_forex_cards_single as A from
+    edw.s_main_stage_forex_cards_single as A
+    ,(select MAX(ROWID(s_main_stage_forex_cards_single)) as ROW_ID,
+      CARD_NO from edw.s_main_stage_forex_cards_single
+      group by CARD_NO) as B
+    where A.CARD_NO = B.CARD_NO
+    and ROWID(A) <> B.ROW_ID;
+  commit work;
+  commit work;
+  insert into edw.main_stage_Forex_Cards_SINGLE_N_DEB select * from edw.s_main_stage_forex_cards_single;
+  commit work
+end

@@ -1,0 +1,162 @@
+create procedure EDW.spin_load_p2c_SA_Basic_Calculation_prod_UPD()
+on exception resume
+begin
+  drop table p2c.SA_Basic_calculation_UPD;
+  select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,PROFESSION_TYPE,CITY,STATE,CATEGORY,ZONE,NET_SALARY_PER_MONTH,LAST_SALARY_MONTH,SEP_SENP,
+    ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,DAY_END_BALANCE,ACCT_CRNCY_CODE,CUST_CONST,CUST_STAT_CODE,OTHER_PRODUCT_IDENIFIER,MAB,QAB,TRV,ACCOUNT_SUMMARY_DATE,INCOME_VALIDATED_FLG,
+    DATE_CREATED,DATE_MODIFIED,REMOVAL_FLG,
+    case when TRIM(OTHER_PRODUCT_IDENIFIER) in( 'GPCD','IPB','GPC' ) then 7
+    when TRIM(OTHER_PRODUCT_IDENIFIER) = 'HNI' then 5
+    when CUST_STAT_CODE in( 'KIDEW','HNW','HNIC','KIDWM' ) then 5
+    when CUST_STAT_CODE in( 'EHNPB','EHNPS','EHNES','EHNEW' ) then 4
+    when CUST_STAT_CODE in( 'ALSC1','ALSH1','ALST1','HKOT1','HLOS1','SRCG' ) then 3
+    when cust_const = 'R12' and CUST_STAT_CODE = 'RFIG' then 4
+    when((TRIM(OTHER_PRODUCT_IDENIFIER) = 'SAL' and(CUST_STAT_CODE like '3%' or CUST_STAT_CODE in( 
+    'PSDWA','PPSXA','PRTPA','PPNZA','PWOXA' ) ))
+    or(TRIM(OTHER_PRODUCT_IDENIFIER) = 'HH' and CUST_STAT_CODE like '%3')) then 4
+    when((TRIM(OTHER_PRODUCT_IDENIFIER) = 'SAL' and CUST_STAT_CODE like '2%')
+    or(TRIM(OTHER_PRODUCT_IDENIFIER) = 'HH' and CUST_STAT_CODE in( 
+    'ALSP2','EASY2','HANG2','HBRK2','HH2','HIDR2','HIND2','HKAR2','HRTD2','HSHR2','HUTI2','KIDE2','SRC2','WMN2' ) )) then
+      2
+    when cust_stat_code in( 'ASSCN' ) then 3
+    when((TRIM(OTHER_PRODUCT_IDENIFIER) = 'SAL' and(CUST_STAT_CODE like '1%' or CUST_STAT_CODE in( 'PSDWB','PRTPB','PPNZB','PWOXB',
+    'PPSXB' ) ))
+    or(TRIM(OTHER_PRODUCT_IDENIFIER) = 'HH' and CUST_STAT_CODE in( 
+    'ALS21','ALSA1','ALSP1','EASY1','HANG1','HBRK1','HH1','HIDR1','HIND1','HKAR1','HRTD1','HSHR1','HUTI1','KIDE1','SRC1','WMN1','HHBT1','HHSL1','HPRO1','HMLN1','HHJL1','HHCV1','HHAL1','HHPL1' ) )) then
+      3 else-1 end as product_Segment,
+    (NET_SALARY_PER_MONTH*12/.8) as hh_income, -- NET_SALARY_PER_MONTH update with AVARAG_SALARY of last 1 year AS Per FY-15-16
+    case when hh_income is not null and hh_income > 0 then
+      case when Category = 'CATEGORY - I' then
+        case when hh_income <= 30000 then 0
+        when hh_income <= 300000 then 1
+        when hh_income <= 1000000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5 else-1 end
+      when Category = 'CATEGORY - II' then
+        case when hh_income <= 25000 then 0
+        when hh_income <= 200000 then 1
+        when hh_income <= 800000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5 else-1 end
+      else
+        case when hh_income <= 20000 then 0
+        when hh_income <= 150000 then 1
+        when hh_income <= 600000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5 else-1 end
+      end
+    else-1
+    end as Income_Segment,
+    (case when MAB is not null and MAB > 0 then
+      (case when cust_const = 'R1' then
+        case when MAB <= 15000 then 1
+        when MAB <= 100000 then 2
+        when MAB <= 200000 then 3
+        when MAB <= 500000 then 4
+        when MAB > 500000 then 5
+        else-1
+        end when cust_const in( 'R5','R6','R7','R12' ) then
+        case when MAB <= 100000 then 1
+        when MAB > 100000 then 4
+        else-1
+        end
+      else-1
+      end)
+    else-1
+    end) as imputed_segment,
+    (case when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then
+      product_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then
+      product_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) > ifnull(imputed_segment,0,imputed_segment)) then
+      product_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) < ifnull(imputed_segment,0,imputed_segment)) then
+      imputed_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) = ifnull(imputed_segment,0,imputed_segment)) then
+      product_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      product_segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      imputed_segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      -1
+    end) as Acct_SegmenT,
+    --------
+    (case when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then
+      'PSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then
+      'NSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then
+      'NSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then
+      'PSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then
+      'NSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then
+      'NSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) > ifnull(imputed_segment,0,imputed_segment)) then
+      'PSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) < ifnull(imputed_segment,0,imputed_segment)) then
+      'ISA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) = ifnull(imputed_segment,0,imputed_segment)) then
+      'PSA1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      'PSA1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      'NSA1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      'ISA1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      'NSA1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      '-1'
+    end) as acct_rule
+    into p2c.SA_Basic_calculation_UPD
+    from p2c.LIABILITY_SEGMENT_SA_TABLE_INCR_n_heena_UPD; --25310508 row(s) affected
+  commit work;
+  create hg index HGIDX_P2C_NEWDEV_27 on p2c.SA_Basic_calculation_UPD(account_nbr asc);
+  commit work
+end

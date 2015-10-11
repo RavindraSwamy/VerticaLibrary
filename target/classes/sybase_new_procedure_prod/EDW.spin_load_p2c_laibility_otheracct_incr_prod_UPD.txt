@@ -1,0 +1,295 @@
+create procedure EDW.spin_load_p2c_laibility_otheracct_incr_prod_UPD()
+on exception resume
+begin
+  declare V$$SR smallint;
+  declare V$$EDATE date;
+  declare V$$SDATE date;
+  declare V$$1st_mon_end date;
+  declare V$$2nd_mon_end date;
+  declare V$$3rd_mon_end date;
+  declare V$$4th_mon_end date;
+  declare V$$5th_mon_end date;
+  declare V$$6th_mon_end date;
+  declare V$$first_day date;
+  declare V$$last_day date;
+  declare V$$remark varchar(50);
+  select max(sr) into V$$SR from edw.P2C_BASE_PARAM_N_DEB_upd
+    where start_date is not null and end_date is not null;
+  select Historic_1st_Mon_End into V$$1st_mon_end from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Historic_2nd_Mon_End into V$$2nd_mon_end from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Historic_3rd_Mon_End into V$$3rd_mon_end from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Historic_4th_Mon_End into V$$4th_mon_end from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Historic_5th_Mon_End into V$$5th_mon_end from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Historic_6th_Mon_End into V$$6th_mon_end from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select First_Day_Curr_Mon into V$$first_day from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Last_Day_Curr_Mon into V$$last_day from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Start_Date into V$$SDATE from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select End_Date into V$$EDATE from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  select Run_Comment into V$$remark from edw.P2C_BASE_PARAM_N_DEB_upd where SR = V$$SR;
+  if(V$$remark = 'OK TO PROCESS') then
+    drop table p2c.temp_Liability_Other_Accounts_UPD;
+    commit work;
+    select * into p2c.temp_Liability_Other_Accounts_UPD
+      ---- RTL_NONRTL
+      ---- NRI_STATUS
+      ---- Other product  identifier
+      --'HNIC'            
+      /* --old logic   
+(case when SUBSTR(TRIM(AAA.CUST_STAT_CODE),1,5) in( 'HNIM','HNIS') and AAA.CUST_NRE_FLG = 'Y' then 'GPC'
+when AAA.CUST_NRE_FLG = 'Y' and GL_SUB_HEAD_CODE = '05060' then 'NRI'
+when substr(AAA.cust_const,1,1) in( 'R','E','Q','A','B') and AAA.CUST_NRE_FLG = 'Y' 
+and substr(GL_SUB_HEAD_CODE,1,3) <> '050' then 'NRI'
+when substr(AAA.cust_const,1,1) in( 'R','E','Q','A','B') and AAA.CUST_NRE_FLG = 'N' 
+and GL_SUB_HEAD_CODE in( '05040','08040','20040') then 'NRI'
+when SUBSTR(TRIM(AAA.CUST_STAT_CODE),1,5) in( 'HNIPS','HNIPB','HNIPT','HNISS','KIDEP','HNIGC','HNIPP','HNITA') 
+then 'GPC'
+when SUBSTR(TRIM(AAA.CUST_STAT_CODE),1,3) = 'HNI' then 'HNI'
+when(SUBSTR(TRIM(AAA.CUST_STAT_CODE),1,1) in( 'p','1','2','3','X') or
+SUBSTR(TRIM(AAA.CUST_STAT_CODE),1,3) = 'stf' or
+SUBSTR(TRIM(AAA.CUST_STAT_CODE),1,4) = 'estf') then 'SAL'
+when TRIM(AAA.CUST_CONST) in( 'r5','r6','r7','r12') then 'TASC'
+when SUBSTR(TRIM(AAA.CUST_CONST),1,1) in( 'e','q','a','b') then 'SEG' else 'HH'
+end) as PRODUCT_TYPE,
+*/
+      --ADD 13 FD 
+      -- AS DISCUSSED NOT REQ.
+      from(select T.SOURCE_ACCOUNT_NBR,
+          AAA.Cust_ID,
+          T.ACCOUNT_NBR,
+          30 as SOURCE_SYSTEM_CODE,
+          isnull(TRIM(AAA.CUST_STAT_CODE),'NULL') as CUST_STAT_CODE,
+          TRIM(AAA.CUST_CONST) as CUST_CONST,
+          AAA.CUST_NRE_FLG,
+          TRIM(AA.ACCT_CRNCY_CODE) as ACCT_CRNCY_CODE,
+          T.ACCOUNT_CLOSE_DATE,
+          (case when T.SCHEME_CODE in( '30SBKIT','30CAKIT' ) and ACCOUNT_OPEN_DATE
+           < LAST_UNFREZ_DATE then LAST_UNFREZ_DATE else ACCOUNT_OPEN_DATE end) as ACCOUNT_OPEN_DATE,
+          (AA.CLR_BAL_AMT+AA.UN_CLR_BAL_AMT) as DAY_END_BALANCE,
+          case when substr(AA.cust_const,1,1) in( 'R','E','Q','A','B' ) then 'RTL'
+          when GL_SUB_HEAD_CODE in( '05091','05092','05093','05094','05095','350505','30505' ) then 'ICICI'
+          when AA.CUST_STAT_CODE = 'DUMMY' then 'DUMMY'
+          when AA.CUST_NRE_FLG = 'Y' and substr(GL_SUB_HEAD_CODE,1,3) <> '050' then 'RTL' else 'NA' end as RTL_NONRTL,
+          case when AA.CUST_NRE_FLG = 'Y' and GL_SUB_HEAD_CODE = '05060' then 'NRI'
+          when RTL_NONRTL = 'RTL' and AA.CUST_NRE_FLG = 'Y' and substr(GL_SUB_HEAD_CODE,1,3) <> '050' then 'NRI'
+          when RTL_NONRTL = 'RTL' and AA.CUST_NRE_FLG = 'N' and GL_SUB_HEAD_CODE in( '05040','08040','20040' ) then 'NRI' else 'DOMESTIC' end as NRI_STATUS,
+          case when RTL_NONRTL = 'RTL' and AA.CUST_STAT_CODE in( 'HNIPB','HNIPS','HNIPT','HNISS','KIDEP','HNIGC','GCUMM','HNIPP','HNITA' ) then 'GPCD'
+          when NRI_STATUS = 'NRI' and AA.CUST_STAT_CODE in( 'HNIM','HNIS' ) then 'IPB'
+          when RTL_NONRTL = 'RTL' and(substr(TRIM(AA.CUST_STAT_CODE),1,3) = 'HNI' or AA.CUST_STAT_CODE in( 'KIDEW','HNW','HNIC','KIDWM' ) ) then 'HNI'
+          when NRI_STATUS = 'NRI ' and AA.CUST_STAT_CODE not in( 'HNIM','HNIS' ) then 'NRI'
+          when TRIM(AAA.CUST_CONST) in( 'r5','r6','r7','r12' ) then 'TASC'
+          when AA.CUSTOMER_TYPE = 'HH' then 'HH'
+          when AA.CUSTOMER_TYPE = 'SAL' then 'SAL' else 'NA' end as PRODUCT_TYPE,
+          (case when(T.SCHEME_CODE) like '%SALOD%' then 'SALOD'
+          when(T.SCHEME_CODE) like '%CAERA%' then 'RBACT'
+          when SUBSTR(T.SOURCE_ACCOUNT_NBR,5,2) in( '01','02' ) then 'SAVING'
+          when SUBSTR(T.SOURCE_ACCOUNT_NBR,5,2) in( '05','06','51','55','60','65','52','68' ) then 'CURRENT'
+          when SUBSTR(T.SOURCE_ACCOUNT_NBR,5,2) = '18' then 'PPF'
+          when SUBSTR(T.SOURCE_ACCOUNT_NBR,5,2) = '25' then 'RD'
+          when SUBSTR(T.SOURCE_ACCOUNT_NBR,5,2) in( '10','12','14','15','16','31','35','40','61','13' ) 
+          and trim(AA.Product_type) in( 'FD','NA' ) then 'FD'
+          when SUBSTR(T.SOURCE_ACCOUNT_NBR,5,2) in( '10','12','14','15','16','31','35','40','61' ) 
+          and trim(AA.Product_type) = 'QO' then 'QO' else 'OTHERS' end) as FLAG,
+          AA.account_derive_date
+          from EDW.T0300_ACCOUNT as T
+            ,EDW.T09311_liability_account_addon as AA
+            ,EDW.T09310_liability_customer_addon as AAA
+          where T.SOURCE_ACCOUNT_NBR = AA.SOURCE_ACCOUNT_NBR
+          and T.account_close_date is null
+          and TRIM(AA.SOURCE_PARTY_ID) = TRIM(AAA.SOURCE_PARTY_ID)
+          and ACCT_OWNERSHIP <> 'O'
+          and gl_sub_head_code not in( '05091','05092','05093','05094','05095','350505','30505' ) 
+          and T.SOURCE_SYSTEM_CODE = 30
+          and isnull(AAA.CUST_stat_code,'NULL') not in( 'DUMMY','CORBA' ) 
+          and FLAG not in( 'OTHERS' ) ) as x; ---34908085 row(s) affected
+    commit work;
+    alter table p2c.temp_Liability_Other_Accounts_UPD add
+      ucic_value varchar(54) null;
+    alter table p2c.temp_Liability_Other_Accounts_UPD add
+      Unique_ID varchar(25) null;
+    commit work;
+    create hg index HGIDX_Liab_Other_Acct_1 on p2c.temp_Liability_Other_Accounts_UPD(ACCOUNT_NBR asc);
+    create lf index LFIDX_Liab_Other_Acct_121 on p2c.temp_Liability_Other_Accounts_UPD(FLAG asc);
+    commit work;
+    update p2c.temp_Liability_Other_Accounts_UPD as a
+      set a.ucic_value = b.ucic_value,
+      a.Unique_ID = b.Unique_ID from
+      P2c.p2c_UCIC_table as b
+      where a.account_nbr = b.account_nbr; --33630778 row(s) updated
+    commit work;
+    create hg index HGIDX_Liab_Other_Acct_2 on p2c.temp_Liability_Other_Accounts_UPD(UCIC_VALUE asc);
+    delete from p2c.temp_Liability_Other_Accounts_UPD where UCIC_VALUE is null; --55471 row(s) deleted
+    commit work;
+    select distinct UCIC_VALUE into #Unique_ID_CASA from p2c.temp_Liability_Other_Accounts_UPD where trim(Flag) in( 'CURRENT','SAVING' ) ; --2 63 71 036 row(s) affected
+    commit work;
+    update p2c.temp_Liability_Other_Accounts_UPD
+      set FLAG = 'SFD'
+      where FLAG = 'FD' and not UCIC_VALUE = any(select UCIC_VALUE from #Unique_ID_CASA); --299252 row(s) updated
+    commit work;
+    delete from p2c.temp_Liability_Other_Accounts_UPD where trim(Flag) in( 'CURRENT','SAVING' ) ; --28812202 row(s) deleted
+    commit work;
+    select UCIC_VALUE into #Unique_ID_INCR
+      from(select UCIC_VALUE from p2c.LIABILTY_INCR_DATA_CURRENT_BASE_SRC_FINAL_UPD union
+        select UCIC_VALUE from p2c.LIABILTY_INCR_DATA_SAVING_BASE_SRC_FINAL_UPD) as X;
+    commit work;
+    create hg index HGIDX_Liab_Other_Acct_2 on #Unique_ID_INCR(UCIC_VALUE asc);
+    create hg index HGIDX_Liab_Other_Acct_3 on #Unique_ID_CASA(UCIC_VALUE asc);
+    commit work;
+    drop table p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD;
+    commit work;
+    select a.*,'Incremental' as Reason into p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD
+      from p2c.temp_Liability_Other_Accounts_UPD as a
+      where a.ACCOUNT_OPEN_DATE between V$$SDATE and V$$EDATE; --'2015-05-14' and '2015-05-23'--V$$SDATE and V$$EDATE
+    --3000 row(s) affected
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD
+      select a.*,'Incremental' as Reason from p2c.temp_Liability_Other_Accounts_UPD as a,#Unique_ID_INCR as b
+        -- A.Unique_ID = b.Unique_ID and
+        where A.ucic_value = b.ucic_value
+        --not a.account_nbr = any(select account_nbr from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD);
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD as N where a.account_nbr = N.account_nbr);
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD
+      select a.*,'Account Missing' as Reason from p2c.temp_Liability_Other_Accounts_UPD as a
+        where a.ACCOUNT_OPEN_DATE <= V$$SDATE --'2015-05-14' and --V$$SDATE
+        --  not a.account_nbr = any(select account_nbr from p2c.p2c_base_data19_upd where source_system_code = 30) and
+        --  not a.account_nbr = any(select account_nbr from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD); --4815576 row(s) inserted
+        and not exists(select 1 from p2c.p2c_base_data19_UPD as N where a.account_nbr = N.account_nbr and source_system_code = 30)
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD as N where a.account_nbr = N.account_nbr); -- 3 row(s) inserted
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD
+      select a.*,'ADHOC' as Reason
+        from p2c.temp_Liability_Other_Accounts_UPD as a,P2C.P2C_MISSING_ACCOUNTS_N_HEENA as P2CS
+        where P2CS.SOURCE_SYSTEM_CODE = 30
+        and a.account_nbr = P2CS.account_nbr
+        --not P2CS.account_nbr = any(select ACCOUNT_NBR from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD);
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD as N where a.account_nbr = N.account_nbr);
+    commit work;
+    select * into #gpid_change
+      --A.Unique_ID <> B.Unique_ID and
+      --substring(A.Unique_ID,1,1) = 'G'
+      from(select a.account_nbr,a.SOURCE_ACCOUNT_NBR,a.source_system_code,'UCIC_VALUE change' as Reason
+          from p2c.p2c_ucic_table as A,p2c.p2c_base_data19_upd as B
+          where A.Account_NBR = B.Account_NBR
+          and B.source_system_code = 30
+          and A.UCIC_VALUE <> B.UCIC_VALUE) as x;
+    commit work;
+    insert into p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD
+      select a.*,b.reason
+        from p2c.temp_Liability_Other_Accounts_UPD as a,#gpid_change as b
+        where a.account_nbr = b.account_nbr
+        --   not b.account_nbr = any(select ACCOUNT_NBR from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD);
+        and not exists(select 1 from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD as N where a.account_nbr = N.account_nbr);
+    commit work;
+    delete from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD
+      where account_nbr = any(select account_nbr from EDW.T0300_ACCOUNT where account_close_date is not null and source_system_code = 30);
+    commit work;
+    select Account_nbr into #CASA_ACCOUNT from P2c.P2c_Base_data19_UPD where product in( 'CA','SA' ) ;
+    insert into #CASA_ACCOUNT
+      select *
+        from(select Account_nbr from p2c.LIABILTY_INCR_DATA_CURRENT_BASE_SRC_FINAL_UPD union
+          select Account_nbr from p2c.LIABILTY_INCR_DATA_SAVING_BASE_SRC_FINAL_UPD) as X; --2241754 row(s) inserted
+    commit work;
+    delete from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD
+      where account_nbr = any(select account_nbr from #CASA_ACCOUNT);
+    commit work;
+    drop table p2c.PPF_SALOD_RB_Account_upd;
+    select distinct
+      UCIC_VALUE,
+      UNIQUE_ID,
+      SOURCE_ACCOUNT_NBR,
+      Cust_ID,
+      ACCOUNT_NBR,
+      SOURCE_SYSTEM_CODE,
+      CUST_STAT_CODE,
+      CUST_CONST,
+      CUST_NRE_FLG,
+      ACCT_CRNCY_CODE,
+      ACCOUNT_CLOSE_DATE,
+      ACCOUNT_OPEN_DATE,
+      DAY_END_BALANCE,
+      product_type,
+      FLAG,
+      null as ACCOUNT_SUMMARY_DATE
+      into p2c.PPF_SALOD_RB_Account_UPD
+      from p2c.TEMP_P2C_BASE_TABLE_New_Account_UPD; --48 18 576 row(s) affected
+    create hg index Hg_IDX_sa_base_1 on p2c.PPF_SALOD_RB_Account_UPD(cust_id asc,source_system_code asc);
+    create hg index Hg_IDX_sa_base_11 on p2c.PPF_SALOD_RB_Account_UPD(ACCOUNT_NBR asc);
+    commit work;
+    drop table p2c.PPF_SALOD_RB_Account_SRC_UPD;
+    select * into p2c.PPF_SALOD_RB_Account_SRC_UPD
+      from(select BASE.*,B.Deposit_Amount,T0111.PROF_QUALIFICATION,T0111.PROFESSION,T0111.CUR_CITY,
+          T0111.MAIL_CITY,T0111.PER_CITY,T0111.BUS_CITY,
+          cast(null as decimal(24,6)) as NET_SALARY_PER_MONTH,
+          cast(null as date) as LAST_SALARY_MONTH
+          from p2c.PPF_SALOD_RB_Account_UPD as BASE
+            left outer join EDW.T0324_DEPOSIT_TERM_ACCOUNT as B
+            on BASE.account_nbr = b.account_nbr
+            left outer join EDW.T0111_SOURCE_CUSTOMER_DETAILS as T0111
+            on T0111.SOURCE_PARTY_ID = Base.CUST_ID
+            and T0111.source_system_code = Base.source_system_code) as x;
+    commit work;
+    create hg index Hg_IDX_sa_base_111 on p2c.PPF_SALOD_RB_Account_SRC_UPD(ACCOUNT_NBR asc);
+    ------------- salarY update
+    select S.SOURCE_ACCOUNT_NBR,S.LAST_SALARY_UPLOAD_MONTH as MX_LAST_SALARY_UPLOAD_MONTH,SALARY
+      into #MX_MX_LAST_SALARY_UPLOAD_MONTH
+      from priyanks.SALARY_DATAMART_02 as S
+        ,(select P.SOURCE_ACCOUNT_NBR,MAX(LAST_SALARY_UPLOAD_MONTH) as MX_LAST_SALARY_UPLOAD_MONTH
+          from priyanks.SALARY_DATAMART_02 as P
+            ,p2c.PPF_SALOD_RB_Account_SRC_UPD as U
+          where P.SOURCE_ACCOUNT_NBR = U.SOURCE_ACCOUNT_NBR
+          group by P.SOURCE_ACCOUNT_NBR) as MX
+      where S.SOURCE_ACCOUNT_NBR = MX.SOURCE_ACCOUNT_NBR
+      and S.LAST_SALARY_UPLOAD_MONTH = MX.MX_LAST_SALARY_UPLOAD_MONTH; ---- 0
+    commit work;
+    update p2c.PPF_SALOD_RB_Account_SRC_UPD as a
+      set a.NET_SALARY_PER_MONTH = B.SALARY,
+      a.LAST_SALARY_MONTH = b.MX_LAST_SALARY_UPLOAD_MONTH from
+      p2c.PPF_SALOD_RB_Account_SRC_UPD as a,#MX_MX_LAST_SALARY_UPLOAD_MONTH as b --reconp.Salary_April_March_P2C as b
+      where a.source_account_nbr = b.source_account_nbr; --0 updated
+    commit work;
+    /* old logic
+
+alter table p2c.PPF_SALOD_RB_Account_SRC add
+NET_SALARY_PER_MONTH decimal(24,6) null,add
+LAST_SALARY_MONTH varchar(10) null;
+update p2c.PPF_SALOD_RB_Account_SRC as a set
+a.NET_SALARY_PER_MONTH = b.Salary_Amt,
+a.LAST_SALARY_MONTH = b.last_Salary_Month from
+p2c.PPF_SALOD_RB_Account_SRC as a,reconp.Salary_April_March_P2C as b where
+trim(a.source_account_nbr) = trim(b.source_account_nbr);
+commit ;
+*/
+    drop table P2C.LIABILTY_BASE_OTHER_PRODUCT_UPD;
+    select UCIC_VALUE,
+      UNIQUE_ID,
+      SOURCE_ACCOUNT_NBR,
+      Cust_ID,
+      ACCOUNT_NBR,
+      SOURCE_SYSTEM_CODE,
+      CUST_STAT_CODE,
+      CUST_CONST,
+      CUST_NRE_FLG,
+      ACCT_CRNCY_CODE,
+      ACCOUNT_CLOSE_DATE,
+      ACCOUNT_OPEN_DATE,
+      DAY_END_BALANCE,
+      PRODUCT_TYPE,
+      FLAG,
+      PROF_QUALIFICATION,
+      PROFESSION,
+      CUR_CITY,
+      MAIL_CITY,
+      PER_CITY,
+      BUS_CITY,
+      ACCOUNT_SUMMARY_DATE,
+      NET_SALARY_PER_MONTH,
+      LAST_SALARY_MONTH,
+      Deposit_Amount
+      into P2C.LIABILTY_BASE_OTHER_PRODUCT_UPD
+      from p2c.PPF_SALOD_RB_Account_SRC_UPD; --59 54 522 row(s) affected
+    commit work;
+    if sqlstate <> '00000' then
+      return
+    end if
+  end if
+end

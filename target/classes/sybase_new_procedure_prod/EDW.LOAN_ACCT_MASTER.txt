@@ -1,0 +1,245 @@
+create procedure EDW.LOAN_ACCT_MASTER()
+begin
+  truncate table MCCM.LOAN_ACCT_MASTER;
+  commit work;
+  insert into MCCM.LOAN_ACCT_MASTER
+    select p2c.UCIC_VALUE,
+      p2c.SOURCE_PARTY_ID,
+      p2c.SOURCE_SYSTEM_CODE,
+      T0300_ACCOUNT.SOURCE_ACCOUNT_NBR,
+      p2c.ACCOUNT_OPEN_DATE,
+      p2c.ACCOUNT_CLOSE_DATE,
+      cast(null as varchar(25)) as LOAN_TYPE,
+      cast(null as decimal(18,2)) as LOAN_AMOUNT,
+      cast(null as decimal(18,2)) as ASSET_VALUE,
+      cast(null as integer) as LOAN_TENURE,
+      cast(null as integer) as INTEREST_RATE,
+      --CAST(NULL AS DATE)   DEFAULTER_SINCE,/* We use DPD instead of Defaulter Since */
+      date(getdate()) as ASOF_DATE,
+      cast(null as date) as SANCTION_DATE,
+      cast(null as decimal(18,2)) as SANCATION_AMT,
+      cast(null as varchar(50)) as DISB_STATUS,
+      cast(null as varchar(50)) as PRODUCT,
+      cast(null as date) as FIRST_DISB_DATE,
+      cast(null as date) as LAST_DISB_DATE,
+      cast(null as date) as EMI_START_DATE,
+      cast(null as decimal(18,2)) as PRINCIPAL_OUTSTANDING,
+      cast(null as decimal(18,2)) as INTEREST_OUTSTANDING,
+      cast(null as varchar(50)) as SCHEMEDESC,
+      cast(null as decimal(18,2)) as BALANCE_TENURE,
+      cast(null as integer) as DPD,
+      cast(null as varchar(30)) as FILE_NO,
+      cast(null as varchar(50)) as AU_MFR_MODEL,
+      cast(null as decimal(18,2)) as EMI_VALUE,
+      cast(null as varchar(30)) as STATUS_OF_LOAN,
+      cast(null as numeric(8)) as SCHEMEID,
+      cast(null as date) as EMI_END_DATE,
+      cast(null as decimal(18,2)) as OUTSTANDING_LOAN_AMT,
+      cast(null as integer) as OUTSTANDING_TENURE,
+      cast(null as date) as MATURITY_DATE,
+      cast(null as varchar(10)) as FORECLOSURE
+      -- into MCCM.LOAN_ACCT_MASTER
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as p2c,EDW.T0300_ACCOUNT as T0300_ACCOUNT
+      where p2c.SOURCE_ACCOUNT_NBR = T0300_ACCOUNT.SOURCE_ACCOUNT_NBR
+      and p2c.SOURCE_SYSTEM_CODE in( 51,52,53 ) ;
+  commit work;
+  --CREATE HG INDEX IDX_SRC_NBR ON MCCM.LOAN_ACCT_MASTER_FULL_DATA (SOURCE_ACCOUNT_NBR);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  ----------------------------------------------------FIN_RAPG----------------------
+  update MCCM.LOAN_ACCT_MASTER as A
+    set A.LOAN_TYPE = B.AGREEMENTTYPE,
+    A.LOAN_AMOUNT = B.DISBURSEDAMOUNT,
+    A.ASSET_VALUE = B.ASSETCOST,
+    A.LOAN_TENURE = B.TENURE,
+    A.INTEREST_RATE = B.INTRATE from
+    RECONP.LEA_AGREEMENT_DTL_RAPG_FULL as B
+    where A.SOURCE_ACCOUNT_NBR = B.agreementno;
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set SANCTION_DATE = AGR_AUTH_DATE,
+    SANCATION_AMT = S_LOAN_AMOUNT,
+    DISB_STATUS = 'DISBURSED',
+    PRODUCT = PRODUCTCODE,
+    FIRST_DISB_DATE = DISBURSAL_DATE,
+    LAST_DISB_DATE = DISBURSAL_DATE,
+    EMI_START_DATE = INSL_START_DATE,
+    BALANCE_TENURE = (TENURE-datediff(mm,B.DISBURSAL_DATE,cast(AS_OF_DATE as date))),
+    EMI_VALUE = B.INSTL_AMT,
+    STATUS_OF_LOAN = B.STATUS,
+    SCHEMEID = B.SCHEMEID from
+    FIN_RAPG.CONTROLDUMP_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.AGREEMENTNO
+    and AS_OF_DATE = (select date(max(as_of_date)) from FIN_RAPG.CONTROLDUMP_FINAL);
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set DPD = NEW_DPD_LATEST,
+    PRINCIPAL_OUTSTANDING = B.PRINCIPAL_OUTSTANDING,
+    INTEREST_OUTSTANDING = B.INTEREST_OUTSTANDING from
+    FIN_RAPG.TRANS_DEBTOR_CREDITOR_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.LOAN_NO
+    and B.ASOFDATE = (select date(max(asofdate)) from FIN_RAPG.TRANS_DEBTOR_CREDITOR_FINAL);
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set SCHEMEDESC = B.SCHEME from
+    FIN_RAPG.DEMOG_DATA as B
+    where A.SOURCE_ACCOUNT_NBR = B.AGREEMENTNO;
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set AU_MFR_MODEL = B.MODEL from
+    FIN_RAPG.DEMOG_DATA as B
+    where A.SOURCE_ACCOUNT_NBR = B.AGREEMENTNO;
+  commit work;
+  begin
+    declare DATE2 date;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into DATE2;
+    commit work;
+    update MCCM.LOAN_ACCT_MASTER as A
+      set A.OUTSTANDING_LOAN_AMT = (ISNULL(TD.PRINCIPAL_OUTSTANDING,0)+ISNULL(CD.PRIN_CLOSEBAL,0)),
+      A.OUTSTANDING_TENURE = datediff(mm,AS_OF_DATE,CD.MATURITY_DATE),
+      A.MATURITY_DATE = CD.MATURITY_DATE from
+      FIN_RAPG.CONTROLDUMP_FINAL as CD
+      left outer join FIN_RAPG.TRANS_DEBTOR_CREDITOR_FINAL as TD
+      on CD.AGREEMENTNO = TD.LOAN_NO
+      and CD.AS_OF_DATE = TD.ASOFDATE
+      where AS_OF_DATE = DATE2
+      and A.SOURCE_ACCOUNT_NBR = CD.AGREEMENTNO
+      and SOURCE_SYSTEM_CODE in( 51 ) ;
+    commit work
+  end;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  ---------------------FOR BANK-----------------------------------
+  update MCCM.LOAN_ACCT_MASTER as A
+    set A.LOAN_TYPE = B.AGREEMENTTYPE,
+    A.LOAN_AMOUNT = B.DISBURSEDAMOUNT,
+    A.ASSET_VALUE = B.ASSETCOST,
+    A.LOAN_TENURE = B.TENURE,
+    A.INTEREST_RATE = B.INTRATE from
+    RECONP.LEA_AGREEMENT_DTL_BANK_FULL as B
+    where A.SOURCE_ACCOUNT_NBR = B.agreementno;
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set A.SANCTION_DATE = B.SANCTION_DATE,
+    A.SANCATION_AMT = B.SANC_AMT,
+    A.DISB_STATUS = B.DISB_STATUS,
+    A.PRODUCT = B.PRODUCT,
+    A.FIRST_DISB_DATE = B.FIRST_DISB_DATE,
+    A.LAST_DISB_DATE = B.LAST_DISB_DATE,
+    A.EMI_START_DATE = B.EMI_START_DATE,
+    A.BALANCE_TENURE = B.BALANCE_TENURE from
+    FIN_BANK.FINNONE_DUMP_NEW_BANK as B
+    where A.SOURCE_ACCOUNT_NBR = B.file_no;
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set A.PRINCIPAL_OUTSTANDING = B.PRINCIPAL_OUTSTANDING,
+    A.INTEREST_OUTSTANDING = B.INTEREST_OUTSTANDING,
+    A.SCHEMEDESC = B.SCHEMEDESC,
+    A.DPD = B.DPD from
+    FIN_BANK.TRANS_DEBT_CRED_BANK_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.LOAN_NO
+    and B.ASOFDATE = (select date(max(asofdate)) from FIN_BANK.TRANS_DEBT_CRED_BANK_FINAL);
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set loan_type = b.PRODUCT,
+    LOAN_AMOUNT = DISB_AMT,
+    ASSET_VALUE = TOTAL_PROPERTY_COST,
+    LOAN_TENURE = TERM_OF_LOAN,
+    INTEREST_RATE = RATE,
+    a.EMI_VALUE = B.EMI,
+    STATUS_OF_LOAN = B.STAUS_OF_LOAN from
+    fin_bank.finnone_dump_new_bank as B
+    where A.SOURCE_ACCOUNT_NBR = B.FILE_NO;
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set SCHEMEID = B.SCHEMEID from
+    FIN_BANK.TRANS_DEBT_CRED_BANK_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.FILENO
+    and ASOFDATE = (select date(max(asofdate)) from FIN_BANK.TRANS_DEBT_CRED_BANK_FINAL);
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set A.OUTSTANDING_TENURE = W.BALANCE_TENURE from
+    --A.MATURITY_DATE = W.MATURITY_DATE
+    FIN_BANK.FINNONE_DUMP_NEW_BANK as W
+    where A.SOURCE_ACCOUNT_NBR = W.FILE_NO
+    and A.OUTSTANDING_TENURE is null;
+  commit work;
+  begin
+    declare DATE3 date;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into DATE3;
+    commit work;
+    update MCCM.LOAN_ACCT_MASTER as A
+      set A.OUTSTANDING_LOAN_AMT = (ISNULL(W.PRINCIPAL_OUTSTANDING,0)+ISNULL(W.IDEAL_PRINCIPAL_OUTSTANDING,0)) from
+      FIN_BANK.TRANS_DEBT_CRED_BANK_FINAL as W
+      where A.SOURCE_ACCOUNT_NBR = W.LOAN_NO
+      and ASOFDATE = DATE3
+      and A.OUTSTANDING_LOAN_AMT is null;
+    commit work
+  end;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  ----------------------------------------------------FINONE HFC----------------------
+  update MCCM.LOAN_ACCT_MASTER as A
+    set A.LOAN_TYPE = B.AGREEMENTTYPE,
+    A.LOAN_AMOUNT = B.DISBURSEDAMOUNT,
+    A.ASSET_VALUE = B.ASSETCOST,
+    A.LOAN_TENURE = B.TENURE,
+    A.INTEREST_RATE = B.INTRATE from
+    RECONP.LEA_AGREEMENT_DTL_HFC_FULL as B
+    where A.SOURCE_ACCOUNT_NBR = B.agreementno;
+  commit work;
+  begin
+    declare DATE1 date;
+    select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into DATE1;
+    commit work;
+    update MCCM.LOAN_ACCT_MASTER as A
+      set A.OUTSTANDING_LOAN_AMT = (ISNULL(X.PRINCIPAL_OUTSTANDING,0)+ISNULL(X.IDEAL_PRINCIPAL_OUTSTANDING,0)) from
+      FIN_BANK.TRANS_DEBT_CRED_HFC_FINAL as X
+      where A.SOURCE_ACCOUNT_NBR = X.LOAN_NO
+      and ASOFDATE = DATE1
+      and A.OUTSTANDING_LOAN_AMT is null;
+    commit work
+  end;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set loan_type = B.PRODUCT,
+    LOAN_AMOUNT = DISB_AMT,
+    ASSET_VALUE = TOTAL_PROPERTY_COST,
+    LOAN_TENURE = TERM_OF_LOAN,
+    INTEREST_RATE = RATE,
+    EMI_VALUE = EMI,
+    STATUS_OF_LOAN = B.STAUS_OF_LOAN from
+    fin_bank.finnone_dump_new_HFC as B
+    where A.SOURCE_ACCOUNT_NBR = B.FILE_NO;
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set SCHEMEID = B.SCHEMEID from
+    FIN_BANK.TRANS_DEBT_CRED_HFC_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.FILENO
+    and ASOFDATE = (select date(max(asofdate)) from FIN_BANK.TRANS_DEBT_CRED_HFC_FINAL);
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set A.OUTSTANDING_TENURE = W.BALANCE_TENURE from
+    --A.MATURITY_DATE = W.MATURITY_DATE
+    FIN_BANK.FINNONE_DUMP_NEW_HFC as W
+    where A.SOURCE_ACCOUNT_NBR = W.FILE_NO
+    and A.OUTSTANDING_TENURE is null;
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set FORECLOSURE = 'YES'
+    where cast(DATEFORMAT(cast(ACCOUNT_CLOSE_DATE as date),'YYYYMM') as integer) < cast(DATEFORMAT(cast(MATURITY_DATE as date),'YYYYMM') as integer);
+  commit work;
+  update MCCM.LOAN_ACCT_MASTER as A
+    set a.BALANCE_TENURE = 0,
+    a.Outstanding_tenure = 0
+    where BALANCE_TENURE < 0 and Outstanding_tenure < 0;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if
+end

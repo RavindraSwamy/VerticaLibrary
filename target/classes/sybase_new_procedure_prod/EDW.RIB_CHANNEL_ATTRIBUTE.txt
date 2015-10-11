@@ -1,0 +1,414 @@
+create procedure edw.RIB_CHANNEL_ATTRIBUTE()
+begin
+  select distinct
+    UCIC_LINKAGE.UCIC_VALUE as UCIC_CODE,
+    UCIC_LINKAGE.SOURCE_PARTY_ID,
+    cast(null as varchar(40)) as USERID,
+    cast(null as varchar(50)) as FED_ID,
+    cast(null as date) as ACTIVATION_DATE,
+    cast(null as varchar(40)) as OLD_NET_USER_ID,
+    cast(null as date) as FIRST_LOGIN_DATE,
+    cast(null as date) as LAST_LOGIN_DATE,
+    cast(null as varchar(5)) as FD_OPENED,
+    cast(null as varchar(5)) as RD_OPENED,
+    cast(null as varchar) as FT_DONE,
+    cast(null as varchar) as BP_DONE,
+    cast(null as varchar) as PMR_DONE,
+    cast(null as integer) as FT_COUNT,
+    cast(null as integer) as RIB_LOGIN_COUNT,
+    cast(null as varchar(20)) as RIB_RAISED_SR,
+    cast(null as varchar(5)) as CHEQUE_BOOK_REQUEST,
+    cast(null as varchar(5)) as MY_MONEY,
+    cast(null as varchar(5)) as IWISH,
+    cast(null as date) as MY_MONEY_ACTIVATION_DATE,
+    ACCOUNT_CLOSE_DATE
+    into #UCIC_LINKAGE
+    from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+    where source_system_code = 30 and 1 = 2;
+  commit work;
+  create hg index hg_idx_usrid on EDW.#UCIC_LINKAGE(USERID);
+  create hg index hg_idx_src_act_nbr on EDW.#UCIC_LINKAGE(SOURCE_PARTY_ID);
+  create hg index hg_idx_ucic_code on EDW.#UCIC_LINKAGE(UCIC_CODE);
+  create hg index hg_idx_old_ntuser on EDW.#UCIC_LINKAGE(OLD_NET_USER_ID);
+  create date index dt_idx_act_date on EDW.#UCIC_LINKAGE(ACTIVATION_DATE);
+  create date index dt_idx_fst_lgin_dt on EDW.#UCIC_LINKAGE(FIRST_LOGIN_DATE);
+  create date index dt_idx_lst_lgin_dt on EDW.#UCIC_LINKAGE(LAST_LOGIN_DATE);
+  commit work;
+  insert into #UCIC_LINKAGE
+    select distinct UCIC_LINKAGE.UCIC_VALUE as UCIC_CODE,
+      UCIC_LINKAGE.source_PARTY_ID,
+      cast(null as varchar(40)) as USERID,
+      cast(null as varchar(50)) as FED_ID,
+      cast(null as date) as ACTIVATION_DATE,
+      cast(null as varchar(40)) as OLD_NET_USER_ID,
+      cast(null as date) as FIRST_LOGIN_DATE,
+      cast(null as date) as LAST_LOGIN_DATE,
+      cast(null as varchar(5)) as FD_OPENED,
+      cast(null as varchar(5)) as RD_OPENED,
+      cast(null as varchar) as FT_DONE,
+      cast(null as varchar) as BP_DONE,
+      cast(null as varchar) as PMR_DONE,
+      cast(null as integer) as FT_COUNT,
+      cast(null as integer) as RIB_LOGIN_COUNT,
+      cast(null as varchar(20)) as RIB_RAISED_SR,
+      cast(null as varchar(5)) as CHEQUE_BOOK_REQUEST,
+      cast(null as varchar(5)) as MY_MONEY,
+      cast(null as varchar(5)) as IWISH,
+      cast(null as date) as MY_MONEY_ACTIVATION_DATE,
+      cast(null as date) as ACCOUNT_CLOSE_DATE
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as UCIC_LINKAGE
+      where source_system_code = 30;
+  commit work;
+  select distinct ACCOUNT_NUMBER as SOURCE_ACCOUNT_NBR,
+    UBP_USER_ID as USER_ID,
+    PMT_STAT as PAYMENT_STATUS,
+    INSTANCE_PMT_DT,
+    PAYEE_NAME,
+    PAYEE_TYPE,
+    (case when PAYEE_TYPE = 'N' then
+      'FUND TRANSFER- WITHIN ICICI BANK'
+    when PAYEE_TYPE = 'M' then
+      'SHOPPING MALL'
+    when PAYEE_NAME in( 'RBI-NEFT','RBI-EFT' ) then
+      'FUND TRANSFER- OUTSIDE ICICI BANK'
+    when PAYEE_NAME = 'PREPAID MOBILE RECHARGE' then
+      'PMR'
+    when PAYEE_NAME = 'ICICI BANK CREDIT CARDS' then
+      'ICICI CREDIT CARD PAYMENT'
+    when PAYEE_NAME = 'VISA MONEY TRANSFER' then
+      'VISA MONEY TRANSFER'
+    when PAYEE_NAME = 'MONEY ORDER TRANSFER' then
+      'MONEY ORDER'
+    when PAYEE_NAME = 'RTGS' then
+      'RTGS'
+    when PAYEE_NAME = 'MONEY MANAGER' then
+      'MM FEES'
+    else 'BILL PAY'
+    end) as TRANSACTION_TYPE
+    into #PMT_BASE
+    from EDW.T09531_REAL_TIME_PAYMENT
+    where R_CRE_ID like 'BWY/%'
+    and PMT_STAT = 'S'
+    --AND INSTANCE_PMT_DT > DATEADD(HH,-48,GETDATE())
+    and LENGTH(ACCOUNT_NUMBER) = 12
+    and SUBSTR(ACCOUNT_NUMBER,5,2) in( '01','02' ) 
+    and 1 = 2;
+  commit work;
+  insert into #PMT_BASE
+    select distinct ACCOUNT_NUMBER as SOURCE_ACCOUNT_NBR,
+      UBP_USER_ID as USER_ID,
+      PMT_STAT as PAYMENT_STATUS,
+      INSTANCE_PMT_DT,
+      PAYEE_NAME,
+      PAYEE_TYPE,
+      (case when PAYEE_TYPE = 'N' then
+        'FUND TRANSFER- WITHIN ICICI BANK'
+      when PAYEE_TYPE = 'M' then
+        'SHOPPING MALL'
+      when PAYEE_NAME in( 'RBI-NEFT','RBI-EFT' ) then
+        'FUND TRANSFER- OUTSIDE ICICI BANK'
+      when PAYEE_NAME = 'PREPAID MOBILE RECHARGE' then
+        'PMR'
+      when PAYEE_NAME = 'ICICI BANK CREDIT CARDS' then
+        'ICICI CREDIT CARD PAYMENT'
+      when PAYEE_NAME = 'VISA MONEY TRANSFER' then
+        'VISA MONEY TRANSFER'
+      when PAYEE_NAME = 'MONEY ORDER TRANSFER' then
+        'MONEY ORDER'
+      when PAYEE_NAME = 'RTGS' then
+        'RTGS'
+      when PAYEE_NAME = 'MONEY MANAGER' then
+        'MM FEES'
+      else 'BILL PAY'
+      end) as TRANSACTION_TYPE
+      from EDW.T09531_REAL_TIME_PAYMENT
+      where R_CRE_ID like 'BWY/%'
+      and PMT_STAT = 'S'
+      --AND INSTANCE_PMT_DT > DATEADD(HH,-48,GETDATE())
+      and LENGTH(ACCOUNT_NUMBER) = 12 ---
+      and SUBSTR(ACCOUNT_NUMBER,5,2) in( '01','02' ) ;
+  commit work;
+  create hg index hg_idx_usrid on EDW.#PMT_BASE(USER_ID);
+  create hg index hg_idx_src_act_nbr on EDW.#PMT_BASE(SOURCE_ACCOUNT_NBR);
+  create lf index lf_idx_trntype on EDW.#PMT_BASE(TRANSACTION_TYPE);
+  create lf index lf_idx_pmtstat on EDW.#PMT_BASE(PAYMENT_STATUS);
+  create lf index lf_idx_paytype on EDW.#PMT_BASE(PAYEE_TYPE);
+  create date index dt_idx_act_date on EDW.#PMT_BASE(INSTANCE_PMT_DT);
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.USERID = T09315.user_id,
+    old_net_user_id = T09315.old_net_user_id from -- need to do
+    T09315_CAR_ACCOUNTS as T09315
+    where UCIC_LINKAGE.source_PARTY_ID = T09315.CUSTOMER_ID;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set FED_ID = cast(CARTBL.cc_ref_no as varchar) from
+    reconp.CARTBL_CUSTOMERS_FINAL as CARTBL
+    where UCIC_LINKAGE.userid = CARTBL.cc_net_user_id;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.ACTIVATION_DATE = T09522.FIRST_LOGIN_DATE,
+    UCIC_LINKAGE.FIRST_LOGIN_DATE = T09522.FIRST_LOGIN_DATE,
+    UCIC_LINKAGE.LAST_LOGIN_DATE = T09522.LAST_LOGIN_DATE from
+    (select min(FIRST_LOGIN_DATE) as FIRST_LOGIN_DATE,max(LAST_LOGIN_DATE) as LAST_LOGIN_DATE,USER_ID
+      from(select * from T09522_LOGIN_MIS union all
+        select * from T09522_LOGIN_MIS_11X_MIG) as x group by USER_ID) as T09522
+    where UCIC_LINKAGE.userid = T09522.USER_ID;
+  commit work;
+  update #UCIC_LINKAGE as A
+    set A.FT_DONE = C.FT_DONE from
+    (select case when COUNT >= 1 then 'Y' else 'N' end as FT_DONE,
+      a.SOURCE_ACCOUNT_NBR,
+      b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE like 'FUND TRANSFER%' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE in( 30,90 ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  commit work;
+  update #UCIC_LINKAGE as A
+    set A.PMR_DONE = C.PMR_DONE from
+    (select case when COUNT >= 1 then 'Y' else 'N' end as PMR_DONE,a.SOURCE_ACCOUNT_NBR,b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE = 'PMR' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE in( 30,90 ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  commit work;
+  update #UCIC_LINKAGE as A
+    set A.BP_DONE = C.BP_DONE from
+    (select case when COUNT >= 1 then 'Y' else 'N' end as BP_DONE,a.SOURCE_ACCOUNT_NBR,b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE = 'BILL PAY' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE in( 30,90 ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  commit work;
+  update #UCIC_LINKAGE as A
+    set A.FT_COUNT = C.COUNT from
+    (select COUNT,a.SOURCE_ACCOUNT_NBR,b.SOURCE_PARTY_ID
+      from(select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE
+          where TRANSACTION_TYPE like 'FUND TRANSFER%' group by SOURCE_ACCOUNT_NBR) as A
+        ,(select SOURCE_PARTY_ID,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE in( 30,90 ) ) as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR) as C
+    where A.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.RIB_LOGIN_COUNT = T09522.cnt from
+    (select user_id,sum(cnt) as cnt
+      from(select user_id,count() as cnt from T09529_Login_History as a,#UCIC_LINKAGE as UCIC_LINKAGE where a.user_id = UCIC_LINKAGE.userid group by user_id union
+        select user_id,count() as cnt from T09529_LOGIN_HISTORY_11X_MIG as b,#UCIC_LINKAGE as UCIC_LINKAGE where b.user_id = UCIC_LINKAGE.userid group by user_id) as x
+      group by user_id) as T09522
+    where UCIC_LINKAGE.userid = T09522.user_id;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.RIB_RAISED_SR = C.srno from
+    (select T401.srno,T401.accountnumber,B.SOURCE_PARTY_ID
+      from EDW.T401_FCRM_INCIDENTS_STATIC as T401,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+      where B.source_account_nbr = T401.accountnumber
+      and channel = 'fai') as C
+    where C.SOURCE_PARTY_ID = UCIC_LINKAGE.SOURCE_PARTY_ID;
+  commit work;
+  --
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.CHEQUE_BOOK_REQUEST = C.CHEQUE_BOOK_REQUEST from
+    (select case when T401.accountnumber is not null then 'Y' else 'N' end as CHEQUE_BOOK_REQUEST,T401.accountnumber,B.SOURCE_PARTY_ID
+      from EDW.T401_FCRM_INCIDENTS_STATIC as T401,(select SOURCE_ACCOUNT_NBR,SOURCE_PARTY_ID from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL) as B
+      where B.source_account_nbr = T401.accountnumber
+      and channel = 'fai' and srtype = 'INTERNET/MOBILE BANKING') as C
+    where UCIC_LINKAGE.SOURCE_PARTY_ID = C.SOURCE_PARTY_ID;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.MY_MONEY = (case when b.USERID is not null then 'Y' else 'N' end) from
+    #UCIC_LINKAGE as UCIC_LINKAGE left outer join edw.DWH_MM_SUBSCRIPTION as B
+    on UCIC_LINKAGE.USERID = cast(B.USERID as varchar);
+  commit work;
+  select SOURCE_ACCOUNT_NBR,account_open_date,account_nbr,source_system_code,
+    cast(null as varchar(25)) as ucic_code
+    into #abc from edw.t0300_account where substr(SOURCE_ACCOUNT_NBR,5,2) = '24'
+    and SCHEME_CODE = '30ICIVR' and account_close_date is null;
+  commit work;
+  create hg index idx_ucic on EDW.#abc(ucic_code);
+  commit work;
+  update #abc as a
+    set a.ucic_code = b.ucic_value from
+    p2c.UCIC_LINKAGE_TABLE_UPDATED_FINAL as b
+    where a.SOURCE_ACCOUNT_NBR = b.SOURCE_ACCOUNT_NBR
+    and b.source_system_code = 30;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.IWISH = (case when b.ucic_code is not null then 'Y' else 'N' end) from
+    #UCIC_LINKAGE as UCIC_LINKAGE left outer join #abc as B
+    on UCIC_LINKAGE.UCIC_CODE = b.UCIC_CODE;
+  commit work;
+  update #UCIC_LINKAGE as UCIC_LINKAGE
+    set UCIC_LINKAGE.MY_MONEY_ACTIVATION_DATE = b.SUBSCRIPTION_DATE from
+    #UCIC_LINKAGE as UCIC_LINKAGE left outer join edw.DWH_MM_SUBSCRIPTION as B
+    on UCIC_LINKAGE.USERID = cast(B.USERID as varchar);
+  commit work;
+  select UCIC_CODE,SOURCE_PARTY_ID,USERID,FED_ID,date(getdate()) as ASOF_DATE,date(dateadd(month,1,getdate())) as EXPIRY_REVIEW_DATE,cast(null as integer) as SCORE,1 as seq_no
+    into #Base_RIB_Channel
+    from #UCIC_LINKAGE;
+  commit work;
+  create hg index hg_idx_src_act on EDW.#Base_RIB_Channel(SOURCE_PARTY_ID);
+  commit work;
+  create table #ATT_NAMES(
+    ATTRIB_NAME varchar(50) null,
+    seq_no smallint null,);
+  commit work;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'ACTIVATION_DATE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'OLD_NET_USER_ID',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'FIRST_LOGIN_DATE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'LAST_LOGIN_DATE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'FD_OPENED',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'RD_OPENED',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'FT_DONE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'BP_DONE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'PMR_DONE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'FT_COUNT',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'RIB_LOGIN_COUNT',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'RIB_RAISED_SR',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'CHEQUE_BOOK_REQUEST',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'MY_MONEY',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'IWISH',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'MY_MONEY_ACTIVATION_DATE',1 ) ;
+  insert into #ATT_NAMES( ATTRIB_NAME,seq_no ) values( 'ACCOUNT_CLOSE_DATE',1 ) ;
+  commit work;
+  commit work;
+  select A.UCIC_CODE,
+    A.SOURCE_PARTY_ID,
+    A.USERID,
+    A.FED_ID,
+    B.ATTRIB_NAME,
+    cast(null as integer) as ATTRIB_VALUE_NUMERIC,
+    cast(null as varchar(15)) as ATTRIB_VALUE_CHARACTER,
+    cast(null as date) as ATTRIB_VALUE_DATE,
+    A.ASOF_DATE,
+    A.EXPIRY_REVIEW_DATE,
+    A.SCORE
+    into #Base_RIB_Channel_1
+    from #Base_RIB_Channel as A,#ATT_NAMES as B
+    where a.seq_no = b.seq_no;
+  commit work;
+  create hg index hg_idx_src_act on EDW.#Base_RIB_Channel_1(SOURCE_PARTY_ID);
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_DATE = B.ACTIVATION_DATE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'ACTIVATION_DATE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.OLD_NET_USER_ID from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'OLD_NET_USER_ID'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_DATE = B.FIRST_LOGIN_DATE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'FIRST_LOGIN_DATE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_DATE = B.LAST_LOGIN_DATE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'LAST_LOGIN_DATE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FD_OPENED from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'FD_OPENED'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.RD_OPENED from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'RD_OPENED'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FT_DONE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'FT_DONE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.BP_DONE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'BP_DONE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.PMR_DONE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'PMR_DONE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_NUMERIC = B.FT_COUNT from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'FT_COUNT'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_NUMERIC = B.RIB_LOGIN_COUNT from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'RIB_LOGIN_COUNT'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.RIB_RAISED_SR from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'RIB_RAISED_SR'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.CHEQUE_BOOK_REQUEST from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'CHEQUE_BOOK_REQUEST'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.MY_MONEY from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'MY_MONEY'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_CHARACTER = B.IWISH from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'IWISH '
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_DATE = B.MY_MONEY_ACTIVATION_DATE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'MY_MONEY_ACTIVATION_DATE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #Base_RIB_Channel_1 as A
+    set A.ATTRIB_VALUE_DATE = B.ACCOUNT_CLOSE_DATE from
+    #UCIC_LINKAGE as B
+    where ATTRIB_NAME = 'ACCOUNT_CLOSE_DATE'
+    and A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  --delete from #Base_RIB_Channel_1 where ATTRIB_VALUE_NUMERIC is null and ATTRIB_VALUE_CHARACTER is null and ATTRIB_VALUE_DATE is null;
+  --commit work;
+  truncate table MCCM.RIB_CHANNEL_ATTRIBUTE;
+  commit work;
+  insert into MCCM.RIB_CHANNEL_ATTRIBUTE
+    select UCIC_CODE,
+      USERID,
+      FED_ID,
+      ATTRIB_NAME,
+      ATTRIB_VALUE_NUMERIC,
+      ATTRIB_VALUE_CHARACTER,
+      ATTRIB_VALUE_DATE,
+      ASOF_DATE,
+      EXPIRY_REVIEW_DATE,
+      SCORE
+      from #Base_RIB_Channel_1;
+  commit work
+end

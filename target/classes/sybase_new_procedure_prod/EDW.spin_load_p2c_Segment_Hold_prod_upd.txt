@@ -1,0 +1,555 @@
+create procedure EDW.spin_load_p2c_Segment_Hold_prod_upd()
+on exception resume
+begin
+  drop index p2c.P2C_Customer_Segment_Final_N_Heena_upd.HG_IDX_CUSTOMER_SEGMENT_1;
+  drop index p2c.P2C_Customer_Segment_Final_N_Heena_upd.HG_IDX_CUSTOMER_SEGMENT_2;
+  drop index p2c.P2C_Customer_Segment_Final_N_Heena_upd.LF_IDX_CUSTOMER_SEGMENT_3;
+  truncate table p2c.P2C_Customer_Segment_Final_N_Heena_upd;
+  commit work;
+  insert into p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    select A.UCIC_VALUE,A.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,A.ACCOUNT_OPEN_DATE,A.Profession,A.hh_income,A.Acct_Segment,A.Acct_rule,A.Turnover,A.Product,
+      A.Cust_id,A.card_nbr,A.segment_code_12digit,A.profession_Code,A.C_profession,A.C_segment,A.c_account_nbr,A.c_source_account_nbr,
+      A.Cust_Segment,A.Cust_Rule,A.ACCOUNT_SEGMENT,A.customer_profession,A.CUSTOMER_SEGMENT,A.incomeSegment,A.serviceSegment,A.date_created,A.date_modified,
+      null,null,null,null from p2c.p2c_base_data19_UPD as A; --60190760 row(s) inserted
+  /*
+SELECT TOP 100 * FROM p2c.P2c_Segment_Hold_Base_N_Heena_UPD 
+drop table p2c.P2c_Segment_Hold_Base_N_Heena_UPD;
+commit;
+SELECT * INTO p2c.P2c_Segment_Hold_Base_N_Heena_UPD  FROM p2c.P2c_Segment_Hold_Base_N_Heena WHERE TRIM(Remarks) IN ( 'Memo_Request','I-Memo' ); ---28
+COMMIT;
+INSERT INTO p2c.P2c_Segment_Hold_Base_N_Heena_UPD  select * from kishork.final_segment_hold WHERE TRIM(Remarks) IN ( 'HOLD FOR 3 MONTHS' ); --2281837 row(s) inserted
+INSERT INTO p2c.P2c_Segment_Hold_Base_N_Heena_UPD  select * from kishork.final_segment_hold WHERE TRIM(Remarks) IN ( 'PBM HOLD FOR 3 MONTHS' ); --9617537 row(s) inserted
+INSERT INTO p2c.P2c_Segment_Hold_Base_N_Heena_UPD  select * from kishork.final_segment_hold WHERE TRIM(Remarks) IN ( 'WM HOLD FOR 3 MONTHS' ); --7618410 row(s) inserted
+
+DELETE FROM  p2c.P2c_Segment_Hold_Base_N_Heena_UPD  where  
+TRIM(Remarks) IN ( 'HOLD FOR 3 MONTHS', 'WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' )
+AND source_account_nbr IN (
+'000401526340'
+,'000401680195'
+,'003201503346'
+,'004601504455'
+,'006501015726'
+,'008701032433'
+,'008710005873'
+,'142001000262'
+); --8 row(s) deleted
+commit;
+SELECT REMARKS ,COUNT(1) FROM p2c.P2c_Segment_Hold_Base_N_Heena_UPD GROUP BY REMARKS
+REMARKS,COUNT(1)
+'Memo_Request',27
+'I-Memo',1
+'HOLD FOR 3 MONTHS    ',2281837
+'PBM HOLD FOR 3 MONTHS',9617534
+'WM HOLD FOR 3 MONTHS ',7618405
+
+
+select top 10 * from p2c.P2c_Segment_Hold_Base_N_Heena_UPD
+
+*/
+  create hg index HG_IDX_CUSTOMER_SEGMENT_1 on p2c.P2C_Customer_Segment_Final_N_Heena_UPD(Account_NBR asc);
+  create hg index HG_IDX_CUSTOMER_SEGMENT_2 on p2c.P2C_Customer_Segment_Final_N_Heena_UPD(UCIC_VALUE asc);
+  create lf index LF_IDX_CUSTOMER_SEGMENT_3 on p2c.P2C_Customer_Segment_Final_N_Heena_UPD(SOURCE_SYSTEM_CODE asc);
+  commit work;
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    set ORIG_incomesegment = incomesegment,
+    ORIG_servicesegment = servicesegment; --60190760 row(s) updated
+  commit work;
+  drop table P2C.Upgrade_Downgrade_n_deb_UPD;
+  create table P2C.Upgrade_Downgrade_n_deb_UPD(
+    UCIC_VALUE varchar(54) null,
+    Account_NBR integer null, -- unique_id varchar(40) null,
+    Source_Account_NBR varchar(40) null,
+    Source_System_code smallint null,
+    New_serviceSegment varchar(20) null,
+    New_IncomeSegment varchar(20) null,
+    Reason varchar(100) null,
+    Identifier varchar(50) null,
+    );
+  commit work;
+  select distinct
+    B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'Memo_Request' as Identifier into #Upgrade_Downgrade_HOLD1
+    from p2c.P2c_Segment_Hold_Base_N_Heena_upd as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+    where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and A.Remarks in( 'Memo_Request','I-Memo' ) ; --and A.servicesegment not in( 'CE' ) --13 row(s) affected
+  commit work;
+  insert into P2C.Upgrade_Downgrade_n_deb_UPD
+    select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,A.Remarks,A.Identifier
+      from #Upgrade_Downgrade_HOLD1 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+      where A.UCIC_VALUE = B.UCIC_VALUE
+      and not B.Account_NBR = any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD); --90 row(s) inserted
+  commit work;
+  -- select count(1) from P2C.Upgrade_Downgrade_n_deb_UPD  --90
+  select distinct
+    B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'hold 3 MONTHS' as Identifier into #Upgrade_Downgrade_HOLD2
+    from p2c.P2c_Segment_Hold_Base_N_Heena_upd as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+    where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and TRIM(a.Remarks) in( 'HOLD FOR 3 MONTHS','WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' ) ; --2686428 row(s) affected
+  commit work;
+  ---- select count(1) from  #Upgrade_Downgrade_HOLD2 --2686740
+  insert into P2C.Upgrade_Downgrade_n_deb_UPD
+    select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,A.Remarks,A.Identifier
+      from #Upgrade_Downgrade_HOLD2 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+      where A.UCIC_VALUE = B.UCIC_VALUE
+      and not B.Account_NBR = any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD); --7246058 row(s) affected
+  commit work;
+  /*--- not req FY15-16 PB_Locker_hold
+select top 10 * from  P2C.Upgrade_Downgrade_n_deb_UPD
+
+select distinct
+B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'PB_Locker_hold' as Identifier into #Upgrade_Downgrade_HOLD2
+from p2c.P2c_Segment_Hold_Base_N_Heena as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and A.Remarks = 'PB_Locker_hold' and A.servicesegment not in( 'CE' ) ;
+insert into P2C.Upgrade_Downgrade_n_deb_UPD
+select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,
+A.Remarks,A.Identifier
+from #Upgrade_Downgrade_HOLD2 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.UCIC_VALUE = B.UCIC_VALUE
+and not B.Account_NBR
+= any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD);
+*/
+  /*--- not req FY15-16 MANAGED_ACCOUNT
+select distinct
+B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'MANAGED_ACCOUNT' as Identifier into #PromoMemo_UpDowngrade
+from p2c.P2c_MANAGED_UpDown_Base_N_Heena as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.Del_Flag is null
+and(A.Valid_Till >= dateformat(getdate(),'YYYY-MM-DD') or A.Valid_Till is null) and A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and A.servicesegment not in( 'CE' ) ;
+insert into P2C.Upgrade_Downgrade_n_deb_UPD
+select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,
+A.Remarks,A.Identifier
+from #PromoMemo_UpDowngrade as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.UCIC_VALUE= B.UCIC_VALUE
+and not B.Account_NBR
+= any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD);
+commit work;
+*/
+  /*--- not req FY15-16 Annual_Hold
+select distinct
+B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'Annual_Hold' as Identifier into #Upgrade_Downgrade_HOLD3
+from p2c.P2c_Segment_Hold_Base_N_Heena as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and A.Remarks = 'Annual_Hold' and A.servicesegment not in( 'CE' ) ;
+insert into P2C.Upgrade_Downgrade_n_deb_UPD
+select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,
+A.Remarks,A.Identifier
+from #Upgrade_Downgrade_HOLD3 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.UCIC_VALUE = B.UCIC_VALUE
+and not B.Account_NBR
+= any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD);
+*/
+  /*--- not req FY15-16 Other_Account_Hold
+select distinct
+B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'Other_Account_Hold' as Identifier into #Upgrade_Downgrade_HOLD4
+from p2c.P2c_Segment_Hold_Base_N_Heena as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and A.Remarks = 'Other_Account_Hold' and A.servicesegment not in( 'CE' ) ;
+insert into P2C.Upgrade_Downgrade_n_deb_UPD
+select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,
+A.Remarks,A.Identifier
+from #Upgrade_Downgrade_HOLD4 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.UCIC_VALUE = B.UCIC_VALUE
+and not B.Account_NBR
+= any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD);
+*/
+  /*--- not req FY15-16 Delinq_Downgrade
+select distinct
+B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'Delinq_Downgrade' as Identifier into #Upgrade_Downgrade_HOLD5
+from p2c.P2c_Segment_Hold_Base_N_Heena as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and A.Remarks = 'Delinq_Downgrade' and A.servicesegment not in( 'CE' ) ;
+insert into P2C.Upgrade_Downgrade_n_deb_UPD
+select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,
+A.Remarks,A.Identifier
+from #Upgrade_Downgrade_HOLD5 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.UCIC_VALUE = B.UCIC_VALUE
+and not B.Account_NBR
+= any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD);
+*/
+  /*--- not req FY15-16 EBOR_Downgrade
+select distinct
+B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'EBOR_Downgrade' as Identifier into #Upgrade_Downgrade_HOLD6
+from p2c.P2c_Segment_Hold_Base_N_Heena as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and A.Remarks = 'EBOR_Downgrade' and A.servicesegment not in( 'CE' ) ;
+insert into P2C.Upgrade_Downgrade_n_deb_UPD
+select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,
+A.Remarks,A.Identifier
+from #Upgrade_Downgrade_HOLD6 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.UCIC_VALUE = B.UCIC_VALUE
+and not B.Account_NBR
+= any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD);
+*/
+  /*--- not req FY15-16 SEGMENT_HOLD
+select distinct
+B.UCIC_VALUE,A.serviceSegment,A.incomesegment,A.Remarks,'SEGMENT_HOLD' as Identifier into #Upgrade_Downgrade_HOLD7
+from p2c.P2c_Segment_Hold_Base_N_Heena as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.Del_Flag is null and A.ACCOUNT_NBR = B.ACCOUNT_NBR and A.Remarks not in( 'Delinq_Downgrade','EBOR_Downgrade','Memo_Request','Annual_hold','Other_Account_Hold','PB_Locker_hold' ) 
+and A.servicesegment not in( 'CE' ) ;
+insert into P2C.Upgrade_Downgrade_n_deb_UPD
+select distinct B.UCIC_VALUE,B.Account_NBR,B.Source_Account_NBR,B.Source_System_code,A.serviceSegment,A.IncomeSegment,
+A.Remarks,A.Identifier
+from #Upgrade_Downgrade_HOLD7 as A,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as B
+where A.UCIC_VALUE = B.UCIC_VALUE
+and not B.Account_NBR
+= any(select Account_NBR from P2C.Upgrade_Downgrade_n_deb_UPD);
+commit work;
+*/ -- not req FY15-16 SEGMENT_HOLD
+  create hg index HG_IDX_Upgrade_Downgrade_1 on P2C.Upgrade_Downgrade_n_deb_UPD(Account_NBR asc);
+  create hg index HG_IDX_Upgrade_Downgrade_2 on P2C.Upgrade_Downgrade_n_deb_UPD(REASON asc);
+  alter table P2C.Upgrade_Downgrade_n_deb_UPD add
+    ORIG_IncomeSegment varchar(20) null,add
+    ORIG_ServiceSegment varchar(20) null,add
+    Change_Date date null;
+  update P2C.Upgrade_Downgrade_n_deb_UPD as a
+    set a.ORIG_incomesegment = b.incomesegment,
+    a.ORIG_servicesegment = b.servicesegment,
+    a.Change_Date = dateformat(getdate(),'YYYY-MM-DD') from
+    p2c.P2C_Customer_Segment_Final_N_Heena_UPD as b
+    where a.ACCOUNT_NBR = b.ACCOUNT_NBR; --7246148 row(s) updated
+  commit work;
+  /*-- not req FY15-16 SEGMENT_HOLD
+
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+A.serviceSegment = B.New_serviceSegment,
+A.IncomeSegment = B.New_IncomeSegment,
+A.Date_Modified = B.Change_Date,
+A.UpDownGrade_FLG = 'Y',
+a.Remark = B.Reason from
+P2C.Upgrade_Downgrade_n_deb_UPD as B
+where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and B.Identifier = 'SEGMENT_HOLD';
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+A.serviceSegment = B.New_serviceSegment,
+A.IncomeSegment = B.New_IncomeSegment,
+A.Date_Modified = B.Change_Date,
+A.UpDownGrade_FLG = 'Y',
+a.Remark = B.Reason from
+P2C.Upgrade_Downgrade_n_deb_UPD as B
+where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and B.Identifier = 'EBOR_Downgrade';
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+A.serviceSegment = B.New_serviceSegment,
+A.IncomeSegment = B.New_IncomeSegment,
+A.Date_Modified = B.Change_Date,
+A.UpDownGrade_FLG = 'Y',
+a.Remark = B.Reason from
+P2C.Upgrade_Downgrade_n_deb_UPD as B
+where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and B.Identifier = 'Delinq_Downgrade';
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+A.serviceSegment = B.New_serviceSegment,
+A.IncomeSegment = B.New_IncomeSegment,
+A.Date_Modified = B.Change_Date,
+A.UpDownGrade_FLG = 'Y',
+a.Remark = B.Reason from
+P2C.Upgrade_Downgrade_n_deb_UPD as B
+where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and B.Identifier = 'Other_Account_Hold';
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+A.serviceSegment = B.New_serviceSegment,
+A.IncomeSegment = B.New_IncomeSegment,
+A.Date_Modified = B.Change_Date,
+A.UpDownGrade_FLG = 'Y',
+a.Remark = B.Reason from
+P2C.Upgrade_Downgrade_n_deb_UPD as B
+where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and B.Identifier = 'Annual_Hold';
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+A.serviceSegment = 'TS',
+A.IncomeSegment = 'PB',
+A.Date_Modified = B.Change_Date,
+A.UpDownGrade_FLG = 'Y',
+a.Remark = B.Reason from
+P2C.Upgrade_Downgrade_n_deb_UPD as B
+where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and B.Identifier = 'MANAGED_ACCOUNT'
+and A.serviceSegment in( 'GB','GS' ) ;
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+A.serviceSegment = B.New_serviceSegment,
+A.IncomeSegment = B.New_IncomeSegment,
+A.Date_Modified = B.Change_Date,
+A.UpDownGrade_FLG = 'Y',
+a.Remark = B.Reason from
+P2C.Upgrade_Downgrade_n_deb_UPD as B
+where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+and B.Identifier = 'PB_Locker_hold';
+*/ -- not req FY15-16 SEGMENT_HOLD
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+    set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+    A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+    A.serviceSegment = B.New_serviceSegment,
+    A.IncomeSegment = B.New_IncomeSegment,
+    A.Date_Modified = B.Change_Date,
+    A.UpDownGrade_FLG = 'Y',
+    a.Remark = B.Reason from
+    P2C.Upgrade_Downgrade_n_deb_UPD as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and B.Identifier = 'Memo_Request'; --90 row(s) affected
+  commit work;
+  --new chng
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+    set A.ORIG_serviceSegment = B.ORIG_serviceSegment,
+    A.ORIG_IncomeSegment = B.ORIG_IncomeSegment,
+    A.serviceSegment = B.New_serviceSegment,
+    A.IncomeSegment = B.New_IncomeSegment,
+    A.Date_Modified = B.Change_Date,
+    A.UpDownGrade_FLG = 'Y',
+    a.Remark = B.Reason from
+    P2C.Upgrade_Downgrade_n_deb_UPD as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    --    and B.Identifier = 'Hold 3 Months'; --83 row(s) updated
+    and TRIM(B.Reason) in( 'HOLD FOR 3 MONTHS','WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' ) ; ---7244316 row(s) affected
+  commit work;
+  /*-- not req FY15-16 SEGMENT_HOLD
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+set incomesegment = 'CE',
+servicesegment = 'CE',
+date_modified = dateformat(getdate(),'YYYY-MM-DD'),
+remark = 'SEG_HOLD_CA',
+updowngrade_flg = 'Y' from
+p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a,p2c.P2c_Segment_Hold_Base_N_Heena as b
+where a.account_nbr = b.account_nbr
+and a.product = 'CA'
+and(b.incomesegment = 'CE' or b.servicesegment = 'CE');
+*/ -- not req FY15-16 SEGMENT_HOLD
+  /*-- not req FY15-16 SEGMENT_HOLD
+commit work;
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+set incomesegment = 'CE',
+servicesegment = 'CE',
+date_modified = dateformat(getdate(),'YYYY-MM-DD'),
+remark = 'SEG_HOLD_CA',
+updowngrade_flg = 'Y' from
+p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a,p2c.P2c_MANAGED_UpDown_Base_N_Heena as b
+where a.account_nbr = b.account_nbr
+and a.product = 'CA'
+and(b.incomesegment = 'CE' or b.servicesegment = 'CE');
+commit work;
+*/ -- not req FY15-16 SEGMENT_HOLD
+  --- GPC UPDATION ---
+  --------------------
+  select distinct a.UCIC_VALUE into #GPCD_IPB
+    from edw.t09311_liability_account_addon as b,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    where a.account_nbr = b.account_nbr
+    and b.customer_type in( 'GPCD','IPB' ) and a.incomesegment <> 'GPC'; --111 row(s) affected
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    set a.incomesegment = 'GPC',a.servicesegment = 'GPC',
+    A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+    A.UpDownGrade_FLG = 'Y',
+    a.Remark = 'Stat_Code' from
+    #GPCD_IPB as b where a.UCIC_VALUE = b.UCIC_VALUE; --444 row(s) affected
+  --- NRI UPDATION ---
+  --------------------
+  --Update p2c.P2C_Customer_Segment_Final_N_Heena_UPD A
+  ---set
+  ---A.serviceSegment = B.serviceSegment,
+  ---A.IncomeSegment = B.IncomeSegment,
+  ---A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+  -----A.UpDownGrade_FLG = 'Y',
+  ---A.Remark = 'NRI_Refresh'
+  ---from p2c.p2c_NRI_N_HEENA B
+  --where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+  ---and A.servicesegment not in ('NRI','GPC');
+  -- SELECT COUNT(1) FROM p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+    set A.serviceSegment = 'NRI',
+    A.IncomeSegment = 'NRI',
+    A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+    A.UpDownGrade_FLG = 'Y',
+    A.Remark = 'NRI_Customer_Type' from
+    EDW.T09311_liability_account_addon as B
+    where A.source_system_code = 30
+    and B.cust_NRE_Flg = 'Y' --   As discussed Satish mail  B.customer_type = 'NRI RETAIL' and
+    and A.servicesegment not in( 'NRI','GPC' ) 
+    and a.account_nbr = b.account_nbr; --1549925 row(s) updated
+  commit work;
+  ---- AS DISCUSSSD Snehil FY15-16 not required to downgrade from NRI to GPC of those ACCOUNT which are become GPC due to income or imputed but not on the basis of Product.
+  /*
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.serviceSegment = 'NRI',
+A.IncomeSegment = 'NRI',
+A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+A.UpDownGrade_FLG = 'Y',
+A.Remark = 'NRI_Customer_Type' from
+EDW.T09311_liability_account_addon as B
+where A.source_system_code = 30
+and B.cust_NRE_Flg = 'Y' --   As per mail   B.customer_type = 'NRI RETAIL' and
+and A.servicesegment = 'GPC'
+and substring(A.cust_rule,1,1) <> 'P'
+and a.account_nbr = b.account_nbr; --0
+commit work;
+*/
+  select distinct a.UCIC_VALUE into #WEALTH_ADDON
+    from edw.t09311_liability_account_addon as b,p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    where a.account_nbr = b.account_nbr and b.customer_type = 'WEALTH' and a.incomesegment not in( 'GPC','NRI','CE','WM' ) ; ---3991 row(s) affected
+  commit work;
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    set a.incomesegment = 'WM',a.servicesegment = 'WS',
+    A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+    A.UpDownGrade_FLG = 'Y',
+    a.Remark = 'Stat_Code' from
+    #WEALTH_ADDON as b where a.UCIC_VALUE = b.UCIC_VALUE and a.incomesegment not in( 'GPC','NRI','CE','WM' ) ; --12590 row(s) updated
+  commit work;
+  ---- AS DISCUSSSD Snehil FY15-16 not required to downgrade from GPC to WEALTH of those ACCOUNT which are become GPC due to income or imputed but not on the basis of Product.
+  /* 
+select distinct a.UCIC_VALUE into #GPC_2_WEALTH_ADDON
+from p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a,EDW.T09311_liability_account_addon as b
+where a.source_account_nbr = b.source_account_nbr and b.customer_type = 'WEALTH' and servicesegment = 'GPC'
+and substr(cust_rule,1,1) <> 'P'; --0
+
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+set a.incomesegment = 'WM',a.servicesegment = 'WS',
+A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+A.UpDownGrade_FLG = 'Y',
+a.Remark = 'GPC_2_WEALTH' from
+#GPC_2_WEALTH_ADDON as b where a.UCIC_VALUE = b.UCIC_VALUE and a.incomesegment in( 'GPC' ) ;
+commit work;
+*/
+  --update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+  ---set
+  ---incomesegment = 'CE',
+  --servicesegment = 'CE',
+  ---date_modified = dateformat(getdate(),'YYYY-MM-DD'),
+  --remark = remark||'_CA',
+  --updowngrade_flg = 'Y'
+  ---where product = 'CA' and servicesegment = 'WS' and incomesegment = 'WM';
+  --***************        Yesterday''s updations        ****************
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    set incomesegment = 'PB',servicesegment = 'TS' where substr(cust_rule,1,1) = 'P' and cust_segment = 4 and remark is null; --- AS discussed remark is null,due to wealth segment hold  not become PB,TS
+  ----1518886 row(s) updated
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    set incomesegment = 'PB',servicesegment = 'GS' where substr(cust_rule,1,1) = 'P' and cust_segment = 3 and remark is null;
+  --1768613 row(s) affected
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    set incomesegment = 'WM',servicesegment = 'WS' where substr(cust_rule,1,1) = 'P' and cust_segment = 5;
+  ---1579860 row(s) affected
+  commit work;
+  ------------- jwel loan become AS CE segment according to t09311 
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    set incomesegment = 'CE',servicesegment = 'CE' from
+    edw.t09311_liability_account_addon as b
+    where a.account_nbr = b.account_nbr and product = 'CA' and cust_segment = 5
+    and incomesegment = 'WM' and customer_type <> 'WEALTH'; --79206 row(s) updated
+  commit work;
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+    set A.serviceSegment = 'NRI',
+    A.IncomeSegment = 'NRI',
+    A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+    A.UpDownGrade_FLG = 'Y',
+    A.Remark = 'NRI_Customer_Type' from
+    EDW.T09311_liability_account_addon as B
+    where A.source_system_code = 30
+    and B.cust_NRE_Flg = 'Y' --   As per mail    B.customer_type = 'NRI RETAIL' and
+    and A.servicesegment not in( 'NRI','GPC' ) 
+    and a.account_nbr = b.account_nbr; --6176 row(s) updated
+  commit work;
+  -------------------------- chek is it require or not..
+  ---- AS DISCUSSSD Snehil FY15-16 not required to downgrade from GPC to NRI  of those ACCOUNT which are become GPC due to income or imputed but not on the basis of Product.
+  /*
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as A
+set A.serviceSegment = 'NRI',
+A.IncomeSegment = 'NRI',
+A.Date_Modified = dateformat(getdate(),'YYYY-MM-DD'),
+A.UpDownGrade_FLG = 'Y',
+A.Remark = 'NRI_Customer_Type' from
+EDW.T09311_liability_account_addon as B
+where A.source_system_code = 30
+and B.cust_NRE_Flg = 'Y' --   As per mail    B.customer_type = 'NRI RETAIL' and
+and A.servicesegment = 'GPC'
+and substring(A.cust_rule,1,1) <> 'P'
+and a.account_nbr = b.account_nbr; --0
+commit work;
+*/
+  --**********************************************************************************************************************
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    set CARD_NBR = '0' || CARD_NBR
+    where SOURCE_SYSTEM_CODE = 20
+    and LENGTH(CARD_NBR) = 15; ---379671 row(s) updated
+  commit work;
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    set incomesegment = 'GPC',servicesegment = 'GPC' from
+    p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a,edw.t09311_liability_account_addon as b
+    where a.source_account_nbr = b.source_account_nbr and customer_type in( 'GPCD','IPB' ) 
+    and servicesegment <> 'GPC' and cust_stat_code <> 'HNIC'; --15 row(s) updated
+  commit work;
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    set incomesegment = 'WM',servicesegment = 'WS' from
+    p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a,edw.t09311_liability_account_addon as b
+    where a.source_account_nbr = b.source_account_nbr and customer_type = 'WEALTH'
+    and servicesegment not in( 'GPC','WS' ) ; --2 row(s) updated
+  commit work;
+  /* NOT REQUIR AS pER fY 15-16
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+set incomesegment = 'PB',servicesegment = 'TS'
+from   p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+where UNIQUE_ID = 'G13180038';
+commit work;
+*/ -- NOT REQUIR AS pER fY 15-16
+  -- count req.
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    set incomesegment = ORIG_incomesegment,
+    servicesegment = ORIG_servicesegment from
+    p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    where substr(cust_rule,1,1) = 'P'
+    and cust_segment in( 3,4 ) 
+    and Remark is not null
+    and incomesegment not in( 'WM','GPC','NRI' ) 
+    and remark not in( 'MANAGED_ACCOUNT','Memo_Request','HOLD FOR 3 MONTHS','WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' ) ; -- NOT REQ FY15-16 ,'Delinq_Downgrade'
+  -- 0 row(s) updated
+  commit work;
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+    set incomesegment = orig_incomesegment,servicesegment = orig_servicesegment
+    where((servicesegment = 'GB' and orig_servicesegment in( 'GS','TS','WS','GPC' ) and remark in( 'HOLD FOR 3 MONTHS','WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' ) )
+    or(servicesegment = 'GS' and orig_servicesegment in( 'TS','WS','GPC' ) and remark in( 'HOLD FOR 3 MONTHS','WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' ) )
+    or(servicesegment = 'TS' and orig_servicesegment in( 'WS','GPC' ) and remark in( 'HOLD FOR 3 MONTHS','WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' ) )
+    or(servicesegment = 'WS' and orig_servicesegment = 'GPC' and remark in( 'HOLD FOR 3 MONTHS','WM HOLD FOR 3 MONTHS','PBM HOLD FOR 3 MONTHS' ) ));
+  ------1277679 row(s) updated
+  commit work;
+  /*-- NOT REQUIR AS pER fY 15-16
+-- Add date 18sep2014  , by vijay As per satish mail
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD
+set incomesegment = orig_incomesegment,servicesegment = orig_servicesegment
+where((servicesegment = 'GB' and orig_servicesegment in( 'GS','TS','WS','GPC' ) and remark in( 'Other_Account_Hold','LOGO_CHANGE_HOLD','STATUS_CODE_CHANGE_HOLD' ) )
+or (servicesegment = 'GS' and orig_servicesegment in( 'TS','WS','GPC' ) and remark in( 'Other_Account_Hold','LOGO_CHANGE_HOLD','STATUS_CODE_CHANGE_HOLD' ) )
+or(servicesegment = 'TS' and orig_servicesegment in( 'WS','GPC' ) and remark in( 'Other_Account_Hold','LOGO_CHANGE_HOLD','STATUS_CODE_CHANGE_HOLD' ) )
+or(servicesegment = 'WS' and orig_servicesegment = 'GPC' and remark in( 'Other_Account_Hold','LOGO_CHANGE_HOLD','STATUS_CODE_CHANGE_HOLD' ) ));
+
+-- End ADD date 18sep2014 , by Vijay As per satish mail
+*/ -- NOT REQUIR AS pER fY 15-16
+  /*-- NOT REQUIR AS pER fY 15-16
+-- Add date 16oct2014  , by vijay As per satish mail
+
+update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+set incomesegment = orig_incomesegment,servicesegment = orig_servicesegment from
+p2C.P2C_ADHOC_REFRESH_N_HEENA_BKP15OCT as b
+where a.account_nbr = b.account_nbr
+and remark in( 'Other_Account_Hold','LOGO_CHANGE_HOLD','STATUS_CODE_CHANGE_HOLD','Annual_Hold','GPC_2_WEALTH' ) ;
+commit work;
+-- End ADD date 16oct2014   , by Vijay As per satish ok mail
+*/ -- NOT REQUIR AS pER fY 15-16
+  /*
+SELECT COUNT(1) FROM p2C.P2C_ADHOC_REFRESH_N_HEENA_BKP15OCT --7 778
+SELECT TOP 100 *  FROM p2C.P2C_ADHOC_REFRESH_N_HEENA_BKP15OCT
+
+*/
+  -- Add date 22oct2014  , by vijay As per satish mail ok mail
+  update p2c.P2C_Customer_Segment_Final_N_Heena_UPD as a
+    set incomesegment = 'NRI',servicesegment = 'NRI' from
+    edw.t09311_liability_account_addon as b
+    where a.source_account_nbr = b.source_account_nbr
+    and cust_NRE_Flg = 'Y'
+    and incomesegment not in( 'GPC','NRI' ) ; --2 row(s) updated
+  -- End ADD date 22oct2014  , by Vijay As per satish  ok mail
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if
+end

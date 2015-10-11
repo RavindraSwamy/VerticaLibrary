@@ -1,0 +1,124 @@
+create procedure EDW.EXTRACT_CODE_GEN_VIJAY_path_replace( in i_owner varchar(50),in i_table_name char(200),in file_name varchar(300),in i_path varchar(100) ) 
+on exception resume
+begin
+  --,in i_date_col_name varchar(100),in i_first_date date,in i_last_date date,in full_tab varchar(300)
+  declare rsk_debug_mode smallint;
+  declare rsk_outfile_dir varchar(200);
+  declare rsk_outfile_name varchar(200);
+  declare rsk_file_text long varchar;
+  declare i_c_command_line long varchar;
+  declare c_column_name char(128);
+  declare c_domain_name char(100);
+  declare c_column_no char(128);
+  declare i_state integer;
+  declare c_load_text long varchar;
+  declare i_col_count smallint;
+  declare r_table_id smallint;
+  declare r_owner varchar(50);
+  declare r_table_name varchar(200);
+  declare r_c_lf varchar(2);
+  declare r_delim varchar(5);
+  declare r_quote varchar(2);
+  declare r_d_quote varchar(2);
+  declare r_l_brace varchar(2);
+  declare r_semicolon varchar(2);
+  declare r_comma varchar(5);
+  declare r_rowdelim varchar(5);
+  declare r_rightbrace varchar(5);
+  declare r_input_file_dir varchar(200);
+  declare r_timestamp varchar(30);
+  declare r_outfile_name varchar(200);
+  declare c_this_line long varchar;
+  declare c_tab varchar(1);
+  declare i_tot_col_count smallint;
+  declare i_cur_col_count smallint;
+  declare r_col_sep varchar(2);
+  declare r_date_col_name varchar(100);
+  declare r_first_date varchar(50);
+  declare r_last_date varchar(50);
+  declare rsk_get_col dynamic scroll cursor for select column_name,sysdomain.domain_name
+      from syscolumn,systable,sysdomain
+      where syscolumn.table_id = systable.table_id
+      and sysdomain.domain_id = syscolumn.domain_id
+      and user_name(creator) = i_owner
+      and systable.table_name = trim(i_table_name)
+      order by column_id asc for read only;
+  set i_state = 1;
+  set r_owner = i_owner;
+  set r_table_name = i_table_name;
+  --  set r_date_col_name=i_date_col_name;
+  set r_first_date = i_first_date;
+  set r_last_date = i_last_date;
+  set rsk_file_text = 'rsk_u_r_here';
+  set r_c_lf = char(10);
+  set r_d_quote = char(34);
+  set r_delim = '|^|';
+  set r_quote = char(39);
+  set r_comma = ',';
+  set r_l_brace = char(40);
+  set r_semicolon = char(59);
+  set r_rowdelim = '\\n';
+  set r_rightbrace = char(41);
+  set r_input_file_dir = i_path; --'/data_extraction2/vijay_temp_bkp/Extract_Files_Inc1/';
+  set c_tab = char(9);
+  set i_tot_col_count = 0;
+  set i_cur_col_count = 0;
+  set r_col_sep = '||';
+  select max(table_id)
+    into r_table_id
+    from systable,sysuserperm,sysusers
+    where sysusers.name = i_owner
+    and sysusers.uid = systable.creator
+    and table_type in( 'BASE','GBL TEMP' ) 
+    and systable.server_type = 'IQ'
+    and sysuserperm.user_id = systable.creator
+    and(table_name not like 'sys%'
+    and table_name not like 'rs_%'
+    and table_name not like 'jdbc_%'
+    and table_name not like 'EXCLUDE%'
+    and table_name not like 'RowGen%'
+    and table_name not like 'DUMMY%'
+    and table_name not like 'java_%'
+    and trim(table_name) = trim(i_table_name));
+  select count()
+    into i_tot_col_count
+    from syscolumn,systable
+    where syscolumn.table_id = systable.table_id
+    and user_name(creator) = i_owner
+    and systable.table_name = trim(i_table_name);
+  -- set rsk_file_text='Set Temporary option TEMP_EXTRACT_NAME1='+'/data_extraction2/vijay_temp_bkp/Extract_Files_Inc1/'+i_table_name+'.txt'''+';'+r_c_lf;
+  set rsk_file_text = 'Set Temporary option TEMP_EXTRACT_NAME1='+i_path+i_table_name+'.txt'''+';'+r_c_lf;
+  execute immediate rsk_file_text;
+  set rsk_file_text = null;
+  set rsk_file_text = 'SELECT ';
+  set r_timestamp = substr(replace(replace(replace(cast(getdate() as timestamp),'-',''),' ',''),':',''),1,12);
+  set i_state = 1;
+  open rsk_get_col;
+  rsk_loop: loop
+    fetch next rsk_get_col into c_column_name,c_domain_name;
+    set i_state = sqlstate;
+    set i_cur_col_count = i_cur_col_count+1;
+    if i_cur_col_count+1 > i_tot_col_count then
+      close rsk_get_col;
+      if c_domain_name in( 'char','varchar','long varchar','binary','long binary' ) then
+        set rsk_file_text = rsk_file_text+' '+'replace('+c_column_name+r_comma+'char(10)'+r_comma+r_quote+r_quote+r_rightbrace+' as abc ';
+        leave rsk_loop
+      else
+        set rsk_file_text = rsk_file_text+' '+c_column_name+' as abc ';
+        leave rsk_loop
+      end if
+    elseif i_cur_col_count+1 <= i_tot_col_count and c_domain_name in( 'char','varchar','long varchar','binary','long binary' ) then
+      set rsk_file_text = rsk_file_text+' '+'replace('+c_column_name+r_comma+'char(10)'+r_comma+r_quote+r_quote+r_rightbrace+r_comma+r_c_lf
+    else set rsk_file_text = rsk_file_text+' '+c_column_name+r_comma+' '+r_c_lf
+    end if
+  end loop rsk_loop;
+  set rsk_file_text = rsk_file_text+'FROM '+r_owner+'.'+i_table_name+' ;'+r_c_lf;
+  -- set rsk_file_text=rsk_file_text+' where  date('+r_date_col_name+') between '+r_quote+r_first_date+r_quote+' and '+r_quote+r_last_date+r_quote+';'+r_c_lf;
+  -- set rsk_outfile_dir='/data_extraction2/vijay_temp_bkp/Extract_Files_Inc1/'+full_tab+'.sql';
+  set rsk_outfile_dir = i_path+full_tab+'.sql';
+  --execute immediate with result set on rsk_file_text;
+  -- select rsk_outfile_dir,rsk_file_text;
+  call xp_write_file(rsk_outfile_dir,rsk_file_text);
+  set rsk_file_text = null;
+  commit work
+end

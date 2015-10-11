@@ -1,0 +1,126 @@
+create procedure edw.Cmg_10x_S_Table_Load()
+begin
+  -------Truncating of staging tables-----------------
+  truncate table reconp.S_AML_CMG_RATING_CODE_10x;
+  truncate table reconp.S_PRE_CUST_MAST_GEN_TABLE_10x;
+  truncate table reconp.S_CUST_MAST_GEN_TABLE_10x;
+  truncate table RECONP.S_ADDRESS_10X_UAT;
+  truncate table RECONP.S_PHONEEMAIL_10X_UAT;
+  truncate table RECONP.s_CORE_CMG_TABLE_10X_UAT;
+  truncate table RECONP.S_DEMOGRAPHIC_10X_UAT;
+  truncate table RECONP.S_ENTITYDOCUMENT_10X_UAT;
+  truncate table reconp.S_cmg_10x_insert;
+  truncate table RECONP.S_ADDRESS_10X_insert;
+  truncate table RECONP.S_PHONEEMAIL_10X_insert;
+  truncate table RECONP.s_CORE_CMG_TABLE_10X_insert;
+  truncate table RECONP.S_DEMOGRAPHIC_10X_insert;
+  truncate table RECONP.S_ENTITYDOCUMENT_10X_insert;
+  commit work;
+  -----Loading of CMG Incremental data into staging table------------------------
+  load into table reconp.S_PRE_CUST_MAST_GEN_TABLE_10x( CUST_ID '^|',ENTITY_CRE_FLG '^|',DEL_FLG '^|',CUST_TITLE_CODE '^|',CUST_NAME '^|',CUST_PERM_ADDR1 '^|',CUST_PERM_ADDR2 '^|',CUST_PERM_ADDR3 '^|',CUST_PERM_CITY_CODE '^|',CUST_PERM_STATE_CODE '^|',CUST_PERM_PIN_CODE '^|',CUST_PERM_CNTRY_CODE '^|',CUST_PERM_PHONE_NUM '^|',CUST_PERM_TELEX_NUM '^|',CUST_SEX '^|',CUST_COMU_ADDR1 '^|',CUST_COMU_ADDR2 '^|',CUST_COMU_ADDR3 '^|',CUST_COMU_CITY_CODE '^|',CUST_COMU_STATE_CODE '^|',CUST_COMU_PIN_CODE '^|',CUST_COMU_CNTRY_CODE '^|',CUST_COMU_PHONE_NUM_1 '^|',CUST_COMU_PHONE_NUM_2 '^|',CUST_COMU_TELEX_NUM '^|',CUST_OCCP_CODE '^|',CUST_COMMU_CODE '^|',CUST_RATING_CODE '^|',CUST_FIRST_ACCT_DATE '^|',CUST_INTROD_CUST_ID '^|',INTROD_TITLE_CODE '^|',CUST_INTROD_NAME '^|',CUST_INTROD_STAT_CODE '^|',CUST_TYPE_CODE '^|',CUST_EMP_ID '^|',CUST_STAT_CODE '^|',CUST_STAT_CHG_DATE '^|',CUST_CONST '^|',CUST_MINOR_FLG '^|',CUST_NRE_FLG '^|',LCHG_TIME '^|',RCRE_TIME '^|',DATE_OF_BIRTH '^|',PAN_GIR_NUM '^|',PSPRT_NUM '^|',PSPRT_ISSU_DATE '^|',PSPRT_DET '^|',PSPRT_EXP_DATE '^|',CUST_PAGER_NO '^|',CUST_FAX_NO '^|',TDS_EXMPT_END_DATE '^|',TDS_EXMPT_SUBMIT_DATE '^|',TDS_EXMPT_REF_NUM '^|',TDS_EXMPT_RMKS '^|',CRNCY_CODE '^|',EMAIL_ID '^|',PRIMARY_SOL_ID '^|',DSA_ID '^|',CUST_OPN_DATE '^|',CUST_MARITAL_STATUS '^|',EMPLOYER_ID '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/cmg_10x_uat.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/cmg_10x_uat.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/cmg_10x_uat.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work;
+  insert into reconp.S_CUST_MAST_GEN_TABLE_10x
+    select CUST_ID,
+      ENTITY_CRE_FLG,
+      DEL_FLG,
+      CUST_TITLE_CODE,
+      CUST_NAME,
+      CUST_PERM_ADDR1,
+      CUST_PERM_ADDR2,
+      CUST_PERM_ADDR3,
+      CUST_PERM_CITY_CODE,
+      CUST_PERM_STATE_CODE,
+      CUST_PERM_PIN_CODE,
+      CUST_PERM_CNTRY_CODE,
+      CUST_PERM_PHONE_NUM,
+      CUST_PERM_TELEX_NUM,
+      CUST_SEX,
+      CUST_COMU_ADDR1,
+      CUST_COMU_ADDR2,
+      CUST_COMU_ADDR3,
+      CUST_COMU_CITY_CODE,
+      CUST_COMU_STATE_CODE,
+      CUST_COMU_PIN_CODE,
+      CUST_COMU_CNTRY_CODE,
+      CUST_COMU_PHONE_NUM_1,
+      CUST_COMU_PHONE_NUM_2,
+      CUST_COMU_TELEX_NUM,
+      CUST_OCCP_CODE,
+      CUST_COMMU_CODE,
+      CUST_FIRST_ACCT_DATE,
+      CUST_INTROD_CUST_ID,
+      INTROD_TITLE_CODE,
+      CUST_INTROD_NAME,
+      CUST_INTROD_STAT_CODE,
+      CUST_TYPE_CODE,
+      CUST_STAT_CODE,
+      CUST_STAT_CHG_DATE,
+      CUST_CONST,
+      CUST_MINOR_FLG,
+      CUST_NRE_FLG,
+      LCHG_TIME,
+      RCRE_TIME,
+      DATE_OF_BIRTH,
+      PAN_GIR_NUM,
+      PSPRT_NUM,
+      PSPRT_ISSU_DATE,
+      PSPRT_DET,
+      PSPRT_EXP_DATE,
+      CUST_PAGER_NO,
+      CUST_FAX_NO,
+      TDS_EXMPT_END_DATE,
+      TDS_EXMPT_SUBMIT_DATE,
+      TDS_EXMPT_REF_NUM,
+      TDS_EXMPT_RMKS,
+      CRNCY_CODE,
+      EMAIL_ID,
+      PRIMARY_SOL_ID,
+      DSA_ID,
+      CUST_OPN_DATE,
+      CUST_MARITAL_STATUS,
+      EMPLOYER_ID
+      from reconp.S_PRE_CUST_MAST_GEN_TABLE_10x;
+  commit work;
+  insert into reconp.S_AML_CMG_RATING_CODE_10x
+    select CUST_ID,
+      CUST_RATING_CODE,
+      CUST_EMP_ID,
+      LCHG_TIME,
+      RCRE_TIME
+      from reconp.S_PRE_CUST_MAST_GEN_TABLE_10x;
+  commit work;
+  update reconp.AML_CMG_RATING_CODE_10x as a
+    set a.CUST_RATING_CODE = b.CUST_RATING_CODE,
+    a.CUST_EMP_ID = b.CUST_EMP_ID,
+    a.LCHG_TIME = b.LCHG_TIME,
+    a.RCRE_TIME = b.RCRE_TIME from
+    reconp.S_AML_CMG_RATING_CODE_10x as b
+    where a.CUST_ID = b.CUST_ID;
+  commit work;
+  select * into #AML_TEMP from reconp.S_AML_CMG_RATING_CODE_10x as b
+    where not b.CUST_ID = any(select CUST_ID from reconp.AML_CMG_RATING_CODE_10x);
+  commit work;
+  insert into reconp.AML_CMG_RATING_CODE_10x
+    select * from #AML_TEMP;
+  commit work;
+  load into table RECONP.S_ADDRESS_10X_UAT( ADDR_B2KID '^|',ADDR_ID '^|',CORP_ID '^|',START_DATE '^|',END_DATE '^|',ADDRESS1 '^|',ADDRESS2 '^|',ADDRESS3 '^|',CITY_CODE '^|',STATE_CODE '^|',CNTRY_CODE '^|',PIN_CODE '^|',LASTUPDATE_DATE '^|',TMDATE '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/address_10x_uat.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/address_10x_uat.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/address_10x_uat.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work;
+  -----Loading of PHONEEMAIL Incremental data into staging table------------------------
+  load into table RECONP.S_PHONEEMAIL_10X_UAT( PHONEEMAILID '^|',BANK_ID '^|',PHONEEMAILTYPE '^|',PHONENO '^|',EMAIL '^|',START_DATE '^|',END_DATE '^|',ORGKEY '^|',TMDATE '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/phoneemail_10x_uat.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/phoneemail_10x_uat.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/phoneemail_10x_uat.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work;
+  -----Loading of CCMG Incremental data into staging table------------------------
+  load into table RECONP.s_CORE_CMG_TABLE_10X_UAT( CUST_ID '^|',CIF_ID '^|',ENTITY_CRE_FLG '^|',COMBINED_STMT_REQD '^|',PS_FREQ_TYPE '^|',CS_LAST_PRINTED_DATE '^|',CS_NEXT_DUE_DATE '^|',CUST_FIRST_ACCT_DATE '^|',CRM_CUST_ID '^|',LCHG_USER_ID '^|',LCHG_TIME '^|',RCRE_USER_ID '^|',RCRE_TIME '^|',NXT_ZAKAT_DED_DATE '^|',ZAKAT_DED_ACID '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/core_cmg_table_uat_10x.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/core_cmg_table_uat_10x.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/core_cmg_table_uat_10x.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work;
+  -----Loading of DEMOGRAPHIC Incremental data into staging table------------------------
+  load into table RECONP.S_DEMOGRAPHIC_10X_UAT( DEMOGRAPHICID '^|',BANK_ID '^|',TDSEXCEMPTENDDATE '^|',TDSEXCEMPTSUBMITDATE '^|',TDSEXCEMPTREFNO '^|',EMPLOYERID '^|',MARITAL_STATUS_CODE '^|',ORGKEY '^|',TMDATE '^|',BODATEMODIFIED '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/demographic_10x_uat.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/demographic_10x_uat.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/demographic_10x_uat.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work;
+  -----Loading of ENTITYDOCUMENT  Incremental data into staging table------------------------
+  load into table RECONP.S_ENTITYDOCUMENT_10X_UAT( ENTITYDOCUMENTID '^|',BANK_ID '^|',REFERENCENUMBER '^|',DOCTYPECODE '^|',ORGKEY '^|',TMDATE '^|',BODATEMODIFIED '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/entitydocument_10x_uat.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/entitydocument11_10x.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/entitydocument11_10x.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work
+end

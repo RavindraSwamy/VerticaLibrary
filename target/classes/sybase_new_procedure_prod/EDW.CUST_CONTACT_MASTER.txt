@@ -1,0 +1,429 @@
+create procedure EDW.CUST_CONTACT_MASTER()
+begin
+  truncate table MCCM.CUST_CONTACT_MASTER;
+  commit work;
+  select 1 as SEQ,
+    SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE,
+    'EDW.T0111_SOURCE_CUSTOMER_DETAILS_EXTERNAL_SYSTEM' as SOURCE_TABLE_NAME,
+    DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+    PerPhone2,
+    PerPhone1,
+    PER_MOBILENUMBER,
+    PER_EADDRESS,
+    MobileNumber,
+    MailPhone2,
+    MailPhone1,
+    MAIL_MOBILENUMBER,
+    MAIL_EADDRESS,
+    Eaddress,
+    CurPhone2,
+    CurPhone1,
+    CUR_MOBILENUMBER,
+    CUR_EADDRESS,
+    BusPhone2,
+    BusPhone1,
+    BUS_MOBILENUMBER,
+    BUS_EADDRESS
+    into #CUST_CONTACT
+    from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EXTERNAL_SYSTEM where trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'EDW.T0111_SOURCE_CUSTOMER_DETAILS' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      PER_MOBILENUMBER,
+      PER_EADDRESS,
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      MAIL_MOBILENUMBER,
+      MAIL_EADDRESS,
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      CUR_MOBILENUMBER,
+      CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      BUS_MOBILENUMBER,
+      BUS_EADDRESS
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS where SOURCE_SYSTEM_CODE not in( 40,54,140,150,160,220 ) and SOURCE_PARTY_ID = any(select trim(SOURCE_PARTY_ID) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      null as PER_MOBILENUMBER,
+      null as PER_EADDRESS,
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      null as MAIL_MOBILENUMBER,
+      null as MAIL_EADDRESS,
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      null as CUR_MOBILENUMBER,
+      null as CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      null as BUS_MOBILENUMBER,
+      null as BUS_EADDRESS
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE where trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      null as PER_MOBILENUMBER,
+      null as PER_EADDRESS,
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      null as MAIL_MOBILENUMBER,
+      null as MAIL_EADDRESS,
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      null as CUR_MOBILENUMBER,
+      null as CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      null as BUS_MOBILENUMBER,
+      null as BUS_EADDRESS
+      from FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS where trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'EDW.T0111_SOURCE_CUSTOMER_DETAILS_EPMS' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      cast(PER_MOBILENUMBER as varchar),
+      cast(PER_EADDRESS as varchar),
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      cast(MAIL_MOBILENUMBER as varchar),
+      cast(MAIL_EADDRESS as varchar),
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      CUR_MOBILENUMBER,
+      CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      BUS_MOBILENUMBER,
+      BUS_EADDRESS
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EPMS where trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS_B2' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      null as PER_MOBILENUMBER,
+      null as PER_EADDRESS,
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      null as MAIL_MOBILENUMBER,
+      null as MAIL_EADDRESS,
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      null as CUR_MOBILENUMBER,
+      null as CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      null as BUS_MOBILENUMBER,
+      null as BUS_EADDRESS
+      from FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS_B2 where trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'EDW.CO_APPLICANT_CUSTOMER_DETAILS_FINONE' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      null as PER_MOBILENUMBER,
+      null as PER_EADDRESS,
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      null as MAIL_MOBILENUMBER,
+      null as MAIL_EADDRESS,
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      null as CUR_MOBILENUMBER,
+      null as CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      null as BUS_MOBILENUMBER,
+      null as BUS_EADDRESS
+      from EDW.CO_APPLICANT_CUSTOMER_DETAILS_FINONE where trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'EDW.T0111_SOURCE_CUSTOMER_DETAILS_M2I' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      PER_MOBILENUMBER,
+      PER_EADDRESS,
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      MAIL_MOBILENUMBER,
+      MAIL_EADDRESS,
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      CUR_MOBILENUMBER,
+      CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      BUS_MOBILENUMBER,
+      BUS_EADDRESS
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_M2I where not trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from EDW.T0111_SOURCE_CUSTOMER_DETAILS) and SOURCE_PARTY_ID = any(select SOURCE_PARTY_ID from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  insert into #CUST_CONTACT
+    select 1 as SEQ,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      'EDW.T0111_SOURCE_CUSTOMER_DETAILS_NRISR' as SOURCE_TABLE_NAME,
+      DATE_LAST_MODIFIED as SOURCE_TABLE_MODIFIED_DATE,
+      PerPhone2,
+      PerPhone1,
+      PER_MOBILENUMBER,
+      PER_EADDRESS,
+      MobileNumber,
+      MailPhone2,
+      MailPhone1,
+      MAIL_MOBILENUMBER,
+      MAIL_EADDRESS,
+      Eaddress,
+      CurPhone2,
+      CurPhone1,
+      CUR_MOBILENUMBER,
+      CUR_EADDRESS,
+      BusPhone2,
+      BusPhone1,
+      BUS_MOBILENUMBER,
+      BUS_EADDRESS
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_NRISR where not trim(SOURCE_PARTY_ID) = any(select trim(SOURCE_PARTY_ID) from EDW.T0111_SOURCE_CUSTOMER_DETAILS) and SOURCE_PARTY_ID = any(select SOURCE_PARTY_ID from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_CLOSE_DATE is null);
+  commit work;
+  select null as UCIC_CODE,
+    SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE,
+    SOURCE_TABLE_NAME,
+    SOURCE_TABLE_MODIFIED_DATE,
+    B.PHONE_EMAIL,
+    B.IDENTIFIER,
+    cast(null as varchar(30)) as PHONE_EMAIL_1
+    into #CUST_CONTACT_MASTER
+    from #CUST_CONTACT as A,MCCM.PHONE_EMAIL as B
+    where A.SEQ = B.SEQ_NO;
+  commit work;
+  create hg index CUST_CONTACT_MASTER_1 on EDW.#CUST_CONTACT_MASTER(SOURCE_PARTY_ID,SOURCE_SYSTEM_CODE);
+  commit work;
+  create unique hg index CUST_CONTACT_1 on EDW.#CUST_CONTACT(SOURCE_PARTY_ID,SOURCE_SYSTEM_CODE);
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.BUSPHONE1 from
+    (select * from #CUST_CONTACT where BUSPHONE1 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'BUSPHONE1';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'BUSPHONE1' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.BUSPHONE2 from
+    (select * from #CUST_CONTACT where BUSPHONE2 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'BUSPHONE2';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'BUSPHONE2' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.PERPHONE1 from
+    (select * from #CUST_CONTACT where PERPHONE1 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'PERPHONE1';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'PERPHONE1' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.PERPHONE2 from
+    (select * from #CUST_CONTACT where BUSPHONE2 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'PERPHONE2';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'PERPHONE2' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.MAILPHONE1 from
+    (select * from #CUST_CONTACT where MAILPHONE1 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'MAILPHONE1';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'MAILPHONE1' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.MAILPHONE2 from
+    (select * from #CUST_CONTACT where MAILPHONE2 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'MAILPHONE2';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'MAILPHONE2' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.CURPHONE1 from
+    (select * from #CUST_CONTACT where CURPHONE1 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'CURPHONE1';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'CURPHONE1' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.CURPHONE2 from
+    (select * from #CUST_CONTACT where CURPHONE2 is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'CURPHONE2';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'CURPHONE2' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.MOBILENUMBER from
+    (select * from #CUST_CONTACT where MOBILENUMBER is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'MOBILENUMBER';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'MOBILENUMBER' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.BUS_MOBILENUMBER from
+    (select * from #CUST_CONTACT where BUS_MOBILENUMBER is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'BUS_MOBILENUMBER';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'BUS_MOBILENUMBER' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.MAIL_MOBILENUMBER from
+    (select * from #CUST_CONTACT where MAIL_MOBILENUMBER is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'MAIL_MOBILENUMBER';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'MAIL_MOBILENUMBER' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.CUR_MOBILENUMBER from
+    (select * from #CUST_CONTACT where CUR_MOBILENUMBER is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'CUR_MOBILENUMBER';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'CUR_MOBILENUMBER' and PHONE_EMAIL_1 is null;
+  commit work;
+  update #CUST_CONTACT_MASTER as A
+    set A.PHONE_EMAIL_1 = B.PER_MOBILENUMBER from
+    (select * from #CUST_CONTACT where PER_MOBILENUMBER is not null) as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.PHONE_EMAIL = 'PER_MOBILENUMBER';
+  commit work;
+  delete from #CUST_CONTACT_MASTER where IDENTIFIER = 'PER_MOBILENUMBER' and PHONE_EMAIL_1 is null;
+  commit work;
+  delete from #CUST_CONTACT_MASTER where PHONE_EMAIL_1 = '*';
+  commit work;
+  insert into MCCM.CUST_CONTACT_MASTER
+    select cast(null as varchar(30)) as UCIC_CODE,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      PHONE_EMAIL_1 as PHONE_EMAIL,
+      IDENTIFIER,
+      cast('N' as varchar(5)) as DNC,
+      cast('N' as varchar(5)) as NDNC,
+      cast('N' as varchar(5)) as Phone_Escalation,
+      cast('N' as varchar(5)) as EMAIL_DNC,
+      cast('N' as varchar(5)) as Email_Escalation,
+      DATE(GETDATE()) as AS_OF_DATE,
+      cast('N' as varchar(5)) as IRIT_SMS,
+      cast('N' as varchar(5)) as IRIT_EMAIL,
+      SOURCE_TABLE_NAME,
+      SOURCE_TABLE_MODIFIED_DATE,
+      cast(null as varchar(5)) as master_exclude,
+      cast(null as varchar(5)) as master_exclude_house_wife,
+      cast(null as varchar(5)) as staff_flag,
+      cast(null as varchar(8)) as income_segment
+      from #CUST_CONTACT_MASTER;
+  commit work;
+  update MCCM.CUST_CONTACT_MASTER as A
+    set A.UCIC_CODE = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where TRIM(A.SOURCE_PARTY_ID) = TRIM(B.SOURCE_PARTY_ID)
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into MCCM.CUST_CONTACT_MASTER
+    select distinct
+      B.UCIC_VALUE,
+      B.SOURCE_PARTY_ID,
+      A.SOURCE_SYSTEM_CODE,
+      MODE_ID,
+      'R_MOBILE' as IDENTIFIER,
+      cast('N' as varchar(5)) as DNC,
+      cast('N' as varchar(5)) as NDNC,
+      cast('N' as varchar(5)) as Phone_Escalation,
+      cast('N' as varchar(5)) as EMAIL_DNC,
+      cast('N' as varchar(5)) as Email_Escalation,
+      DATE(GETDATE()) as AS_OF_DATE,
+      cast('N' as varchar(5)) as IRIT_SMS,
+      cast('N' as varchar(5)) as IRIT_EMAIL,
+      'EDW.T09527_MOBILE_ALERT_REG' as SOURCE_TABLE_NAME,
+      SUBSCRIPTION_DATE as SOURCE_TABLE_MODIFIED_DATE,
+      cast(null as varchar(5)) as master_exclude,
+      cast(null as varchar(5)) as master_exclude_house_wife,
+      cast(null as varchar(5)) as staff_flag,
+      cast(null as varchar(8)) as income_segment
+      from EDW.T09527_MOBILE_ALERT_REG as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+      and A.MODE_OF_DELIVERY = '0';
+  commit work;
+  delete from MCCM.CUST_CONTACT_MASTER where PHONE_EMAIL = 'NA';
+  commit work
+end

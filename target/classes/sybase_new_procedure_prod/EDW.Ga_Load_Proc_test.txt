@@ -1,0 +1,66 @@
+create procedure edw.Ga_Load_Proc_test( in Ctrl_File varchar(100),in Data_File varchar(100) ) 
+begin
+  --declare Ctrl_File varchar(100);
+  --declare Data_File varchar(100);
+  declare File_Text long varchar;
+  declare r_comma varchar(5);
+  declare r_semicolon varchar(2);
+  declare r_quote varchar(2);
+  declare c_double_quotes varchar(2);
+  declare r_c_lf varchar(2);
+  set r_quote = char(39);
+  set c_double_quotes = char(34);
+  set r_c_lf = char(10);
+  set r_comma = ',';
+  --set Ctrl_File ='GA_CTRL_24062015_172201.txt';
+  --set Data_File ='GA_DATA_24062015_172201.txt';
+  set File_Text
+     = ' \x0A\x0ALOAD TABLE RECONP.Temp_METADATA_GA_N_SUR'+r_c_lf
+    +'(\x0A    DATA_FILE_NAME '+r_quote+r_comma+r_quote+r_comma+r_c_lf
+    +'TOTAL_ROWS '+r_quote+r_comma+r_quote+r_comma+r_c_lf
+    +'LOAD_DATE '+r_quote+r_comma+r_quote+r_comma+r_c_lf
+    +'EXT_DT '+r_quote+r_comma+r_quote+r_comma+r_c_lf
+    +'EXT_HR '+r_quote+r_comma+r_quote+r_comma+r_c_lf
+    +'EXT_MIN '+r_quote+'\\'+'n'+r_quote+r_c_lf
+    +')'+r_c_lf
+    +'FROM '+r_quote+'/sybase_load/LOAD_MANAGEMENT/GA_DATA/ga_toprocess/'+Ctrl_File+r_quote+r_c_lf
+    +'QUOTES OFF'+r_c_lf
+    +'ESCAPES OFF'+r_c_lf
+    +'PREVIEW ON'+r_c_lf
+    +'IGNORE CONSTRAINT ALL 0'+r_c_lf
+    +'MESSAGE LOG '+r_quote+'/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/'+Ctrl_File+'.Msg'+r_quote+r_c_lf
+    +'ROW LOG '+r_quote+'/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/'+Ctrl_File+'.row'+r_quote+r_c_lf
+    +'ONLY LOG ALL '+r_c_lf
+    +'LOG DELIMITED BY '+r_quote+'~'+r_quote+r_c_lf
+    +'NOTIFY 100000'+r_c_lf
+    +'WITH CHECKPOINT ON'+';';
+  commit work;
+  set File_Text = File_Text+r_c_lf
+    +'\x0A  LOAD  TABLE RECONP.Temp_REPORT_DATA_GA_N_SUR'+r_c_lf
+    +'(\x0A    city '+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +'pagePath'+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +'pageTitle '+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +'FED_ID '+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +c_double_quotes+'date'+c_double_quotes+' '+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +'hour '+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +'minute '+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +'pageviews '+r_quote+'|~|'+r_quote+r_comma+r_c_lf
+    +'timeOnPage '+r_quote+'\\'+'n'+r_quote+r_c_lf
+    +')'+r_c_lf
+    +'FROM '+r_quote+'/sybase_load/LOAD_MANAGEMENT/GA_DATA/ga_toprocess/'+Data_File+r_quote+r_c_lf
+    +'QUOTES OFF'+r_c_lf
+    +'ESCAPES OFF'+r_c_lf
+    +'PREVIEW ON'+r_c_lf
+    +'SKIP 1 '+r_c_lf
+    +'IGNORE CONSTRAINT ALL 0'+r_c_lf
+    +'MESSAGE LOG '+r_quote+'/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/'+Data_File+'.Msg'+r_quote+r_c_lf
+    +'ROW LOG '+r_quote+'/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/'+Data_File+'.row'+r_quote+r_c_lf
+    +'ONLY LOG ALL'+r_c_lf
+    +'LOG DELIMITED BY '+r_quote+'~'+r_quote+r_c_lf
+    +'NOTIFY 100000'+r_c_lf
+    +'WITH CHECKPOINT ON';
+  commit work;
+  execute immediate with result set on file_text;
+  commit work
+--select File_Text;
+end

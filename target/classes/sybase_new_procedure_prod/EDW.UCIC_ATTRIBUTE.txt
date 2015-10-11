@@ -1,0 +1,734 @@
+create procedure EDW.UCIC_ATTRIBUTE()
+begin
+  truncate table MCCM.UCIC_ATTRIBUTE_NEW;
+  commit work;
+  insert into MCCM.UCIC_ATTRIBUTE_NEW
+    select distinct
+      UCIC_VALUE as UCIC_CODE,
+      cast(null as varchar(20)) as SOURCE_ACCOUNT_NBR,
+      cast(null as varchar(20)) as SOURCE_PARTY_ID,
+      cast(null as integer) as CUSTOMER_SINCE,
+      cast(null as varchar(50)) as RESIDENTIAL_LOCATION,
+      cast(null as varchar(10)) as TRANSACTING_SOLID,
+      cast(null as numeric(20,4)) as ANNUAL_SALARY_OR_TURNOVER,
+      cast(null as varchar(10)) as HAVE_KIDS,
+      cast(null as varchar(10)) as SOCIAL_MEDIA_ACTIVE,
+      cast(null as varchar(10)) as SENTIMENT_GREVIENCES,
+      cast(null as varchar(10)) as DORMANT_LIABILITY_ACCOUNT,
+      cast(null as varchar(10)) as DORMANT_DEMAT_ACCOUNT,
+      cast(null as varchar(10)) as DEPENDENT_FAMILY_MEMBER,
+      cast(null as varchar(10)) as HAVE_PASSPORT,
+      cast(null as varchar(10)) as CAR_OWNED,
+      cast(null as varchar(10)) as FLAT_OR_HOUSE_OWNED,
+      cast(null as varchar(20)) as EMPLOYMENT_TYPE,
+      cast(null as varchar(10)) as SHAREHOLDING,
+      cast(null as varchar(10)) as YEARS_AT_CURRENT_RESIDENCE,
+      cast(null as varchar(10)) as HAVING_LIFE_INSURANCE,
+      cast(null as varchar(10)) as HAVING_HEALTH_INSURANCE,
+      cast(null as varchar(10)) as REGISTERED_FOR_INVEST@EASE,
+      cast(null as varchar(10)) as PPF_ACTIVE,
+      cast(null as varchar(10)) as FOREX_ACTIVE,
+      cast(null as varchar(10)) as TRAVEL_INSURANCE_ACTIVE,
+      cast(null as varchar(10)) as TRAVEL_CARD_ACTIVE,
+      cast(null as varchar(10)) as DEBIT_CARD_ACTIVE,
+      cast(null as varchar(10)) as POS_ACTIVE,
+      cast(null as numeric(20,4)) as POS_TRANSACTION_AMOUNT,
+      cast(null as timestamp) as LAST_POS_TRANSACTION_DATE,
+      cast(null as varchar(10)) as ATM_TRANSACTION_ACTIVE,
+      cast(null as varchar(10)) as ECOMMERECE_ACTIVE,
+      cast(null as numeric(20,4)) as E_COMMERECE_TRANSACTION_AMOUNT,
+      cast(null as timestamp) as LAST_E_COMMERECE_TRANSACTION_DATE,
+      cast(null as varchar(10)) as BILL_PAY_ACTIVE,
+      cast(null as varchar(10)) as CASH_DEPOSIT_AT_BRANCH,
+      cast(null as varchar(10)) as CASH_WITHDRAW_AT_ATM,
+      cast(null as integer) as MY_SAVING_REWARDS_POINTS,
+      cast(null as varchar(10)) as NOMINATION_ACTIVE,
+      cast(null as varchar(10)) as PREF_MERCHANT_SHOPPING,
+      cast(null as varchar(10)) as PREF_MERCHANT_DINNING,
+      DATE(GETDATE()) as ASOF_DATE,
+      DATE(GETDATE())+30 as EXPIRY_REVIEW_DATE,
+      cast(null as integer) as SCORE
+      --into MCCM.UCIC_ATTRIBUTE_NEW
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL;
+  commit work;
+  --create hg index IDX_SRC_ACCT_NBR on MCCM.UCIC_ATTRIBUTE_NEW(SOURCE_ACCOUNT_NBR);
+  --create hg index IDX_UCIC_CODE on MCCM.UCIC_ATTRIBUTE_NEW(UCIC_CODE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID,
+    A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR from
+    (select UCIC_VALUE,SOURCE_PARTY_ID,ACCOUNT_OPEN_DATE,SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACCOUNT_OPEN_DATE
+       = any(select MAX(ACCOUNT_OPEN_DATE) from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+        group by UCIC_VALUE)) as B
+    where TRIM(A.UCIC_CODE) = TRIM(B.UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.CUSTOMER_SINCE = datediff(mm,B.ACCOUNT_OPEN_DATE,DATE(GETDATE())) from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS from T0111_SOURCE_CUSTOMER_DETAILS as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_FINONE from EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_FINONE(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_FINONE as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_FINAGRI from FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_FINAGRI(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_FINAGRI as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_EPMS from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EPMS as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_EPMS(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_EPMS as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_B2 from FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS_B2 as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_B2(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_B2 as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_CO_APPLICANT from EDW.CO_APPLICANT_CUSTOMER_DETAILS_FINONE as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_CO_APPLICANT(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_CO_APPLICANT as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_M2I from EDW.T0111_SOURCE_CUSTOMER_DETAILS_M2I as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_M2I(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_M2I as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_NRISR from EDW.T0111_SOURCE_CUSTOMER_DETAILS_NRISR as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_NRISR(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_NRISR as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select CUR_CITY,PASSPORT_NBR,EMPLOYMENT_TYPE,A.SOURCE_PARTY_ID,B.UCIC_VALUE into #T0111_DETAILS_EXTERNAL_SYSTEM from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EXTERNAL_SYSTEM as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  create hg index IDX_SRC_PARTy_ID on EDW.#T0111_DETAILS_EXTERNAL_SYSTEM(UCIC_VALUE);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.RESIDENTIAL_LOCATION = B.CUR_CITY,
+    A.HAVE_PASSPORT = (case when B.PASSPORT_NBR is not null then 'Y' else 'N' end),
+    A.EMPLOYMENT_TYPE = B.EMPLOYMENT_TYPE from
+    #T0111_DETAILS_EXTERNAL_SYSTEM as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select a.acct_status,b.foracid into #dis_bus_data from srcstage.GENERAL_ACCT_MAST_TABLE as b,srcstage.SBCA_mast_table as a
+    where a.acid = b.acid and a.acct_status = 'd';
+  commit work;
+  create hg index idx_foracid on #dis_bus_data(foracid);
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.DORMANT_LIABILITY_ACCOUNT = (case when b.acct_status is not null then 'y' else 'n' end) from
+    #dis_bus_data as B
+    where A.SOURCE_ACCOUNT_NBR = B.foracid;
+  commit work;
+  /*old logic
+UPDATE MCCM.UCIC_ATTRIBUTE_FULL_DATA A
+SET A.DORMANT_LIABILITY_ACCOUNT=B.DORMANCY_STATUS
+from EDW.T09311_LIABILITY_ACCOUNT_ADDON B
+WHERE A.SOURCE_ACCOUNT_NBR=B.SOURCE_ACCOUNT_NBR
+AND B.DORMANCY_STATUS='D';
+COMMIT;
+*/
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.SHAREHOLDING = (case when B.company_name like 'icici%' then 'Y' else 'N' end) from
+    T09564_DEMAT_HOLDING_DETAILS as B
+    where A.SOURCE_ACCOUNT_NBR = B.DPID+B.DPM_CLIENT_ID;
+  commit work;
+  select distinct A.CBD_BANK_ACCOUNT_NUMBER,
+    C.UCIC_VALUE
+    into #HAVING_LIFE_INSURANCE
+    from RECONP.ADW_BIU_IBNK_SEND as A
+      ,RECONP.MAIN_IPRU_LI_LINKAGE_TABLE_FINAL_N_SAT as B
+      ,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as C
+    where A.CLIENT_NUMBER = B.source_account_nbr
+    and C.source_account_nbr = A.CBD_BANK_ACCOUNT_NUMBER
+    and A.SOURCE_SYSTEM_CODE = 90
+    and length(CBD_BANK_ACCOUNT_NUMBER) = 12;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.HAVING_LIFE_INSURANCE = 'Y' from
+    #HAVING_LIFE_INSURANCE as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.HAVING_LIFE_INSURANCE = 'N'
+    where A.HAVING_LIFE_INSURANCE <> 'Y';
+  commit work;
+  select(case when BROKCODE in( 'IT99','ICICRON','ICICIRON' ) then 'Y' else 'N' end) as FLAG,
+    SOURCE_PARTY_ID into #INVEST@EASE from NILESHM.MF_FULL_DATAMART;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.REGISTERED_FOR_INVEST@EASE = B.FLAG from
+    #INVEST@EASE as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.PPF_ACTIVE = (case when SUBSTRING(B.SOURCE_ACCOUNT_NBR,5,2) = '18' then 'Y' else 'N' end) from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  select distinct B.SOURCE_PARTY_ID,B.UCIC_VALUE into #FOREX_DATA from ABDULR.FX_DUMP as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B where B.SOURCE_PARTY_ID = A.CUST_ID;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.FOREX_ACTIVE = 'Y' from
+    #FOREX_DATA as B
+    where A.UCIC_CODE = B.UCIC_VALUE;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.FOREX_ACTIVE = 'N'
+    where A.FOREX_ACTIVE <> 'Y';
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.TRAVEL_CARD_ACTIVE = (case when B.PRODUCT_1 = 'travel' then 'Y' else 'N' end) from
+    ABDULR.FX_DUMP as B
+    where A.SOURCE_PARTY_ID = B.CUST_ID;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.DEBIT_CARD_ACTIVE = 'Y',
+    A.ATM_TRANSACTION_ACTIVE = 'Y',
+    A.POS_ACTIVE = 'Y' from
+    MCCM.ATM_POS_CHANNEL_ATTRIBUTE as B
+    where A.UCIC_CODE = B.UCIC_code;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.POS_TRANSACTION_AMOUNT = B.AMOUNT_1 from
+    EDW.D0116_POS_TRANSACTION_DETAILS as B
+    where A.source_account_nbr = B.ACCOUNT_NUMBER;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.LAST_POS_TRANSACTION_DATE = B.TRANSACTION_DATETIME from
+    (select ACCOUNT_NUMBER,MAX(TRANSACTION_DATETIME) as TRANSACTION_DATETIME from D0116_POS_TRANSACTION_DETAILS
+      where POS_CONDITION_CODE not in( 59,15 ) and TERMINAL_LOGICAL_NETWORK not in( 'PRO1','VISA','BNET' ) 
+      group by ACCOUNT_NUMBER) as B
+    where A.source_account_nbr = B.ACCOUNT_NUMBER;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.ECOMMERECE_ACTIVE = (case when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'PRO1' then 'Y'
+    when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'VISA' then 'Y'
+    when POS_CONDITION_CODE = 15 and TERMINAL_LOGICAL_NETWORK = 'BNET' then 'Y' else 'N' end) from
+    EDW.D0116_POS_TRANSACTION_DETAILS as B
+    where A.source_account_nbr = B.ACCOUNT_NUMBER;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.E_COMMERECE_TRANSACTION_AMOUNT = B.AMOUNT_1 from
+    EDW.D0116_POS_TRANSACTION_DETAILS as B
+    where A.source_account_nbr = B.ACCOUNT_NUMBER
+    and POS_CONDITION_CODE in( 59,15 ) and TERMINAL_LOGICAL_NETWORK in( 'PRO1','VISA','BNET' ) ;
+  commit work; --------------------------------------------------------------------------------------------------------------------------NEW CODE
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.LAST_E_COMMERECE_TRANSACTION_DATE = B.TRANSACTION_DATETIME from
+    (select ACCOUNT_NUMBER,MAX(TRANSACTION_DATETIME) as TRANSACTION_DATETIME from D0116_POS_TRANSACTION_DETAILS
+      where POS_CONDITION_CODE in( 59,15 ) and TERMINAL_LOGICAL_NETWORK in( 'PRO1','VISA','BNET' ) 
+      group by ACCOUNT_NUMBER) as B
+    where A.source_account_nbr = B.ACCOUNT_NUMBER;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.CASH_DEPOSIT_AT_BRANCH = (case when B.SOURCE_ACCOUNT_NBR is not null then 'Y' else 'N' end),
+    A.CASH_WITHDRAW_AT_ATM = (case when B.SOURCE_ACCOUNT_NBR is not null then 'Y' else 'N' end) from
+    FINACLE_TRANSACTION_DETAILS as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.MY_SAVING_REWARDS_POINTS = B.txn_points from
+    reconp.rew_activity_table as B
+    where A.SOURCE_ACCOUNT_NBR = B.MEMBER_EXTERNAL_ACCOUNT_NUMBER;
+  commit work;
+  update MCCM.UCIC_ATTRIBUTE_NEW as A
+    set A.NOMINATION_ACTIVE = B.nom_available_flg from
+    edw.t09311_liability_account_addon as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  truncate table MCCM.UCIC_ATTRIBUTE_DATA;
+  insert into MCCM.UCIC_ATTRIBUTE_DATA
+    ( UCIC_CODE,
+    CUSTOMER_SINCE,
+    RESIDENTIAL_LOCATION,
+    TRANSACTING_SOLID,
+    ANNUAL_SALARY_OR_TURNOVER,
+    HAVE_KIDS,
+    SOCIAL_MEDIA_ACTIVE,
+    SENTIMENT_GREVIENCES,
+    DORMANT_LIABILITY_ACCOUNT,
+    DORMANT_DEMAT_ACCOUNT,
+    DEPENDENT_FAMILY_MEMBER,
+    HAVE_PASSPORT,
+    CAR_OWNED,
+    FLAT_OR_HOUSE_OWNED,
+    EMPLOYMENT_TYPE,
+    SHAREHOLDING,
+    YEARS_AT_CURRENT_RESIDENCE,
+    HAVING_LIFE_INSURANCE,
+    HAVING_HEALTH_INSURANCE,
+    REGISTERED_FOR_INVEST@EASE,
+    PPF_ACTIVE,
+    FOREX_ACTIVE,
+    TRAVEL_INSURANCE_ACTIVE,
+    TRAVEL_CARD_ACTIVE,
+    DEBIT_CARD_ACTIVE,
+    POS_ACTIVE,
+    POS_TRANSACTION_AMOUNT,
+    LAST_POS_TRANSACTION_DATE,
+    ATM_TRANSACTION_ACTIVE,
+    ECOMMERECE_ACTIVE,
+    E_COMMERECE_TRANSACTION_AMOUNT,
+    LAST_E_COMMERECE_TRANSACTION_DATE,
+    BILL_PAY_ACTIVE,
+    CASH_DEPOSIT_AT_BRANCH,
+    CASH_WITHDRAW_AT_ATM,
+    MY_SAVING_REWARDS_POINTS,
+    NOMINATION_ACTIVE,
+    PREF_MERCHANT_SHOPPING,
+    PREF_MERCHANT_DINNING,
+    ASOF_DATE,
+    EXPIRY_REVIEW_DATE,
+    SCORE ) 
+    select distinct UCIC_CODE,
+      CUSTOMER_SINCE,
+      RESIDENTIAL_LOCATION,
+      TRANSACTING_SOLID,
+      ANNUAL_SALARY_OR_TURNOVER,
+      HAVE_KIDS,
+      SOCIAL_MEDIA_ACTIVE,
+      SENTIMENT_GREVIENCES,
+      DORMANT_LIABILITY_ACCOUNT,
+      DORMANT_DEMAT_ACCOUNT,
+      DEPENDENT_FAMILY_MEMBER,
+      HAVE_PASSPORT,
+      CAR_OWNED,
+      FLAT_OR_HOUSE_OWNED,
+      EMPLOYMENT_TYPE,
+      SHAREHOLDING,
+      YEARS_AT_CURRENT_RESIDENCE,
+      HAVING_LIFE_INSURANCE,
+      HAVING_HEALTH_INSURANCE,
+      REGISTERED_FOR_INVEST@EASE,
+      PPF_ACTIVE,
+      FOREX_ACTIVE,
+      TRAVEL_INSURANCE_ACTIVE,
+      TRAVEL_CARD_ACTIVE,
+      DEBIT_CARD_ACTIVE,
+      POS_ACTIVE,
+      POS_TRANSACTION_AMOUNT,
+      LAST_POS_TRANSACTION_DATE,
+      ATM_TRANSACTION_ACTIVE,
+      ECOMMERECE_ACTIVE,
+      E_COMMERECE_TRANSACTION_AMOUNT,
+      LAST_E_COMMERECE_TRANSACTION_DATE,
+      BILL_PAY_ACTIVE,
+      CASH_DEPOSIT_AT_BRANCH,
+      CASH_WITHDRAW_AT_ATM,
+      MY_SAVING_REWARDS_POINTS,
+      NOMINATION_ACTIVE,
+      PREF_MERCHANT_SHOPPING,
+      PREF_MERCHANT_DINNING,
+      ASOF_DATE,
+      EXPIRY_REVIEW_DATE,
+      SCORE
+      --INTO MCCM.UCIC_ATTRIBUTE_DATA
+      from MCCM.UCIC_ATTRIBUTE_NEW;
+  commit work;
+  delete from MCCM.UCIC_ATTRIBUTE_NEW where CUSTOMER_SINCE is null and RESIDENTIAL_LOCATION is null and TRANSACTING_SOLID is null and ANNUAL_SALARY_OR_TURNOVER is null
+    and HAVE_KIDS is null and SOCIAL_MEDIA_ACTIVE is null and SENTIMENT_GREVIENCES is null and DORMANT_LIABILITY_ACCOUNT is null and DORMANT_DEMAT_ACCOUNT is null
+    and DEPENDENT_FAMILY_MEMBER is null and HAVE_PASSPORT is null and CAR_OWNED is null and FLAT_OR_HOUSE_OWNED is null and EMPLOYMENT_TYPE is null
+    and SHAREHOLDING is null and YEARS_AT_CURRENT_RESIDENCE is null and HAVING_LIFE_INSURANCE is null and HAVING_HEALTH_INSURANCE is null and REGISTERED_FOR_INVEST@EASE is null
+    and PPF_ACTIVE is null and FOREX_ACTIVE is null and TRAVEL_INSURANCE_ACTIVE is null and TRAVEL_CARD_ACTIVE is null and DEBIT_CARD_ACTIVE is null
+    and POS_ACTIVE is null and POS_TRANSACTION_AMOUNT is null and LAST_POS_TRANSACTION_DATE is null and ATM_TRANSACTION_ACTIVE is null and ECOMMERECE_ACTIVE is null
+    and E_COMMERECE_TRANSACTION_AMOUNT is null and LAST_E_COMMERECE_TRANSACTION_DATE is null and BILL_PAY_ACTIVE is null and CASH_DEPOSIT_AT_BRANCH is null
+    and CASH_WITHDRAW_AT_ATM is null and MY_SAVING_REWARDS_POINTS is null and NOMINATION_ACTIVE is null and PREF_MERCHANT_SHOPPING is null and PREF_MERCHANT_DINNING is null
+    and ASOF_DATE is null and EXPIRY_REVIEW_DATE is null and SCORE is null;
+  commit work;
+  select UCIC_CODE,ASOF_DATE,EXPIRY_REVIEW_DATE,SCORE,1 as seq_no
+    into #UCIC_ATTRIBUTE
+    from MCCM.UCIC_ATTRIBUTE_DATA;
+  commit work;
+  create table #ATT_NAMES(
+    ATTRIB_NAME varchar(200) null,
+    seq_no integer null,);
+  insert into #ATT_NAMES values( 'CUSTOMER_SINCE',1 ) ;
+  insert into #ATT_NAMES values( 'RESIDENTIAL_LOCATION',1 ) ;
+  insert into #ATT_NAMES values( 'TRANSACTING_SOLID',1 ) ;
+  insert into #ATT_NAMES values( 'ANNUAL_SALARY_OR_TURNOVER',1 ) ;
+  insert into #ATT_NAMES values( 'HAVE_KIDS',1 ) ;
+  insert into #ATT_NAMES values( 'SOCIAL_MEDIA_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'SENTIMENT_GREVIENCES',1 ) ;
+  insert into #ATT_NAMES values( 'DORMANT_LIABILITY_ACCOUNT',1 ) ;
+  insert into #ATT_NAMES values( 'DORMANT_DEMAT_ACCOUNT',1 ) ;
+  insert into #ATT_NAMES values( 'DEPENDENT_FAMILY_MEMBER',1 ) ;
+  insert into #ATT_NAMES values( 'HAVE_PASSPORT',1 ) ;
+  insert into #ATT_NAMES values( 'CAR_OWNED',1 ) ;
+  insert into #ATT_NAMES values( 'FLAT_OR_HOUSE_OWNED',1 ) ;
+  insert into #ATT_NAMES values( 'EMPLOYMENT_TYPE',1 ) ;
+  insert into #ATT_NAMES values( 'SHAREHOLDING',1 ) ;
+  insert into #ATT_NAMES values( 'YEARS_AT_CURRENT_RESIDENCE',1 ) ;
+  insert into #ATT_NAMES values( 'HAVING_LIFE_INSURANCE',1 ) ;
+  insert into #ATT_NAMES values( 'HAVING_HEALTH_INSURANCE',1 ) ;
+  insert into #ATT_NAMES values( 'REGISTERED_FOR_INVEST@EASE',1 ) ;
+  insert into #ATT_NAMES values( 'PPF_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'FOREX_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'TRAVEL_INSURANCE_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'TRAVEL_CARD_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'DEBIT_CARD_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'POS_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'POS_TRANSACTION_AMOUNT',1 ) ;
+  insert into #ATT_NAMES values( 'LAST_POS_TRANSACTION_DATE',1 ) ;
+  insert into #ATT_NAMES values( 'ATM_TRANSACTION_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'ECOMMERECE_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'E_COMMERECE_TRANSACTION_AMOUNT',1 ) ;
+  insert into #ATT_NAMES values( 'LAST_E_COMMERECE_TRANSACTION_DATE',1 ) ;
+  insert into #ATT_NAMES values( 'BILL_PAY_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'CASH_DEPOSIT_AT_BRANCH',1 ) ;
+  insert into #ATT_NAMES values( 'CASH_WITHDRAW_AT_ATM',1 ) ;
+  insert into #ATT_NAMES values( 'MY_SAVING_REWARDS_POINTS',1 ) ;
+  insert into #ATT_NAMES values( 'NOMINATION_ACTIVE',1 ) ;
+  insert into #ATT_NAMES values( 'PREF_MERCHANT_SHOPPING',1 ) ;
+  insert into #ATT_NAMES values( 'PREF_MERCHANT_DINNING',1 ) ;
+  commit work;
+  select A.UCIC_CODE,
+    B.ATTRIB_NAME,
+    cast(null as decimal(30,4)) as ATTRIB_VALUE_NUMERIC,
+    cast(null as varchar(100)) as ATTRIB_VALUE_CHARACTER,
+    cast(null as timestamp) as ATTRIB_VALUE_DATE,
+    A.ASOF_DATE,
+    A.EXPIRY_REVIEW_DATE,
+    A.SCORE
+    into #UCIC_ATTRIBUTE_FINAL
+    from #UCIC_ATTRIBUTE as A,#ATT_NAMES as B where a.seq_no = b.seq_no;
+  commit work;
+  create hg index IDX_UCIC_CODE on EDW.#UCIC_ATTRIBUTE_FINAL(UCIC_CODE);
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_NUMERIC = B.CUSTOMER_SINCE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and ATTRIB_NAME = 'CUSTOMER_SINCE'
+    and A.ATTRIB_VALUE_NUMERIC is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_NUMERIC = B.ANNUAL_SALARY_OR_TURNOVER from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'ANNUAL_SALARY_OR_TURNOVER'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_NUMERIC is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_NUMERIC = B.POS_TRANSACTION_AMOUNT from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'POS_TRANSACTION_AMOUNT'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_NUMERIC is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_NUMERIC = B.E_COMMERECE_TRANSACTION_AMOUNT from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'E_COMMERECE_TRANSACTION_AMOUNT'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_NUMERIC is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_NUMERIC = B.MY_SAVING_REWARDS_POINTS from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'MY_SAVING_REWARDS_POINTS'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_NUMERIC is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.RESIDENTIAL_LOCATION from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'RESIDENTIAL_LOCATION'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.TRANSACTING_SOLID from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'TRANSACTING_SOLID'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.HAVE_KIDS from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'HAVE_KIDS'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.SOCIAL_MEDIA_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'SOCIAL_MEDIA_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.SENTIMENT_GREVIENCES from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'SENTIMENT_GREVIENCES'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.DORMANT_LIABILITY_ACCOUNT from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'DORMANT_LIABILITY_ACCOUNT'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.DORMANT_DEMAT_ACCOUNT from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'DORMANT_DEMAT_ACCOUNT'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.DEPENDENT_FAMILY_MEMBER from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'DEPENDENT_FAMILY_MEMBER'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.HAVE_PASSPORT from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'HAVE_PASSPORT'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.CAR_OWNED from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'CAR_OWNED'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FLAT_OR_HOUSE_OWNED from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'FLAT_OR_HOUSE_OWNED'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.EMPLOYMENT_TYPE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'EMPLOYMENT_TYPE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.SHAREHOLDING from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'SHAREHOLDING'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.HAVING_LIFE_INSURANCE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'HAVING_LIFE_INSURANCE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.HAVING_HEALTH_INSURANCE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'HAVING_HEALTH_INSURANCE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.REGISTERED_FOR_INVEST@EASE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'REGISTERED_FOR_INVEST@EASE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.PPF_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'PPF_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FOREX_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'FOREX_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.TRAVEL_INSURANCE_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'TRAVEL_INSURANCE_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.TRAVEL_CARD_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'TRAVEL_CARD_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.DEBIT_CARD_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'DEBIT_CARD_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.POS_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'POS_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.ATM_TRANSACTION_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'ATM_TRANSACTION_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.ECOMMERECE_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'ECOMMERECE_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.BILL_PAY_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'BILL_PAY_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.CASH_DEPOSIT_AT_BRANCH from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'CASH_DEPOSIT_AT_BRANCH'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.CASH_WITHDRAW_AT_ATM from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'CASH_WITHDRAW_AT_ATM'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.NOMINATION_ACTIVE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'NOMINATION_ACTIVE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.PREF_MERCHANT_SHOPPING from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'PREF_MERCHANT_SHOPPING'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_CHARACTER = B.PREF_MERCHANT_DINNING from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'PREF_MERCHANT_DINNING'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_CHARACTER is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_DATE = B.LAST_POS_TRANSACTION_DATE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'LAST_POS_TRANSACTION_DATE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_DATE is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_DATE = B.LAST_E_COMMERECE_TRANSACTION_DATE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'LAST_E_COMMERECE_TRANSACTION_DATE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_DATE is null;
+  commit work;
+  update #UCIC_ATTRIBUTE_FINAL as A
+    set A.ATTRIB_VALUE_DATE = B.PQ_VALIDITY_DATE from
+    MCCM.UCIC_ATTRIBUTE_DATA as B
+    where ATTRIB_NAME = 'PQ_VALIDITY_DATE'
+    and A.UCIC_CODE = B.UCIC_CODE
+    and A.ATTRIB_VALUE_DATE is null;
+  commit work;
+  delete from #UCIC_ATTRIBUTE_FINAL where ATTRIB_VALUE_NUMERIC is null and ATTRIB_VALUE_CHARACTER is null and ATTRIB_VALUE_DATE is null;
+  commit work;
+  truncate table MCCM.UCIC_ATTRIBUTE;
+  insert into MCCM.UCIC_ATTRIBUTE select * from #UCIC_ATTRIBUTE_FINAL;
+  commit work
+end

@@ -1,0 +1,67 @@
+create procedure edw.Aml_Cmg_10x_Insertion()
+begin
+  ------------identify the new records from each & Every table-------------------
+  insert into reconp.S_AML_cmg_10x_insert
+    select * from reconp.S_AML_CMG_10x as b
+      where not b.cust_id = any(select cust_id from reconp.AML_CMG_10X_UAT);
+  commit work;
+  ----------- Updating Permanent Email
+  update reconp.S_AML_cmg_10x_insert as a
+    set a.CUST_PERM_EMAIL_ID = b.EMAIL from
+    RECONP.S_PHONEEMAIL_10X_insert as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'HOMEEML';
+  commit work;
+  ----------------------------------**updating the Cmg from ADDRESS,PHONEEMAIL for Employee ****---------------
+  ---- updating Working Address Details for Retails Customers
+  update reconp.S_AML_cmg_10x_insert as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    RECONP.S_ADDRESS_10X_insert as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Work'
+    --and cust_const != 'C%'
+    and b.CORP_ID is null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  ---- updating Working Address Details for Corporate Customers
+  update reconp.S_AML_cmg_10x_insert as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    RECONP.S_ADDRESS_10X_insert as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Head Office'
+    --and cust_const = 'C%'
+    and b.CORP_ID is not null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  -- CUST_FREE_TEXT is pending to be updated
+  --- Updating Employee Phone Num1
+  update reconp.S_AML_cmg_10x_insert as a
+    set a.CUST_EMP_PHONE_NUM_1 = b.PHONENO from
+    RECONP.S_PHONEEMAIL_10X_insert as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'Work';
+  commit work;
+  --- Updating Employee Email Id
+  update reconp.S_AML_cmg_10x_insert as a
+    set a.CUST_EMP_EMAIL_ID = b.EMAIL from
+    RECONP.S_PHONEEMAIL_10X_insert as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'WORKEML';
+  commit work;
+  -------------------- new cust_ids insertion-----------------------
+  insert into reconp.AML_CMG_10X_UAT
+    select * from reconp.S_AML_cmg_10x_insert;
+  commit work
+end

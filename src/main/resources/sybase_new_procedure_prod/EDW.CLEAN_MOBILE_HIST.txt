@@ -1,0 +1,48 @@
+create procedure EDW.CLEAN_MOBILE_HIST()
+begin
+  create table #UPS_CUST_CLEAN_MOBILE(
+    SOURCE_PARTY_ID varchar(50) null,
+    SYB_SOURCE_PARTY_ID varchar(50) null,
+    SOURCE_SYSTEM_CODE smallint null,
+    SYB_SOURCE_SYSTEM_CODE smallint null,
+    );
+  commit work;
+  update MCCM.CUST_CLEAN_MOBILE_HIST as A
+    set A.PerPhone2 = B.PerPhone2,
+    A.PerPhone1 = B.PerPhone1,
+    A.PER_MOBILENUMBER = B.PER_MOBILENUMBER,
+    A.MobileNumber = B.MobileNumber,
+    A.MailPhone2 = B.MailPhone2,
+    A.MailPhone1 = B.MailPhone1,
+    A.MAIL_MOBILENUMBER = B.MAIL_MOBILENUMBER,
+    A.CurPhone2 = B.CurPhone2,
+    A.CurPhone1 = B.CurPhone1,
+    A.CUR_MOBILENUMBER = B.CUR_MOBILENUMBER,
+    A.BusPhone2 = B.BusPhone2,
+    A.BusPhone1 = B.BusPhone1,
+    A.BUS_MOBILENUMBER = B.BUS_MOBILENUMBER,
+    A.DATE_CREATED = B.DATE_CREATED,
+    A.DATE_LAST_MODIFIED = B.DATE_LAST_MODIFIED,
+    A.UPDATED_DATE = GETDATE() from
+    MCCM.CUST_CLEAN_MOBILE as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into #UPS_CUST_CLEAN_MOBILE
+    select A.SOURCE_PARTY_ID,
+      B.SOURCE_PARTY_ID as SYB_SOURCE_PARTY_ID,
+      A.SOURCE_SYSTEM_CODE,
+      B.SOURCE_SYSTEM_CODE as SYB_SOURCE_SYSTEM_CODE
+      from MCCM.CUST_CLEAN_MOBILE as A left outer join MCCM.CUST_CLEAN_MOBILE_HIST as B
+        on A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+        and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into MCCM.CUST_CLEAN_MOBILE_HIST
+    select A.*,null as UPDATED_DATE
+      from MCCM.CUST_CLEAN_MOBILE as A,#UPS_CUST_CLEAN_MOBILE as B
+      where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+      and B.SYB_SOURCE_PARTY_ID is null
+      and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+      and B.SYB_SOURCE_SYSTEM_CODE is null;
+  commit work
+end

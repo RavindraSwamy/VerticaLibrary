@@ -1,0 +1,12 @@
+create procedure RECONP.ICICI_DIGIBANK_CUSTDEVICE_LOAD_PROC()
+begin
+  commit work;
+  truncate table RECONP.ICICI_DIGIBANK_CUSTDEVICE_DTLS;
+  commit work;
+  load into table RECONP.ICICI_DIGIBANK_CUSTDEVICE_DTLS( DEVICE_ID '|~|',CUSTOMER_ID '|~|',MAC_ADDRESS '|~|',DEVICE_TYPE '|~|',DEVICE_IMEI '|~|',CHANNEL_ID '|~|',IS_BLOCKED '|~|',CREATEDATE '|~|',DEVICE_TOKEN '|~|',DEVICE_X_ID '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/DC/icici_digibank_custdevice_dtls.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/DC/icici_digibank_custdevice_dtls.out.msg' row log '/sybase_load/LOAD_MANAGEMENT/DC/icici_digibank_custdevice_dtls.out.row' only log all log delimited by '~' notify 100000 with checkpoint on;
+  commit work;
+  insert into RECONP.ICICI_DIGIBANK_CUSTDEVICE_DTLS_AUDIT
+    select 'ICICI_DIGIBANK_CUSTDEVICE_DTLS_AUDIT',@@rowcount,getdate();
+  commit work
+end

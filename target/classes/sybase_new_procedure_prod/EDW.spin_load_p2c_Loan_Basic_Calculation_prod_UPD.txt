@@ -1,0 +1,111 @@
+create procedure EDW.spin_load_p2c_Loan_Basic_Calculation_prod_UPD()
+on exception resume
+begin
+  drop table p2c.LOANS_basic_calculation_UPD;
+  select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,CITY,STATE,CATEGORY,ZONE,SEP_SENP,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,
+    SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME,SANC_AMT,AssetCost,PROMOTION_DESC,FINAL_PROFISSION,PRODUCT_INCOME_VALIDATION,DATE_CREATED,DATE_MODIFIED,
+    case when substr(source_account_nbr,1,2) in( 'LP','JP' ) then 'LP'
+    when substr(source_account_nbr,1,2) in( 'LB','LH','NH' ) then 'LH'
+    when substr(source_account_nbr,1,2) = 'LV' then 'LV'
+    when substr(source_account_nbr,1,2) = 'LA' then 'LA'
+    when substr(source_account_nbr,1,2) = 'LU' then 'LU'
+    when substr(source_account_nbr,1,2) = 'LT' then 'LT'
+    when substr(source_account_nbr,1,2) in( 'LI','DI' ) then 'STPL'
+    when substr(source_account_nbr,1,2) in( 'NC','GC','LC' ) then 'CDL' else 'LOANS_OTHER' end as LOAN_PRODUCT,
+    case when gross_annual_income is not null and gross_annual_income > 0 then
+      case when(account_open_date+365) >= Date_created then gross_annual_income
+      else gross_annual_income*power(1.09,(months(account_open_date,date_created)/12))
+      end
+    when net_annual_income is not null and net_annual_income > 0 then
+      case when(account_open_date+365) >= Date_created then net_annual_income/.8
+      else(net_annual_income/.8)*power(1.09,(months(account_open_date,date_created)/12))
+      end
+    when salary is not null and salary > 0 then
+      case when(account_open_date+365) >= Date_created then(salary*12)
+      else(salary*12)*power(1.09,(months(account_open_date,date_created)/12))
+      end
+    end as hh_income,
+    case when hh_income is not null and hh_income > 0 and product_income_validation = 'Y' then
+      case when Category = 'CATEGORY - I' then
+        case when hh_income <= 30000 then 0
+        when hh_income <= 300000 then 1
+        when hh_income <= 1000000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5
+        else-1
+        end when Category = 'CATEGORY - II' then
+        case when hh_income <= 25000 then 0
+        when hh_income <= 200000 then 1
+        when hh_income <= 800000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5
+        else-1
+        end
+      else case when hh_income <= 20000 then 0
+        when hh_income <= 150000 then 1
+        when hh_income <= 600000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5
+        else-1
+        end
+      end
+    else-1
+    end as Income_Segment,case when LOAN_PRODUCT = 'LT' then 1
+    when LOAN_PRODUCT = 'LA' then
+      case when Assetcost is not null then
+        case when Assetcost > 0 and Assetcost <= 300000 then 1
+        when Assetcost <= 750000 then 2
+        when Assetcost <= 900000 then 3
+        when Assetcost <= 1200000 then 4
+        when Assetcost > 1200000 then 5 end
+      else
+        case when sanc_amt < 0 or sanc_amt is null then-1
+        when sanc_amt <= 300000 then 1
+        when sanc_amt <= 750000 then 2
+        when sanc_amt <= 900000 then 3
+        when sanc_amt <= 1200000 then 4
+        when sanc_amt > 1200000 then 5
+        else-1
+        end
+      end
+    when LOAN_PRODUCT = 'LV' then
+      case when promotion_desc like '%FTU%' then 1
+      when sanc_amt <= 2500000 and(promotion_desc like '%RETAIL%' or promotion_desc like '%RTL%') then 2
+      when sanc_amt > 2500000 and(promotion_desc like '%RETAIL%' or promotion_desc like '%RTL%') then 3
+      when sanc_amt <= 4000000 and promotion_desc like '%STR%' then 4
+      when sanc_amt > 4000000 and promotion_desc like '%STR%' then 5
+      else-1
+      end
+    when LOAN_PRODUCT = 'LH' then
+      case when sanc_amt < 0 or sanc_amt is null then-1
+      when sanc_amt <= 2500000 then 1 -- AS PER CODE --
+      when sanc_amt <= 5000000 then 2
+      when sanc_amt <= 8000000 then 3
+      when sanc_amt <= 12000000 then 4
+      when sanc_amt > 12000000 then 5
+      else-1
+      end
+    when LOAN_PRODUCT = 'LP' then
+      case when sanc_amt < 0 or sanc_amt is null then-1
+      when sanc_amt <= 200000 then 1
+      when sanc_amt <= 500000 then 2
+      when sanc_amt <= 700000 then 3
+      when sanc_amt <= 1000000 then 4
+      when sanc_amt > 1000000 then 5
+      else-1
+      end
+    else-1
+    end as imputed_segment,
+    case when ifnull(income_segment,0,income_segment) >= 0 then income_Segment
+    when ifnull(imputed_segment,0,imputed_segment) >= 0 then imputed_segment end as Acct_Segment,
+    case when ifnull(income_segment,0,income_segment) >= 0 then 'N' || TRIM(LOAN_PRODUCT) || '1'
+    when ifnull(imputed_segment,0,imputed_segment) >= 0 then 'I' || TRIM(LOAN_PRODUCT) || '1' end as Acct_rule
+    into p2c.LOANS_basic_calculation_UPD
+    from p2c.Loans_Segment_table_INCR_n_heena_UPD;
+  commit work;
+  create hg index HGIDX_P2C_NEWDEV_25 on p2c.LOANS_basic_calculation_UPD(account_nbr asc);
+  commit work
+end

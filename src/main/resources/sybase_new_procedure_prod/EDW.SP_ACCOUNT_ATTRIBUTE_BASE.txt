@@ -1,0 +1,219 @@
+create procedure EDW.SP_ACCOUNT_ATTRIBUTE_BASE()
+begin
+  truncate table MCCM.ACCOUNT_ATTRIBUTE;
+  commit work;
+  insert into MCCM.ACCOUNT_ATTRIBUTE
+    select A.UCIC_VALUE as UCIC_CODE,
+      A.SOURCE_SYSTEM_CODE,
+      A.SOURCE_PARTY_ID,
+      A.SOURCE_ACCOUNT_NBR,
+      --cast(null as varchar(50)) as ACCOUNT_SOURCING_CHANNEL,
+      cast(null as varchar(50)) as DELIVERABLE_IN_TRANSIT,
+      cast(null as varchar(150)) as FAILURE_REASON,
+      cast(null as varchar(150)) as PARTICULARS,
+      cast(null as varchar(50)) as TRACKING_NO,
+      cast(null as date) as DELIVERY_DUE_DATE,
+      cast(null as integer) as INCIDENT_NO,
+      cast(null as varchar(50)) as SRNO,
+      cast(null as varchar(150)) as SRTYPE,
+      cast(null as varchar(150)) as SR_CATEGORY,
+      cast(null as date) as SR_LOG_DATE,
+      cast(null as date) as SR_DUE_DATE,
+      cast(null as varchar(150)) as SR_STATUS,
+      cast(null as varchar(150)) as SR_CHANNEL,
+      cast(null as varchar(150)) as SR_PRODUCT_LINE,
+      --cast(null as decimal(22,4)) as OUTSTANDING_LOAN_AMT,
+      --cast(null as integer) as OUTSTANDING_TENURE,
+      --cast(null as varchar(10)) as FORECLOSURE,
+      cast(null as decimal(22,4)) as RBC_LIMIT_AMOUNT,
+      cast(null as date) as RBC_DATE_OF_LIMIT_RENEWAL,
+      cast(null as decimal(22,4)) as RBC_INTEREST_DEBIT_AMOUNT,
+      cast(null as date) as RBC_DATE_OF_INTEREST_DEBIT,
+      cast(null as decimal(22,4)) as RBC_OVERDRAWN_AMOUNT,
+      cast(null as date) as RBC_DATE_OF_OVERDRAWN,
+      cast(null as date) as RBC_DATE_OF_LIMIT_EXPIRY,
+      cast(null as varchar(150)) as BILLER_NAME,
+      cast(null as decimal(18,3)) as AMOUNT,
+      cast(null as date) as BILL_DUE_DATE,
+      cast(null as date) as MATURITY_DATE,
+      cast(null as date) as ACCOUNT_CLOSE_DATE,
+      cast(null as date) as ASOF_DATE,
+      cast(null as date) as EXPIRY_REVIEW_DATE,
+      cast(null as integer) as SCORE
+      --cast(null as integer) as SEQ
+      --into MCCM.ACCOUNT_ATTRIBUTE
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as A;
+  commit work;
+  --create hg index IDX_ACC on MCCM.ACCOUNT_ATTRIBUTE(SOURCE_ACCOUNT_NBR);
+  --commit work;
+  /*update MCCM.ACCOUNT_ATTRIBUTE as A
+set A.ACCOUNT_SOURCING_CHANNEL = B.OFFICER_TAG from
+MCCM.ACCOUNT_ATTRIBUTE as A,NEERAJS.E2E_BASE_FY16 as B
+where A.SOURCE_ACCOUNT_NBR = B.ACCOUNT_NUMBER;*/
+  commit work;
+  select B.*
+    into #MAIN_T_ARTICLE_MASTER
+    from(select A.*,RANK() over(partition by ACCOUNT_NO order by DATA_DATE desc) as ROW_NUM
+        from RECONP.MAIN_T_ARTICLE_MASTER as A where TXN_Status in( 100.0,120.0,110.0 ) 
+        and Status in( 590.0,530.0 ) ) as B where B.ROW_NUM = 1;
+  commit work;
+  update MCCM.ACCOUNT_ATTRIBUTE as A
+    set A.DELIVERABLE_IN_TRANSIT = B.SHIPMENT_STATUS from
+    MCCM.ACCOUNT_ATTRIBUTE as A,RECONP.MAIN_T_STATUS_DISPLAY_MASTER as B,#MAIN_T_ARTICLE_MASTER as C
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.Status = C.Status
+    and B.Txn_Status = C.Txn_Status
+    and B.TXN_Status in( 100.0,120.0,110.0 ) 
+    and B.Status in( 590.0,530.0 ) ;
+  commit work;
+  update MCCM.ACCOUNT_ATTRIBUTE as A
+    set A.PARTICULARS = B.PRODUCT_NAME from
+    MCCM.ACCOUNT_ATTRIBUTE as A,RECONP.MAIN_T_PRODUCT_MASTER as B,#MAIN_T_ARTICLE_MASTER as C
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.PRODUCT_CODE = C.PRODUCT_CODE
+    and C.TXN_Status in( 100.0,120.0,110.0 ) 
+    and C.Status in( 590.0,530.0 ) ;
+  commit work;
+  update MCCM.ACCOUNT_ATTRIBUTE as A
+    set A.TRACKING_NO = B.WBN from
+    MCCM.ACCOUNT_ATTRIBUTE as A,RECONP.MAIN_T_WBN as B,#MAIN_T_ARTICLE_MASTER as C
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.WBN_ID = C.WBN_ID
+    and C.TXN_Status in( 100.0,120.0,110.0 ) 
+    and C.Status in( 590.0,530.0 ) ;
+  commit work;
+  update MCCM.ACCOUNT_ATTRIBUTE as A
+    set A.FAILURE_REASON = E.UNDELIVERYREASON from
+    MCCM.ACCOUNT_ATTRIBUTE as A,RECONP.MAIN_T_WBN as B,#MAIN_T_ARTICLE_MASTER as C,RECONP.MAIN_T_WBN_RTO_STATUS_REASON_MASTER as D,RECONP.MAIN_T_WBN_STATUS_REASON as E
+    where A.SOURCE_ACCOUNT_NBR = C.ACCOUNT_NO
+    and B.WBN_ID = C.WBN_ID
+    and B.WBN_STATUS_REASON = D.REASON_GIVEN_BY_COURIERS
+    and D.STATUS_REASON_CODE = E.STATUS_REASON_CODE
+    and C.TXN_Status in( 100.0,120.0,110.0 ) 
+    and C.Status in( 590.0,530.0 ) 
+    and A.DELIVERABLE_IN_TRANSIT = 'RTO Acknowledged';
+  commit work;
+  select B.*
+    into #T401_FCRM_INCIDENTS_STATIC
+    from(select ACCOUNTNUMBER,INCIDENTID,SRNO,SRTYPE,SUBSRTYPE,CREATEDDATE,CHANNEL,PRODUCTLINE,RANK() over(partition by ACCOUNTNUMBER order by CREATEDDATE desc) as ROW_NUM
+        from EDW.T401_FCRM_INCIDENTS_STATIC) as B where B.ROW_NUM = 1;
+  commit work;
+  update MCCM.ACCOUNT_ATTRIBUTE as A
+    set A.INCIDENT_NO = B.INCIDENTID,
+    A.SRNO = B.SRNO,
+    A.SRTYPE = B.SRTYPE,
+    A.SR_CATEGORY = B.SUBSRTYPE,
+    A.SR_LOG_DATE = B.CREATEDDATE,
+    A.SR_DUE_DATE = C.DUEDATE,
+    A.SR_STATUS = C.STATUS,
+    A.SR_CHANNEL = B.CHANNEL,
+    A.SR_PRODUCT_LINE = B.PRODUCTLINE from
+    MCCM.ACCOUNT_ATTRIBUTE as A,#T401_FCRM_INCIDENTS_STATIC as B,EDW.T402_FCRM_INCIDENTS_DYNAMIC as C
+    where A.SOURCE_ACCOUNT_NBR = B.ACCOUNTNUMBER
+    and B.SRNO = C.SRNO
+    and C.STATUS = 'OPEN';
+  commit work;
+  /*begin
+declare DATE2 date;
+select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into DATE2;
+commit work;
+update MCCM.ACCOUNT_ATTRIBUTE as A
+set A.OUTSTANDING_LOAN_AMT = (ISNULL(PRINCIPAL_OUTSTANDING,0)+ISNULL(PRIN_CLOSEBAL,0)),
+A.OUTSTANDING_TENURE = datediff(mm,AS_OF_DATE,CD.MATURITY_DATE),
+A.MATURITY_DATE = CD.MATURITY_DATE from
+FIN_RAPG.CONTROLDUMP_FINAL as CD
+left outer join FIN_RAPG.TRANS_DEBTOR_CREDITOR_FINAL as TD
+on CD.AGREEMENTNO = TD.LOAN_NO
+and CD.AS_OF_DATE = TD.ASOFDATE
+where AS_OF_DATE = DATE2
+and A.SOURCE_ACCOUNT_NBR = CD.AGREEMENTNO
+and SOURCE_SYSTEM_CODE in( 51,52,53 ) ;
+commit work
+end;
+commit work;
+update MCCM.ACCOUNT_ATTRIBUTE as A
+set A.OUTSTANDING_TENURE = BALANCE_TENURE from
+--A.MATURITY_DATE = W.MATURITY_DATE
+FIN_BANK.FINNONE_DUMP_NEW_BANK as W
+where A.SOURCE_ACCOUNT_NBR = W.FILE_NO
+and A.OUTSTANDING_TENURE is null;
+commit work;
+update MCCM.ACCOUNT_ATTRIBUTE as A
+set A.OUTSTANDING_TENURE = BALANCE_TENURE from
+--A.MATURITY_DATE = W.MATURITY_DATE
+FIN_BANK.FINNONE_DUMP_NEW_HFC as W
+where A.SOURCE_ACCOUNT_NBR = W.FILE_NO
+and A.OUTSTANDING_TENURE is null;
+commit work;
+begin
+declare DATE1 date;
+select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into DATE1;
+commit work;
+update MCCM.ACCOUNT_ATTRIBUTE as A
+set A.OUTSTANDING_LOAN_AMT = (ISNULL(PRINCIPAL_OUTSTANDING,0)+ISNULL(IDEAL_PRINCIPAL_OUTSTANDING,0)) from
+FIN_BANK.TRANS_DEBT_CRED_BANK_FINAL as W
+where A.SOURCE_ACCOUNT_NBR = W.LOAN_NO
+and ASOFDATE = DATE1
+and A.OUTSTANDING_LOAN_AMT is null;
+commit work;
+update MCCM.ACCOUNT_ATTRIBUTE as A
+set A.OUTSTANDING_LOAN_AMT = (ISNULL(PRINCIPAL_OUTSTANDING,0)+ISNULL(IDEAL_PRINCIPAL_OUTSTANDING,0)) from
+FIN_BANK.TRANS_DEBT_CRED_HFC_FINAL as X
+where A.SOURCE_ACCOUNT_NBR = X.LOAN_NO
+and ASOFDATE = DATE1
+and A.OUTSTANDING_LOAN_AMT is null;
+commit work
+end;
+commit work;
+update MCCM.ACCOUNT_ATTRIBUTE as A
+set A.ACCOUNT_CLOSE_DATE = X.ACCOUNT_CLOSE_DATE from
+EDW.T0300_ACCOUNT as X
+where A.SOURCE_ACCOUNT_NBR = X.SOURCE_ACCOUNT_NBR
+and X.SOURCE_SYSTEM_CODE in( 51,52,53 ) ;
+commit work;
+update MCCM.ACCOUNT_ATTRIBUTE as A
+set FORECLOSURE = 'YES'
+where cast(DATEFORMAT(cast(ACCOUNT_CLOSE_DATE as date),'YYYYMM') as integer) < cast(DATEFORMAT(cast(MATURITY_DATE as date),'YYYYMM') as integer);
+commit work;*/
+  ---------------------------------------------------------------
+  update MCCM.ACCOUNT_ATTRIBUTE as A
+    set A.BILLER_NAME = PAYEE_NAME from
+    EDW.IB_PAYEE_REGISTRATION_TABLE
+    where PAYEE_TYPE = 'S' and PAYEE_NAME not in( 'RBI-NEFT' ) and DEL_FLG = 'N' and R_CRE_ID like 'BWY/%'
+    and A.SOURCE_PARTY_ID = UBP_USER_ID;
+  commit work;
+  select UBP_USER_ID,account_number,date_time_of_transaction,amount_transacted,bill_due_dt,RANK() over(partition by account_number order by date_time_of_transaction desc) as RANK
+    into #real_time_payment
+    from T09531_REAL_TIME_PAYMENT;
+  commit work;
+  create hg index idx_src_acc_nbr on EDW.#real_time_payment(account_number);
+  commit work;
+  update MCCM.ACCOUNT_ATTRIBUTE as A
+    set A.AMOUNT = B.amount_transacted,
+    A.BILL_DUE_DATE = B.bill_due_dt from
+    #real_time_payment as B
+    where A.SOURCE_ACCOUNT_NBR = B.ACCOUNT_NUMBER
+    and RANK = 1;
+  commit work;
+  -------------------------------------------------------------
+  --alter table MCCM.TEMP_ACCOUNT_ATTRIBUTE_N_MUR add ASOF_DATE date
+  --alter table MCCM.TEMP_ACCOUNT_ATTRIBUTE_N_MUR add EXPIRY_REVIEW_DATE date
+  --alter table MCCM.TEMP_ACCOUNT_ATTRIBUTE_N_MUR add SCORE integer
+  ------------------------------------------------------------------
+  update MCCM.ACCOUNT_ATTRIBUTE
+    set EXPIRY_REVIEW_DATE = DATEADD(mm,1,GETDATE());
+  commit work;
+  update MCCM.ACCOUNT_ATTRIBUTE
+    set ASOF_DATE = getdate();
+  commit work
+/*--truncate table MCCM.TEMP_ACCOUNT_ATTRIBUTE_N_MUR_DAILY;
+--  commit work;
+--insert into MCCM.TEMP_ACCOUNT_ATTRIBUTE_N_MUR_DAILY
+--select * from MCCM.ACCOUNT_ATTRIBUTE;
+commit work;
+delete from MCCM.ACCOUNT_ATTRIBUTE
+where DELIVERABLE_IN_TRANSIT is null and FAILURE_REASON is null and PARTICULARS is null and TRACKING_NO is null
+and DELIVERY_DUE_DATE is null and INCIDENT_NO is null and SRNO is null and SRTYPE is null and SR_CATEGORY is null and SR_LOG_DATE is null and SR_DUE_DATE is null
+and SR_STATUS is null and SR_CHANNEL is null and SR_PRODUCT_LINE is null and RBC_LIMIT_AMOUNT is null and RBC_DATE_OF_LIMIT_RENEWAL is null and RBC_INTEREST_DEBIT_AMOUNT is null and RBC_DATE_OF_INTEREST_DEBIT is null and RBC_OVERDRAWN_AMOUNT is null
+and RBC_DATE_OF_OVERDRAWN is null and RBC_DATE_OF_LIMIT_EXPIRY is null and BILLER_NAME is null and AMOUNT is null and BILL_DUE_DATE is null*/
+end

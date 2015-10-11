@@ -1,0 +1,535 @@
+create procedure EDW.SP_ATM_POS_ATTRIBUTE()
+begin
+  insert into MCCM.ATM_POS_CHANNEL_ATTRIBUTE
+    select a.UCIC_CODE,
+      a.SOURCE_ACCOUNT_NBR,
+      a.SOURCE_SYSTEM_CODE,
+      a.CARD_NUMBER,
+      cast(null as date) as LAST_TRANSACTION_ATM,
+      cast(null as date) as LAST_TRANSACTION_POS,
+      cast(null as date) as LAST_TRANSACTION_ECOM,
+      cast(null as varchar(100)) as ATM_LOCATION_FREQUENTLY_VISITED,
+      cast(null as varchar(100)) as POS_LOCATION_FREQUENTLY_VISITED,
+      cast(null as varchar(100)) as ECOM_LOCATION_FREQUENTLY_VISITED,
+      cast(null as varchar(20)) as TRANSACTING_ATMID,
+      cast(null as varchar(20)) as TRANSACTING_POSID,
+      cast(null as varchar(20)) as TRANSACTING_ECOMID,
+      cast(null as varchar(20)) as FD_OPEN,
+      cast(null as varchar(20)) as FT_DONE,
+      cast(null as varchar(20)) as CHEQUE_BOOK_REQUEST,
+      cast(null as varchar(20)) as BP_DONE,
+      cast(null as varchar(20)) as PMR_DONE,
+      cast(null as date) as AS_OF_DATE,
+      cast(null as date) as EXPIRY_REVIEW_DATE,
+      cast(null as integer) as SCORE
+      from mccm.card_acct_master as a
+        left outer join MCCM.ATM_POS_CHANNEL_ATTRIBUTE as b
+        on a.CARD_NUMBER = b.CARD_NUMBER
+        and a.SOURCE_SYSTEM_CODE = b.SOURCE_SYSTEM_CODE
+      where a.SOURCE_SYSTEM_CODE in( 20,30,90 ) 
+      and b.CARD_NUMBER is null;
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set UCIC_CODE = b.ucic_code from
+    mccm.card_acct_master as b
+    where a.card_number = b.card_number
+    and a.source_system_code = b.source_system_code;
+  commit work;
+  --------  Updating ATM DBCard Tran Details  --------------------------
+  drop table mccm.temp_MASTER_ATM_BDCARD_Tran_Summary;
+  commit work;
+  select CRD_PAN,max(ENTRY_TIME) as Max_Entry_Time
+    into mccm.temp_MASTER_ATM_BDCARD_Tran_Summary
+    from be.atm_tlf_base_detail
+    where entry_time >= (select max(Max_Entry_Time) from mccm.MASTER_ATM_BDCARD_Tran_Summary)
+    group by CRD_PAN;
+  commit work;
+  alter table mccm.temp_MASTER_ATM_BDCARD_Tran_Summary add
+    TERM_TERM_ID varchar(20) null;
+  update mccm.temp_MASTER_ATM_BDCARD_Tran_Summary as a
+    set A.TERM_TERM_ID = B.TERM_TERM_ID from
+    be.atm_tlf_base_detail as b
+    where a.CRD_PAN = b.CRD_PAN
+    and a.Max_Entry_Time = b.ENTRY_TIME;
+  commit work;
+  update mccm.MASTER_ATM_BDCARD_Tran_Summary as a
+    set a.TERM_TERM_ID = B.TERM_TERM_ID,
+    a.Max_Entry_Time = b.Max_Entry_Time from
+    mccm.temp_MASTER_ATM_BDCARD_Tran_Summary as b
+    where a.crd_pan = b.crd_pan;
+  commit work;
+  insert into mccm.MASTER_ATM_BDCARD_Tran_Summary
+    select a.* from mccm.temp_MASTER_ATM_BDCARD_Tran_Summary as a
+        left outer join mccm.MASTER_ATM_BDCARD_Tran_Summary as b
+        on a.crd_pan = b.crd_pan
+      where b.crd_pan is null;
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as A
+    set A.LAST_TRANSACTION_ATM = B.Max_Entry_Time,
+    A.TRANSACTING_ATMID = B.TERM_TERM_ID from
+    mccm.temp_MASTER_ATM_BDCARD_Tran_Summary as B
+    where A.CARD_NUMBER = B.CRD_PAN
+    and source_system_code = 30;
+  commit work;
+  --------  Updating Credit Card POS Tran Details  --------------------------
+  drop table mccm.temp_master_Card_POS_Tran_Summary;
+  commit work;
+  select CARDNO,Max(RDATE) as Max_Rdate
+    into mccm.temp_master_Card_POS_Tran_Summary
+    from edw.d05201_cc_auth_data as B
+    where MCC not in( 6011,6010 ) 
+    and SWIPE_NONSWIPE = 'SWIPE'
+    and rdate >= (select max(max_rdate) from mccm.master_Card_POS_Tran_Summary)
+    group by CARDNO;
+  commit work;
+  alter table mccm.temp_master_Card_POS_Tran_Summary add
+    MID varchar(20) null;
+  commit work;
+  update mccm.temp_master_Card_POS_Tran_Summary as a
+    set a.MID = b.MID from
+    edw.d05201_cc_auth_data as b
+    where a.cardno = b.cardno
+    and a.Max_Rdate = b.RDATE
+    and MCC not in( 6011,6010 ) 
+    and SWIPE_NONSWIPE = 'SWIPE';
+  commit work;
+  update mccm.master_Card_POS_Tran_Summary as a
+    set a.MID = b.MID,
+    a.max_rdate = b.max_rdate from
+    mccm.temp_master_Card_POS_Tran_Summary as b
+    where a.cardno = b.cardno;
+  commit work;
+  insert into mccm.master_Card_POS_Tran_Summary
+    select a.*
+      from mccm.temp_master_Card_POS_Tran_Summary as a
+        left outer join mccm.master_Card_POS_Tran_Summary as b
+        on a.cardno = b.cardno
+        and a.mid = b.mid -- pls check if mid is required
+      where b.cardno is null;
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.LAST_TRANSACTION_POS = B.Max_Rdate,
+    a.TRANSACTING_POSID = B.MID from
+    mccm.temp_master_Card_POS_Tran_Summary as b
+    where a.CARD_NUMBER = b.CARDNO
+    and A.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  --------  Updating Credit Card ECOM Tran Details  --------------------------
+  drop table mccm.temp_master_Card_ECOM_Tran_Summary;
+  commit work;
+  select CARDNO,Max(RDATE) as Max_Rdate
+    into mccm.temp_master_Card_ECOM_Tran_Summary
+    from edw.d05201_cc_auth_data as B
+    where MCC not in( 6011,6010 ) 
+    and SWIPE_NONSWIPE = 'NON SWIPE'
+    and rdate >= (select max(max_rdate) from mccm.master_Card_ECOM_Tran_Summary)
+    group by CARDNO;
+  commit work;
+  alter table mccm.temp_master_Card_ECOM_Tran_Summary add
+    MID varchar(20) null;
+  commit work;
+  update mccm.temp_master_Card_ECOM_Tran_Summary as a
+    set a.MID = b.MID from
+    edw.d05201_cc_auth_data as b
+    where a.cardno = b.cardno
+    and a.Max_Rdate = b.RDATE
+    and MCC not in( 6011,6010 ) 
+    and SWIPE_NONSWIPE = 'NON SWIPE';
+  commit work;
+  update mccm.master_Card_ECOM_Tran_Summary as a
+    set a.MID = b.MID,
+    a.max_rdate = b.max_rdate from
+    mccm.temp_master_Card_ECOM_Tran_Summary as b
+    where a.cardno = b.cardno;
+  commit work;
+  insert into mccm.master_Card_ECOM_Tran_Summary
+    select a.*
+      from mccm.temp_master_Card_ECOM_Tran_Summary as a
+        left outer join mccm.master_Card_POS_Tran_Summary as b
+        on a.cardno = b.cardno
+        and a.mid = b.mid -- pls check if mid is required
+      where b.cardno is null;
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.LAST_TRANSACTION_ECOM = B.Max_Rdate,
+    a.TRANSACTING_ECOMID = B.MID from
+    mccm.temp_master_Card_ECOM_Tran_Summary as b
+    where a.CARD_NUMBER = b.CARDNO
+    and A.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  ----------  Updating Credit Card POS Location Details ---------------------------
+  drop table mccm.temp_master_Card_POS_Loc_Summary;
+  commit work;
+  select CARD_NBR,MERCITY,count() as Cnt_City_Loc
+    into mccm.temp_master_Card_POS_Loc_Summary
+    from edw.d05201_cc_auth_data as a
+      ,EDW.T0330_ACCOUNT_CARD as b
+    where a.cardno = b.card_nbr
+    and MCC not in( 6011,6010 ) 
+    and SWIPE_NONSWIPE = 'SWIPE'
+    and a.rdate >= (select max(max_rdate) from mccm.master_Card_POS_Tran_Summary)
+    group by CARD_NBR,MERCITY;
+  commit work;
+  update mccm.master_Card_POS_Loc_Summary as a
+    set a.cnt_city_loc = (a.cnt_city_loc+b.cnt_city_loc) from
+    mccm.temp_master_Card_POS_Loc_Summary as b
+    where a.card_nbr = b.card_nbr
+    and a.mercity = b.mercity;
+  commit work;
+  update mccm.temp_master_Card_POS_Loc_Summary as a
+    set a.cnt_city_loc = (a.cnt_city_loc+b.cnt_city_loc) from
+    mccm.master_Card_POS_Loc_Summary as b
+    where a.card_nbr = b.card_nbr
+    and a.mercity = b.mercity;
+  commit work;
+  insert into mccm.master_Card_POS_Loc_Summary
+    select a.*
+      from mccm.temp_master_Card_POS_Loc_Summary as a
+        left outer join mccm.master_Card_POS_Loc_Summary as b
+        on a.card_nbr = b.card_nbr
+        and a.mercity = b.mercity
+      where(b.card_nbr is null or b.mercity is null);
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.POS_LOCATION_FREQUENTLY_VISITED = b.MERCITY from
+    mccm.temp_master_Card_POS_Loc_Summary as b
+    ,(select card_nbr,max(cnt_city_loc) as max_cnt from mccm.master_Card_POS_Loc_Summary group by card_nbr) as c
+    where a.CARD_NUMBER = b.CARD_NBR
+    and b.card_nbr = c.card_nbr
+    and b.cnt_city_loc = max_cnt
+    and a.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  ----------  Updating Credit Card ECOM Location Details ---------------------------
+  drop table mccm.temp_master_Card_ECOM_Loc_Summary;
+  commit work;
+  select CARD_NBR,MERCITY,count() as Cnt_City_Loc
+    into mccm.temp_master_Card_ECOM_Loc_Summary
+    from edw.d05201_cc_auth_data as a
+      ,EDW.T0330_ACCOUNT_CARD as b
+    where a.cardno = b.card_nbr
+    and MCC not in( 6011,6010 ) 
+    and SWIPE_NONSWIPE = 'SWIPE'
+    and a.rdate >= (select max(max_rdate) from mccm.master_Card_ECOM_Tran_Summary)
+    group by CARD_NBR,MERCITY;
+  commit work;
+  update mccm.master_Card_ECOM_Loc_Summary as a
+    set a.cnt_city_loc = (a.cnt_city_loc+b.cnt_city_loc) from
+    mccm.temp_master_Card_ECOM_Loc_Summary as b
+    where a.card_nbr = b.card_nbr
+    and a.mercity = b.mercity;
+  commit work;
+  update mccm.temp_master_Card_ECOM_Loc_Summary as a
+    set a.cnt_city_loc = (a.cnt_city_loc+b.cnt_city_loc) from
+    mccm.master_Card_ECOM_Loc_Summary as b
+    where a.card_nbr = b.card_nbr
+    and a.mercity = b.mercity;
+  commit work;
+  insert into mccm.master_Card_ECOM_Loc_Summary
+    select a.*
+      from mccm.temp_master_Card_ECOM_Loc_Summary as a
+        left outer join mccm.master_Card_ECOM_Loc_Summary as b
+        on a.card_nbr = b.card_nbr
+        and a.mercity = b.mercity
+      where(b.card_nbr is null or b.mercity is null);
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.ECOM_LOCATION_FREQUENTLY_VISITED = b.MERCITY from
+    mccm.temp_master_Card_ECOM_Loc_Summary as b
+    ,(select card_nbr,max(cnt_city_loc) as max_cnt from mccm.master_Card_ECOM_Loc_Summary group by card_nbr) as c
+    where a.CARD_NUMBER = b.CARD_NBR
+    and b.card_nbr = c.card_nbr
+    and b.cnt_city_loc = max_cnt
+    and a.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  ----------  Updating DBCard POS Tran Details ---------------------------
+  drop table mccm.temp_MASTER_DBCARD_POS_rank;
+  commit work;
+  select card_number,
+    max(transaction_datetime) as Max_Tran_Ddate
+    into mccm.temp_MASTER_DBCARD_POS_rank
+    from edw.D0116_POS_TRANSACTION_DETAILS
+    where(case when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'PRO1' then 'ECOM'
+    when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'VISA' then 'ECOM'
+    when POS_CONDITION_CODE = 15 and TERMINAL_LOGICAL_NETWORK = 'BNET' then 'ECOM' else 'POS' end) = 'POS'
+    and transaction_datetime >= (select max(Max_Tran_Ddate) from mccm.MASTER_DBCARD_POS_rank)
+    group by card_number;
+  commit work;
+  alter table mccm.temp_MASTER_DBCARD_POS_rank add
+    MERCHANT_ID varchar(20) null;
+  alter table mccm.temp_MASTER_DBCARD_POS_rank add
+    TERMINAL_CITY varchar(20) null;
+  alter table mccm.temp_MASTER_DBCARD_POS_rank add
+    POS_ECOM varchar(20) null;
+  commit work;
+  update mccm.temp_MASTER_DBCARD_POS_rank as a
+    set a.MERCHANT_ID = b.MERCHANT_ID,
+    a.TERMINAL_CITY = b.TERMINAL_CITY,
+    a.POS_ECOM = 'POS' from
+    edw.D0116_POS_TRANSACTION_DETAILS as b
+    where a.card_number = b.card_number
+    and transaction_datetime = Max_Tran_Ddate
+    and(case when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'PRO1' then 'ECOM'
+    when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'VISA' then 'ECOM'
+    when POS_CONDITION_CODE = 15 and TERMINAL_LOGICAL_NETWORK = 'BNET' then 'ECOM' else 'POS' end) = 'POS';
+  commit work;
+  update mccm.MASTER_DBCARD_POS_rank as a
+    set a.Max_Tran_Ddate = b.Max_Tran_Ddate,
+    a.MERCHANT_ID = b.MERCHANT_ID,
+    a.TERMINAL_CITY = b.TERMINAL_CITY,
+    a.POS_ECOM = 'POS' from
+    mccm.temp_MASTER_DBCARD_POS_rank as b
+    where a.card_number = b.card_number;
+  commit work;
+  insert into mccm.MASTER_DBCARD_POS_rank
+    select a.*
+      from mccm.temp_MASTER_DBCARD_POS_rank as a
+        left outer join mccm.MASTER_DBCARD_POS_rank as b
+        on a.card_number = b.card_number
+        and a.merchant_id = b.merchant_id
+        and a.terminal_city = b.terminal_city
+      where(b.card_number is null or b.merchant_id is null or b.terminal_city is null);
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.LAST_TRANSACTION_POS = b.Max_Tran_Ddate,
+    a.TRANSACTING_POSID = b.MERCHANT_ID from
+    mccm.temp_MASTER_DBCARD_POS_rank as b
+    where A.CARD_NUMBER = B.card_number
+    and A.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  ----------  Updating DBCard ECOM Tran Details ---------------------------
+  drop table mccm.Temp_MASTER_DBCARD_ECOM_rank;
+  commit work;
+  select card_number,
+    max(transaction_datetime) as Max_Tran_Ddate
+    into mccm.temp_MASTER_DBCARD_ECOM_rank
+    from edw.D0116_POS_TRANSACTION_DETAILS
+    where(case when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'PRO1' then 'ECOM'
+    when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'VISA' then 'ECOM'
+    when POS_CONDITION_CODE = 15 and TERMINAL_LOGICAL_NETWORK = 'BNET' then 'ECOM' else 'POS' end) = 'ECOM'
+    and transaction_datetime >= (select max(Max_Tran_Ddate) from mccm.MASTER_DBCARD_ECOM_rank)
+    group by card_number;
+  commit work;
+  alter table mccm.temp_MASTER_DBCARD_ECOM_rank add
+    MERCHANT_ID varchar(20) null;
+  alter table mccm.temp_MASTER_DBCARD_ECOM_rank add
+    TERMINAL_CITY varchar(20) null;
+  alter table mccm.temp_MASTER_DBCARD_ECOM_rank add
+    POS_ECOM varchar(20) null;
+  commit work;
+  update mccm.temp_MASTER_DBCARD_ECOM_rank as a
+    set a.MERCHANT_ID = b.MERCHANT_ID,
+    a.TERMINAL_CITY = b.TERMINAL_CITY,
+    a.POS_ECOM = 'ECOM' from
+    edw.D0116_POS_TRANSACTION_DETAILS as b
+    where a.card_number = b.card_number
+    and transaction_datetime = Max_Tran_Ddate
+    and(case when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'PRO1' then 'ECOM'
+    when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'VISA' then 'ECOM'
+    when POS_CONDITION_CODE = 15 and TERMINAL_LOGICAL_NETWORK = 'BNET' then 'ECOM' else 'POS' end) = 'ECOM';
+  commit work;
+  update mccm.MASTER_DBCARD_ECOM_rank as a
+    set a.Max_Tran_Ddate = b.Max_Tran_Ddate,
+    a.MERCHANT_ID = b.MERCHANT_ID,
+    a.TERMINAL_CITY = b.TERMINAL_CITY,
+    a.POS_ECOM = 'ECOM' from
+    mccm.temp_MASTER_DBCARD_ECOM_rank as b
+    where a.card_number = b.card_number;
+  commit work;
+  insert into mccm.MASTER_DBCARD_ECOM_rank
+    select a.*
+      from mccm.temp_MASTER_DBCARD_ECOM_rank as a
+        left outer join mccm.MASTER_DBCARD_ECOM_rank as b
+        on a.card_number = b.card_number
+        and a.merchant_id = b.merchant_id
+        and a.terminal_city = b.terminal_city
+      where(b.card_number is null or b.merchant_id is null or b.terminal_city is null);
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.LAST_TRANSACTION_ECOM = b.Max_Tran_Ddate,
+    a.TRANSACTING_ECOMID = b.MERCHANT_ID from
+    mccm.temp_MASTER_DBCARD_ECOM_rank as b
+    where A.CARD_NUMBER = B.card_number
+    and A.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  ----------  Updating DBCard POS Loc Details ---------------------------
+  drop table mccm.temp_MASTER_DBCARD_POS_Loc_Summary;
+  commit work;
+  select card_number,TERMINAL_CITY,count() as Cnt_Loc_POS
+    into mccm.temp_MASTER_DBCARD_POS_Loc_Summary
+    from edw.D0116_POS_TRANSACTION_DETAILS
+    where(case when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'PRO1' then 'ECOM'
+    when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'VISA' then 'ECOM'
+    when POS_CONDITION_CODE = 15 and TERMINAL_LOGICAL_NETWORK = 'BNET' then 'ECOM' else 'POS' end) = 'POS'
+    and transaction_datetime >= (select max(Max_Tran_Ddate) from mccm.MASTER_DBCARD_POS_rank)
+    group by card_number,TERMINAL_CITY;
+  commit work;
+  update mccm.MASTER_DBCARD_POS_Loc_Summary as a
+    set a.Cnt_Loc_POS = (a.Cnt_Loc_POS+b.Cnt_Loc_POS) from
+    mccm.temp_MASTER_DBCARD_POS_Loc_Summary as b
+    where a.card_number = b.card_number
+    and a.TERMINAL_CITY = b.TERMINAL_CITY;
+  commit work;
+  update mccm.temp_MASTER_DBCARD_POS_Loc_Summary as a
+    set a.Cnt_Loc_POS = (a.Cnt_Loc_POS+b.Cnt_Loc_POS) from
+    mccm.MASTER_DBCARD_POS_Loc_Summary as b
+    where a.card_number = b.card_number
+    and a.TERMINAL_CITY = b.TERMINAL_CITY;
+  commit work;
+  insert into mccm.MASTER_DBCARD_POS_Loc_Summary
+    select a.*
+      from mccm.temp_MASTER_DBCARD_POS_Loc_Summary as a
+        left outer join mccm.MASTER_DBCARD_POS_Loc_Summary as b
+        on a.card_number = b.card_number
+        and a.TERMINAL_CITY = b.TERMINAL_CITY
+      where(b.card_number is null or b.TERMINAL_CITY is null);
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.POS_LOCATION_FREQUENTLY_VISITED = b.TERMINAL_CITY from
+    mccm.temp_MASTER_DBCARD_POS_Loc_Summary as b
+    ,(select card_number,max(Cnt_Loc_POS) as max_cnt from mccm.temp_MASTER_DBCARD_POS_Loc_Summary
+      group by card_number) as c
+    where a.CARD_NUMBER = b.card_number
+    and b.CARD_NUMBER = c.card_number
+    and b.Cnt_Loc_POS = max_cnt
+    and a.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  ----------  Updating DBCard ECOM Loc Details ---------------------------
+  drop table mccm.temp_MASTER_DBCARD_ECOM_Loc_Summary;
+  commit work;
+  select card_number,TERMINAL_CITY,count() as Cnt_Loc_ECOM
+    into mccm.temp_MASTER_DBCARD_ECOM_Loc_Summary
+    from edw.D0116_POS_TRANSACTION_DETAILS
+    where(case when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'PRO1' then 'ECOM'
+    when POS_CONDITION_CODE = 59 and TERMINAL_LOGICAL_NETWORK = 'VISA' then 'ECOM'
+    when POS_CONDITION_CODE = 15 and TERMINAL_LOGICAL_NETWORK = 'BNET' then 'ECOM' else 'POS' end) = 'ECOM'
+    and transaction_datetime >= (select max(Max_Tran_Ddate) from mccm.MASTER_DBCARD_ECOM_rank)
+    group by card_number,TERMINAL_CITY;
+  commit work;
+  update mccm.MASTER_DBCARD_ECOM_Loc_Summary as a
+    set a.Cnt_Loc_ECOM = (a.Cnt_Loc_ECOM+b.Cnt_Loc_ECOM) from
+    mccm.temp_MASTER_DBCARD_ECOM_Loc_Summary as b
+    where a.card_number = b.card_number
+    and a.TERMINAL_CITY = b.TERMINAL_CITY;
+  commit work;
+  update mccm.temp_MASTER_DBCARD_ECOM_Loc_Summary as a
+    set a.Cnt_Loc_ECOM = (a.Cnt_Loc_ECOM+b.Cnt_Loc_ECOM) from
+    mccm.MASTER_DBCARD_ECOM_Loc_Summary as b
+    where a.card_number = b.card_number
+    and a.TERMINAL_CITY = b.TERMINAL_CITY;
+  commit work;
+  insert into mccm.MASTER_DBCARD_ECOM_Loc_Summary
+    select a.*
+      from mccm.temp_MASTER_DBCARD_ECOM_Loc_Summary as a
+        left outer join mccm.MASTER_DBCARD_ECOM_Loc_Summary as b
+        on a.card_number = b.card_number
+        and a.TERMINAL_CITY = b.TERMINAL_CITY
+      where(b.card_number is null or b.TERMINAL_CITY is null);
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.ECOM_LOCATION_FREQUENTLY_VISITED = b.TERMINAL_CITY from
+    mccm.temp_MASTER_DBCARD_ECOM_Loc_Summary as b
+    ,(select card_number,max(Cnt_Loc_ECOM) as max_cnt from mccm.temp_MASTER_DBCARD_ECOM_Loc_Summary
+      group by card_number) as c
+    where a.CARD_NUMBER = b.card_number
+    and b.CARD_NUMBER = c.card_number
+    and b.Cnt_Loc_ECOM = max_cnt
+    and a.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  ----------  Updating ATM DBCard Loc Details ---------------------------
+  drop table mccm.temp_MASTER_DBCARD_ATM_Loc_Summary;
+  commit work;
+  select crd_pan,term_city,count() as Cnt_Loc_ATM
+    into mccm.temp_MASTER_DBCARD_ATM_Loc_Summary
+    from BE.ATM_TLF_BASE_DETAIL
+    where entry_time >= (select max(Max_Entry_Time) from mccm.MASTER_ATM_BDCARD_Tran_Summary)
+    group by crd_pan,term_city;
+  commit work;
+  update mccm.MASTER_DBCARD_ATM_Loc_Summary as a
+    set a.Cnt_Loc_ATM = (a.Cnt_Loc_ATM+b.Cnt_Loc_ATM) from
+    mccm.temp_MASTER_DBCARD_ATM_Loc_Summary as b
+    where a.crd_pan = b.crd_pan
+    and a.term_city = b.term_city;
+  commit work;
+  update mccm.temp_MASTER_DBCARD_ATM_Loc_Summary as a
+    set a.Cnt_Loc_ATM = (a.Cnt_Loc_ATM+b.Cnt_Loc_ATM) from
+    mccm.MASTER_DBCARD_ATM_Loc_Summary as b
+    where a.crd_pan = b.crd_pan
+    and a.term_city = b.term_city;
+  commit work;
+  insert into mccm.MASTER_DBCARD_ATM_Loc_Summary
+    select a.*
+      from mccm.temp_MASTER_DBCARD_ATM_Loc_Summary as a
+        left outer join mccm.mccm.MASTER_DBCARD_ATM_Loc_Summary as b
+        on a.crd_pan = b.crd_pan
+        and a.term_city = b.term_city
+      where(b.crd_pan is null or b.term_city is null);
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as a
+    set a.ATM_LOCATION_FREQUENTLY_VISITED = b.term_city from
+    mccm.temp_MASTER_DBCARD_ATM_Loc_Summary as b
+    ,(select crd_pan,max(Cnt_Loc_ATM) as max_cnt from mccm.temp_MASTER_DBCARD_ATM_Loc_Summary
+      group by crd_pan) as c
+    where a.CARD_NUMBER = b.crd_pan
+    and b.crd_pan = c.crd_pan
+    and b.Cnt_Loc_ATM = max_cnt
+    and a.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  -----------------Updating BP_DONE  --------------
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as A
+    set A.BP_DONE = 'Y'
+    where A.CARD_NUMBER = any(select CRD_PAN from BE.atm_tlf_base_detail where(Tran_cde like '95%') and resp_cde in( '000','001' ) 
+      and entry_time >= (select max(Max_Entry_Time) from mccm.MASTER_ATM_BDCARD_Tran_Summary));
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE
+    set BP_DONE = 'N'
+    where BP_DONE is null;
+  commit work;
+  -----------------Updating FT_DONE  --------------
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as A
+    set A.FT_DONE = 'Y'
+    where A.CARD_NUMBER = any(select CRD_PAN from BE.atm_tlf_base_detail where(Tran_cde like '40%' or Tran_cde like '49%') and resp_cde in( '000','001' ) 
+      and entry_time >= (select max(Max_Entry_Time) from mccm.MASTER_ATM_BDCARD_Tran_Summary));
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE
+    set FT_DONE = 'N'
+    where FT_DONE is null;
+  commit work;
+  -----------------Updating CHEQUE_BOOK_REQUEST  --------------
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as A
+    set A.CHEQUE_BOOK_REQUEST = 'Y'
+    where A.CARD_NUMBER = any(select CRD_PAN from BE.atm_tlf_base_detail where(cArd_ln = 'PRO1' and crd_fiid not in( 'PSYS','PSY1' ) and tran_cde like '61%') and resp_cde in( '000','001' ) 
+      and entry_time >= (select max(Max_Entry_Time) from mccm.MASTER_ATM_BDCARD_Tran_Summary));
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE
+    set CHEQUE_BOOK_REQUEST = 'N'
+    where CHEQUE_BOOK_REQUEST is null;
+  commit work;
+  -----------------Updating FD_OPEN  --------------
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as A
+    set A.FD_OPEN = 'Y'
+    where A.CARD_NUMBER = any(select CRD_PAN from BE.atm_tlf_base_detail where Tran_cde like '20%' and resp_cde in( '000','001' ) 
+      and entry_time >= (select max(Max_Entry_Time) from mccm.MASTER_ATM_BDCARD_Tran_Summary));
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE
+    set FD_OPEN = 'N'
+    where FD_OPEN is null;
+  commit work;
+  -----------------Updating PMR_DONE  --------------
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as A
+    set A.PMR_DONE = 'Y'
+    where A.CARD_NUMBER = any(select CRD_PAN from BE.atm_tlf_base_detail where substr(Tran_cde,1,2) in( '75','76' ) and resp_cde in( '000','001' ) 
+      and entry_time >= (select max(Max_Entry_Time) from mccm.MASTER_ATM_BDCARD_Tran_Summary));
+  commit work;
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE
+    set PMR_DONE = 'N'
+    where PMR_DONE is null;
+  commit work;
+  ------- deleting card null values ------
+  delete from MCCM.ATM_POS_CHANNEL_ATTRIBUTE where CARD_NUMBER is null;
+  commit work;
+  -------- Updating AS_OF_DATE & EXPIRY_REVIEW_DATE   --------  
+  update MCCM.ATM_POS_CHANNEL_ATTRIBUTE as A
+    set AS_OF_DATE = GETDATE(),
+    EXPIRY_REVIEW_DATE = dateadd(mm,1,getdate());
+  commit work
+end

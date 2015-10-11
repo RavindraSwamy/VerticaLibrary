@@ -1,0 +1,122 @@
+create procedure EDW.RIB_LOGIN()
+begin
+  select distinct
+    SOURCE_PARTY_ID,
+    SOURCE_ACCOUNT_NBR,
+    LINKED_USERID as USER_ID,
+    SOURCE_SYSTEM_CODE,
+    cast('N' as varchar(5)) as FT_DONE,
+    cast('N' as varchar(5)) as PMR_DONE,
+    cast('N' as varchar(5)) as POCKET_FLAG,
+    cast('N' as varchar(5)) as PRE_APPROVED_OFFERS
+    into #TEMP
+    from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+    where LINKED_USERID is not null
+    and ACCOUNT_CLOSE_DATE is null and SUBSTR(SOURCE_PARTY_ID,1,4) not like 'COB%';
+  commit work;
+  /*INSERT INTO #TEMP
+SELECT DISTINCT 
+SOURCE_PARTY_ID,
+SOURCE_ACCOUNT_NBR,
+CAST(NULL AS VARCHAR(40)) AS USER_ID,
+SOURCE_SYSTEM_CODE,
+CAST('N' AS VARCHAR(5)) AS FT_DONE,
+CAST('N' AS VARCHAR(5)) AS PMR_DONE,
+CAST('N' AS VARCHAR(5)) AS POCKET_FLAG,
+CAST('N' AS VARCHAR(5)) AS PRE_APPROVED_OFFERS 
+INTO #TEMP
+FROM 
+P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+WHERE  ACCOUNT_CLOSE_DATE IS NULL
+AND SOURCE_SYSTEM_CODE=90;
+COMMIT;*/
+  create hg index HG_IDX_SOURCE_PARTY_ID on EDW.#TEMP(SOURCE_PARTY_ID);
+  create hg index HG_IDX_SOURCE_SYSTEM_CODE on EDW.#TEMP(SOURCE_SYSTEM_CODE);
+  commit work;
+  /*UPDATE #TEMP
+SET #TEMP.USER_ID = D0122.LINKED_USER_ID FROM
+D0122_CAR_CUST_LINKAGE AS D0122
+WHERE #TEMP.SOURCE_PARTY_ID = D0122.CUSTOMER_ID;
+COMMIT WORK;
+
+UPDATE #TEMP
+SET #TEMP.USER_ID = D0122.USER_ID FROM
+D0122_CAR_CUST_LINKAGE AS D0122
+WHERE #TEMP.SOURCE_PARTY_ID = D0122.CUSTOMER_ID AND #TEMP.USER_ID IS NULL;
+COMMIT WORK;
+*/
+  select distinct ACCOUNT_NUMBER as SOURCE_ACCOUNT_NBR,
+    UBP_USER_ID as USER_ID,
+    PMT_STAT as PAYMENT_STATUS,
+    INSTANCE_PMT_DT,
+    PAYEE_NAME,
+    PAYEE_TYPE,
+    (case when PAYEE_TYPE = 'N' then
+      'FUND TRANSFER- WITHIN ICICI BANK'
+    when PAYEE_TYPE = 'M' then
+      'SHOPPING MALL'
+    when PAYEE_NAME in( 'RBI-NEFT','RBI-EFT' ) then
+      'FUND TRANSFER- OUTSIDE ICICI BANK'
+    when PAYEE_NAME = 'PREPAID MOBILE RECHARGE' then
+      'PMR'
+    when PAYEE_NAME = 'ICICI BANK CREDIT CARDS' then
+      'ICICI CREDIT CARD PAYMENT'
+    when PAYEE_NAME = 'VISA MONEY TRANSFER' then
+      'VISA MONEY TRANSFER'
+    when PAYEE_NAME = 'MONEY ORDER TRANSFER' then
+      'MONEY ORDER'
+    when PAYEE_NAME = 'RTGS' then
+      'RTGS'
+    when PAYEE_NAME = 'MONEY MANAGER' then
+      'MM FEES'
+    else 'BILL PAY'
+    end) as TRANSACTION_TYPE into #PMT_BASE
+    from EDW.T09531_REAL_TIME_PAYMENT
+    where R_CRE_ID like 'BWY/%'
+    and PMT_STAT = 'S';
+  commit work;
+  update #TEMP as A
+    set A.FT_DONE = 'Y' from
+    (select B.SOURCE_PARTY_ID,A.SOURCE_ACCOUNT_NBR,A.USER_ID from #PMT_BASE as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+      and A.TRANSACTION_TYPE like 'FUND TRANSFER%'
+      and B.ACCOUNT_CLOSE_DATE is null and B.LINKED_USERID is not null and SUBSTR(B.SOURCE_PARTY_ID,1,4) not like 'COB%') as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  update #TEMP as A
+    set A.PMR_DONE = 'Y' from
+    (select B.SOURCE_PARTY_ID,A.SOURCE_ACCOUNT_NBR,A.USER_ID from #PMT_BASE as A,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+      and A.TRANSACTION_TYPE = 'PMR'
+      and B.ACCOUNT_CLOSE_DATE is null and B.LINKED_USERID is not null and SUBSTR(B.SOURCE_PARTY_ID,1,4) not like 'COB%') as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID;
+  commit work;
+  select SOURCE_PARTY_ID,(case when BIRTH_DATE <> '1900-01-01' then DATEDIFF(yy,BIRTH_DATE,GETDATE()) else 0 end) as AGE
+    into #AGE
+    from EDW.T0111_SOURCE_CUSTOMER_DETAILS
+    where AGE <= 25;
+  commit work;
+  insert into #AGE
+    select SOURCE_PARTY_ID,(case when BIRTH_DATE <> '1900-01-01' then DATEDIFF(yy,BIRTH_DATE,GETDATE()) else 0 end) as AGE
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE
+      where AGE <= 25;
+  commit work;
+  update #TEMP as A
+    set A.POCKET_FLAG = 'Y' from
+    (select B.CUSTOMER_ID from EDW.T09531_REAL_TIME_PAYMENT as A,EDW.T09315_CAR_ACCOUNTS as B
+      where A.UBP_USER_ID = B.USER_ID
+      and B.SOURCE_ACCOUNT_NBR not like '433662%'
+      and B.CUSTOMER_ID = any(select SOURCE_PARTY_ID from #AGE)) as B
+    where A.SOURCE_PARTY_ID = B.CUSTOMER_ID;
+  commit work;
+  update #TEMP as A
+    set A.PRE_APPROVED_OFFERS = 'Y' from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  truncate table RECONP.RIB_LOGIN;
+  commit work;
+  insert into RECONP.RIB_LOGIN select * from #TEMP;
+  commit work
+end

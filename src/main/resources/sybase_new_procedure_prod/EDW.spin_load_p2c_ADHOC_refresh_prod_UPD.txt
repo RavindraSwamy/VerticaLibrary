@@ -1,0 +1,147 @@
+create procedure EDW.spin_load_p2c_ADHOC_refresh_prod_UPD()
+on exception resume
+begin
+  declare V$$SR smallint;
+  declare V$$EDATE date;
+  declare V$$SDATE date;
+  declare V$$1st_mon_end date;
+  declare V$$2nd_mon_end date;
+  declare V$$3rd_mon_end date;
+  declare V$$4th_mon_end date;
+  declare V$$5th_mon_end date;
+  declare V$$6th_mon_end date;
+  declare V$$first_day date;
+  declare V$$last_day date;
+  declare V$$remark varchar(50);
+  select max(sr) into V$$SR from edw.P2C_BASE_PARAM_N_DEB_UPD
+    where start_date is not null and end_date is not null;
+  select Historic_1st_Mon_End into V$$1st_mon_end from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Historic_2nd_Mon_End into V$$2nd_mon_end from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Historic_3rd_Mon_End into V$$3rd_mon_end from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Historic_4th_Mon_End into V$$4th_mon_end from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Historic_5th_Mon_End into V$$5th_mon_end from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Historic_6th_Mon_End into V$$6th_mon_end from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select First_Day_Curr_Mon into V$$first_day from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Last_Day_Curr_Mon into V$$last_day from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Start_Date into V$$SDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select End_Date into V$$EDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Run_Comment into V$$remark from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  if(V$$remark = 'OK TO PROCESS') then
+    drop table p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD;
+    create table p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD(
+      UCIC_VALUE varchar(54) not null,
+      UNIQUE_ID varchar(20) null,
+      ACCOUNT_NBR integer null,
+      SOURCE_ACCOUNT_NBR varchar(20) null,
+      SOURCE_SYSTEM_CODE integer null,
+      IDENTIFIER varchar(20) null,
+      );
+    ----------------------Preparing base for product discrepancy-------------------
+    select ACCOUNT_NBR into #P2C_MISSING_ACCOUNTS_DEB
+      from P2C.P2C_GPC_N_HEENA_UPD
+      where not ACCOUNT_NBR = any(select account_nbr from p2c.p2c_base_data19_UPD where SERVICESEGMENT = 'GPC'); -- 20,503 row(s) affected
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR from p2c.p2c_base_data19_UPD
+        where PRODUCT = 'SA'
+        and not ACCOUNT_NBR = any(select account_nbr from p2c.p2c_SA_n_heena_UPD); --0
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR from p2c.p2c_base_data19_UPD
+        where PRODUCT = 'CA'
+        and not ACCOUNT_NBR = any(select account_nbr from P2C.p2c_Ca_n_heena_UPD); --0
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR from p2c.p2c_base_data19_UPD
+        where PRODUCT = 'CC'
+        and not ACCOUNT_NBR = any(select account_nbr from P2C.p2c_CARDS_n_heena_UPD); --0
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR from p2c.p2c_base_data19_UPD
+        where PRODUCT not in( 'CC','SA','CA','DMT','SFD','SALOD','RBACT','PPF','RD','FD','QO' ) 
+        and not ACCOUNT_NBR = any(select account_nbr from P2C.p2c_LOANS_n_heena_UPD); --0
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR
+        from p2c.p2c_base_data19_UPD
+        where PRODUCT = 'DMT'
+        and not ACCOUNT_NBR = any(select account_nbr from P2C.p2c_DEMAT_n_heena_UPD); --0
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR
+        from p2c.p2c_base_data19_UPD
+        where PRODUCT in( 'SALOD','RBACT','PPF','RD','FD','QO','SFD' ) 
+        and not ACCOUNT_NBR = any(select account_nbr from P2C.p2c_Other_Liability_Product_n_heena_UPD); --0
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR from p2c.P2C_ADHOC_REFRESH_N_HEENA_UPD; --0
+    commit work;
+    ----------------------Inserting Linked accounts of all closed liability accounts in ADHOC Base-------------------
+    select A.UCIC_VALUE,a.unique_id,a.account_nbr into #Account_close from p2c.p2c_base_data19_UPD as a,EDW.T0300_ACCOUNT as b
+      where a.source_system_code = 30 and a.account_nbr = b.account_nbr
+      and b.account_close_date is not null; --0
+    commit work;
+    delete from p2c.p2c_CA_n_heena_UPD
+      where account_nbr
+       = any(select account_nbr from #Account_close); --0
+    delete from p2c.p2c_SA_n_heena_UPD
+      where account_nbr
+       = any(select account_nbr from #Account_close); --0
+    delete from p2c.p2c_base_data19_UPD
+      where account_nbr
+       = any(select account_nbr from #Account_close); --0
+    commit work;
+    insert into #P2C_MISSING_ACCOUNTS_DEB
+      select ACCOUNT_NBR from #Account_close; --0
+    commit work;
+    -- SELECT  COUNT(1) FROM #P2C_MISSING_ACCOUNTS_DEB
+    ----------------------Populating Missing Accounts Table and deleting closed liability accounts-------------------
+    create hg index HGIDX_P2CDESIGN_DEB_1 on EDW.#P2C_MISSING_ACCOUNTS_DEB(ACCOUNT_NBR asc);
+    commit work;
+    --DROP TABLE #Unique_ID_DEB
+    -- SELECT COUNT(1) FROM P2C.P2C_UCIC_TABLE
+    select distinct a.UCIC_VALUE into #Unique_ID_DEB
+      from P2C.P2C_UCIC_TABLE as a,#P2C_MISSING_ACCOUNTS_DEB as b
+      where a.account_nbr = b.account_nbr; --9668 row(s) affected
+    commit work;
+    create hg index HGIDX_P2CDESIGN_DEB_2 on #Unique_ID_DEB(UCIC_VALUE asc);
+    commit work;
+    insert into p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD
+      select a.UCIC_VALUE,a.UNIQUE_ID,A.ACCOUNT_NBR,A.SOURCE_ACCOUNT_NBR,A.SOURCE_SYSTEM_CODE,'ADHOC' as IDENTIFIER
+        from P2C.P2C_UCIC_TABLE as A,#Unique_ID_DEB as B
+        where A.UCIC_VALUE = B.UCIC_VALUE; -- 3 08 674 row(s) inserted
+    create hg index HGIDX_GUMSHUDA_1 on p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD(ACCOUNT_NBR asc);
+    create hg index HGIDX_GUMSHUDA_2 on p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD(SOURCE_ACCOUNT_NBR asc);
+    create lf index LFIDX_GUMSHUDA_3 on p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD(SOURCE_SYSTEM_CODE asc);
+    create lf index LFIDX_GUMSHUDA_4 on p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD(IDENTIFIER asc);
+    select a.account_nbr
+      into #acct_for_del
+      from p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as a,edw.t0300_account as b
+      where a.source_system_code = 30
+      and a.account_nbr = b.account_nbr
+      and b.account_close_date is not null; --250457 row(s) affected
+    commit work;
+    delete from p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD
+      where account_nbr
+       = any(select account_nbr from #acct_for_del); --250457 row(s) deleted
+    commit work;
+    update p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as a
+      set a.IDENTIFIER = 'GPC' from
+      P2C.P2C_GPC_N_HEENA as b
+      where a.ACCOUNT_NBR = B.ACCOUNT_NBR; --20499 row(s) updated
+    commit work;
+    truncate table P2C.P2C_ADHOC_REFRESH_N_HEENA_UPD;
+    commit work;
+    /*
+SELECT TOP 10 * FROM p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD 
+UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,IDENTIFIER
+'0000000010732302','G10732302',7794538,'000101011506',30,'GPC'
+SELECT COUNT(1) FROM p2c.P2C_MISSING_ACCOUNTS_N_HEENA_UPD where IDENTIFIER = 'GPC' --20501
+COMMIT;
+
+*/
+    if sqlstate <> '00000' then
+      return
+    end if
+  end if
+end

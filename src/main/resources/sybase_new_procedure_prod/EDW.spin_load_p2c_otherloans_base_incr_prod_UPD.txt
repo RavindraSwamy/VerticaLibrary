@@ -1,0 +1,211 @@
+create procedure EDW.spin_load_p2c_otherloans_base_incr_prod_UPD()
+on exception resume
+begin
+  declare i_lin_cnt integer;
+  declare V$$EDATE date;
+  declare V$$SDATE date;
+  declare V$$SR smallint;
+  declare V$$remark varchar(50);
+  select max(sr) into V$$SR from edw.P2C_BASE_PARAM_N_DEB_UPD
+    where start_date is not null and end_date is not null;
+  select Start_Date into V$$SDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select End_Date into V$$EDATE from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  select Run_Comment into V$$remark from edw.P2C_BASE_PARAM_N_DEB_UPD where SR = V$$SR;
+  if(V$$remark = 'OK TO PROCESS') then
+    select * into #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG1
+      from(select a.agreementno as source_account_nbr,
+          a.amtfin as sanc_amt,
+          a.ASSETCOST as Assetcost,
+          a.productflag as productcode,
+          c.promotionid as promotionid
+          from reconp.lea_agreement_dtl_rapg_full as a left outer join EDW.DW_PROMOTION_MASTER as c
+            on a.promotionid = c.promotionid
+          where a.status <> 'X') as x;
+    --26496369 row(s) affected
+    commit work;
+    select * into #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG
+      from #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG1
+      where substr(source_account_nbr,1,2) in( 'LA','LP','JP','LV','LT','LI','DI','NC','GC','LC' ) ; --11444036 row(s) affected
+    commit work;
+    select * into #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_DEB
+      from(select a.*
+          from P2C.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as DD,#OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG1 as a
+          where DD.SOURCE_ACCOUNT_NBR = a.source_account_nbr
+          and DD.SOURCE_SYSTEM_CODE = 51
+          and DD.IDENTIFIER = 'GPC') as x; --6 row(s) affected
+    commit work;
+    select * into #OTHER_LOANS
+      --'2015-05-14' AND '2015-05-23' --V$$SDATE and V$$EDATE
+      from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+          T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+          T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+          T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+          T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+          OTHER.sanc_amt as SANC_AMT,
+          Other.ASSETCOST as Assetcost,
+          OTHER.productcode as PRODUCTCODE,
+          OTHER.promotionid as PROMOTIONID
+          from #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG as OTHER,edw.T0300_Account as T0300
+          where OTHER.SOURCE_ACCOUNT_NBR = T0300.SOURCE_ACCOUNT_NBR
+          and T0300.ACCOUNT_OPEN_DATE between V$$SDATE and V$$EDATE) as x;
+    --9687 row(s) affected
+    commit work;
+    select * into #gpid_change
+      --and A.Unique_ID <> B.Unique_ID
+      --and substring(A.Unique_ID,1,1) = 'G'
+      from(select a.account_nbr,a.SOURCE_ACCOUNT_NBR,a.source_system_code
+          from P2c.p2c_UCIC_table as A,p2c.p2c_base_data19_UPD as B
+          where A.Account_NBR = B.Account_NBR
+          and B.source_system_code = 51
+          and A.ucic_value <> B.ucic_value) as x;
+    --00 row(s) affected
+    commit work;
+    insert into #OTHER_LOANS
+      select *
+        -- '2015-05-14'--V$$SDATE
+        from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+            T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+            T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+            T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+            T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+            OTHER.sanc_amt as SANC_AMT,
+            Other.ASSETCOST as Assetcost,
+            OTHER.productcode as PRODUCTCODE,
+            OTHER.promotionid as PROMOTIONID
+            from #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG as OTHER,edw.T0300_Account as T0300,#gpid_change as b
+            where OTHER.SOURCE_ACCOUNT_NBR = T0300.SOURCE_ACCOUNT_NBR
+            and T0300.ACCOUNT_OPEN_DATE <= V$$SDATE
+            and T0300.account_nbr = b.account_nbr) as x;
+    --0 row(s) inserted
+    commit work;
+    insert into #OTHER_LOANS
+      select *
+        --'2015-05-14'--V$$SDATE 
+        from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+            T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+            T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+            T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+            T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+            OTHER.sanc_amt as SANC_AMT,
+            Other.ASSETCOST as Assetcost,
+            OTHER.productcode as PRODUCTCODE,
+            OTHER.promotionid as PROMOTIONID
+            from #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG as OTHER,edw.T0300_Account as T0300
+            where OTHER.SOURCE_ACCOUNT_NBR = T0300.SOURCE_ACCOUNT_NBR
+            and T0300.ACCOUNT_OPEN_DATE <= V$$SDATE
+            and not T0300.account_nbr = any(select account_nbr from p2c.p2c_base_data19_upd where source_system_code = 51)) as x;
+    --11225536 row(s) inserted
+    commit work;
+    insert into #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_DEB
+      select a.* from #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_HG as A,P2C.P2C_MISSING_ACCOUNTS_N_HEENA_UPD as B
+        where A.source_account_nbr = B.source_account_nbr and B.source_system_code = 51 and B.IDENTIFIER <> 'GPC'; --521 row(s) inserted
+    commit work;
+    insert into #OTHER_LOANS
+      select *
+        from(select T0300.ACCOUNT_NBR as ACCOUNT_NBR,
+            T0300.SOURCE_ACCOUNT_NBR as SOURCE_ACCOUNT_NBR,
+            T0300.SOURCE_SYSTEM_CODE as SOURCE_SYSTEM_CODE,
+            T0300.ACCOUNT_OPEN_DATE as ACCOUNT_OPEN_DATE,
+            T0300.ACCOUNT_CLOSE_DATE as ACCOUNT_CLOSE_DATE,
+            OTHER.sanc_amt as SANC_AMT,
+            Other.ASSETCOST as Assetcost,
+            OTHER.productcode as PRODUCTCODE,
+            OTHER.promotionid as PROMOTIONID
+            from #OTHER_LOANS_INCR_SEGMNT_DUMP_n_p2c_DEB as OTHER,edw.T0300_Account as T0300
+            where OTHER.SOURCE_ACCOUNT_NBR = T0300.SOURCE_ACCOUNT_NBR) as x;
+    --527 row(s) inserted
+    commit work;
+    drop table p2c.OTHER_LOANS_INCR_SEGMNT_BASE_upd;
+    select distinct * into p2c.OTHER_LOANS_INCR_SEGMNT_BASE_upd
+      from #OTHER_LOANS; --11234411 row(s) affected
+    commit work;
+    drop table p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_upd;
+    select * into p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_upd
+      from(select PLT.UCIC_VALUE,
+          PLT.UNIQUE_ID,
+          CSBR.*
+          from p2c.OTHER_LOANS_INCR_SEGMNT_BASE_UPD as CSBR,P2c.p2c_UCIC_table as PLT
+          where CSBR.account_nbr = PLT.account_nbr
+          and CSBR.source_system_code = PLT.source_system_code) as x;
+    commit work;
+    create hg index UHG_OTH_LOAN on p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_UPD(SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE);
+    commit work;
+    --11228269 row(s) affected
+    commit work;
+    drop table p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD;
+    select * into p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD
+      from(select BASE.*,BASIC_QUALIFICATION,PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME
+          from p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_UPD as BASE
+            left outer join edw.B0328_party_account as B0328
+            on BASE.SOURCE_ACCOUNT_NBR = B0328.SOURCE_ACCOUNT_NBR
+            and BASE.source_system_code = B0328.source_system_code
+            join EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE as T0111
+            on B0328.SOURCE_PARTY_ID = T0111.SOURCE_PARTY_ID
+            and B0328.source_system_code = T0111.source_system_code) as x;
+    -- 1 12 28 269 row(s) affected
+    commit work;
+    alter table p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD add
+      CHANNEL varchar(100) null,add
+      BORROWER_TYPE varchar(200) null,add
+      EMP_TYPE varchar(35) null;
+    update p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD as a
+      set a.CHANNEL = b.CHANNEL from
+      p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD as a,edw.FINONE_CHANNEL as b
+      where a.source_account_nbr = b.agreementno; --7872042 row(s) updated
+    commit work;
+    update p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD as a
+      set a.BORROWER_TYPE = b.BorrowerType from
+      p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD as a,edw.finone_borrower_type as b
+      where a.source_account_nbr = b.agreementno; --1 12 06 322 row(s) updated
+    commit work;
+    truncate table p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_UPD; -- INTO p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_UPD 
+    insert into p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_UPD
+      select * from p2c.OTHER_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD; --11228269 row(s) affected
+    commit work;
+    /*
+SELECT TOP 10 * FROM p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_UPD
+UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SANC_AMT,Assetcost,PRODUCTCODE,PROMOTIONID,BASIC_QUALIFICATION,PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME,CHANNEL,BORROWER_TYPE,EMP_TYPE
+'0000000021314518','G21314518',716086805,'LAJAL00000350723',51,'2001-01-31','2005-01-28',200000.00,359569.00,'A',410,,'OTH',,'JALANDHAR',,,,,,,'SELFEMPLOYED',
+SELECT TOP 10 * FROM p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL
+UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SANC_AMT,Assetcost,PRODUCTCODE,PROMOTIONID,BASIC_QUALIFICATION,PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME,CHANNEL,BORROWER_TYPE,EMP_TYPE
+'G86931786',715956806,'LPMUM00000000728',51,'2000-08-31','2001-01-17',63444.00,63443.65,'P',1246,,'OTH',,'MUMBAI',,,,,,,'SALARIED',
+
+*/
+    insert into p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_UPD
+      select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SANC_AMT,null,null,null,
+        BASIC_QUALIFICATION,PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME,null,null,
+        EMP_TYPE
+        from p2c.HOME_LOANS_INCR_SEGMNT_BASE_SRC_1_UPD; --1903345 row(s) inserted
+    commit work;
+    truncate table p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD; --INTO p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD
+    insert into p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD
+      select a.*,final_source,final_source_id,first_source,first_source_id,null as pdt_catnew,null as pdt_subcatn,null as ORIGINAL_PRODUCT
+        from p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_UPD as a left outer join edw.finone_firstsource as b
+          on a.source_account_nbr = b.source_account_nbr; --1 31 31 614 row(s) affected
+    commit work;
+    update p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD as a
+      set a.pdt_catnew = b.pdt_catnew,
+      a.pdt_subcatn = b.pdt_subcatn from
+      p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD as a,qdesk.loan_master_curr as b
+      where a.source_account_nbr = b.source_account_nbr; --11095327 row(s) updated
+    commit work;
+    update p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD as a
+      set a.ORIGINAL_PRODUCT = b.SCHEMEDESC from
+      p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD as a,reconp.finone_product_master as b
+      where a.source_account_nbr = b.agreementno; --13123817 row(s) updated
+    commit work;
+    /*
+SELECT TOP 10 * FROM p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD
+UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SANC_AMT,Assetcost,PRODUCTCODE,PROMOTIONID,BASIC_QUALIFICATION,
+PROFESSION,CUR_CITY,MAIL_CITY,PER_CITY,BUS_CITY,SALARY,NET_ANNUAL_INCOME,GROSS_ANNUAL_INCOME,CHANNEL,BORROWER_TYPE,EMP_TYPE,final_source,final_source_id,first_source,first_source_id
+,pdt_catnew,pdt_subcatn,ORIGINAL_PRODUCT
+'0000000029196448','G29196448',217302335,'LAABD00007798615',51,'2006-09-16','2009-08-26',365000.00,407291.00,'A',102280,'GRAD','OTH',,'AHMEDABAD',,,14083.33,,0.00,'NORMAL CHANNEL','PROPRIETORSHIP',,,,,,,,
+
+SELECT COUNT(1) FROM p2c.LOANS_INCR_SEGMNT_BASE_SRC_FINAL_1_UPD -- 13157851
+
+*/
+    if sqlstate <> '00000' then
+      return
+    end if
+  end if
+end

@@ -1,0 +1,246 @@
+create procedure EDW.spin_load_p2c_Cards_Basic_Calculation_prod_UPD()
+on exception resume
+begin
+  /*--old lgic
+
+drop table p2c.CARDS_basic_calculation;
+
+select *, 
+case 
+when FLAG='GPC' or logo in (121,376) then 7
+when logo in (242,324,352,353,354,420,423) then 3 
+when logo in (225,321,337,374,398,401,422,424,425,435 ) then 4   
+when logo in (217,219,329,333,336,350,375,399,402,426,427,412,392,364) then 5 else -1 end  product_segment,
+
+
+
+case when gross_salary  is not null and gross_salary   > 0 then 
+
+
+
+case when (account_open_date + 365) >= Date_created  then gross_salary   
+else  gross_salary  * power(1.09,(months(account_open_date,date_created)/12))    end
+
+
+when net_salary  is not null and net_salary   > 0 then
+
+
+
+case when (account_open_date + 365) >= Date_created  then net_salary / 0.8 
+else  (net_salary/.8)  * power(1.09,(months(account_open_date,date_created)/12))    end
+
+
+when salary is not null and salary > 0 then
+
+
+case when (account_open_date + 365) >= Date_created  then (salary *12) 
+else  (salary*12)  * power(1.09,(months(account_open_date,date_created)/12))    end
+end hh_income,
+
+case  when hh_income is not null and hh_income > 0 and income_validated_flag = 'Y' then 
+
+case when Category ='CATEGORY - I' then 
+
+case when hh_income <= 30000 then 0
+when hh_income <= 300000 then 1
+when hh_income <= 750000 then 2
+when hh_income <= 1500000 then 3
+when hh_income <= 4000000 then 4
+when hh_income <=  15000000 then 5
+when hh_income > 15000000 then 7 else -1 end
+
+
+
+when Category ='CATEGORY - II' then 
+
+
+case  
+when hh_income <= 25000 then 0
+when hh_income <= 200000 then 1
+when hh_income <= 600000 then 2
+when hh_income <= 1500000 then 3
+when hh_income <= 4000000 then 4
+when hh_income <= 15000000 then 5
+when hh_income >  15000000 then 7 else -1 end
+
+
+else
+
+case  
+when hh_income <= 20000 then 0
+when hh_income <= 150000 then 1
+when hh_income <= 450000 then 2
+when hh_income <= 1200000 then 3
+when hh_income <= 4000000 then 4
+when hh_income <= 15000000 then 5
+when hh_income >  15000000 then 7 else -1  end
+
+
+end else -1 end  Income_Segment,
+
+
+case  
+when Credit_Limit <= 0 or Credit_Limit is null then -1
+when Credit_Limit <= 30000 then 1
+When Credit_Limit <= 75000 THEN 2
+When Credit_Limit <= 100000 THEN 3
+When Credit_Limit <= 250000 THEN 4
+When Credit_Limit <= 999999 THEN 5
+When Credit_Limit >= 1000000 THEN 7
+else -1
+end
+
+imputed_segment ,
+
+case when ifnull(product_segment,0,product_segment) > 0 and ifnull(product_segment,0,product_segment) >= ifnull(Income_Segment,0,Income_Segment) then product_segment
+when ifnull(income_segment,0,income_segment) > 0 then income_Segment
+when ifnull(imputed_segment,0,imputed_segment) > 0 then imputed_segment end Acct_Segment,
+
+
+case when ifnull(product_segment,0,product_segment) > 0 and ifnull(product_segment,0,product_segment) >= ifnull(Income_Segment,0,Income_Segment) then 'PCC1'
+when ifnull(income_segment,0,income_segment) > 0 then 'NCC1'
+when ifnull(imputed_segment,0,imputed_segment) > 0 then 'ICC1' end Acct_rule
+
+into p2c.CARDS_basic_calculation
+
+from p2c.CARDS_SEGMENT_TABLE_INCR_n_heena;
+
+commit;
+
+create HG Index HGIDX_P2C_NEWDEV_22 on p2c.CARDS_basic_calculation(account_nbr);
+Commit;
+--old lgic
+*/
+  drop table p2c.CARDS_basic_calculation_UPD;
+  commit work;
+  select UCIC_VALUE,UNIQUE_ID,ACCOUNT_NBR,PRIMARY_CARD_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,LOGO,FLAG,PROFESSION_TYPE,SEP_SENP,CITY,STATE,CATEGORY,ZONE,SALARY,GROSS_SALARY,NET_SALARY,
+    ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SURROGATE_CLUB,CREDIT_LIMIT,INCOME_VALIDATED_FLAG,DATE_CREATED,DATE_MODIFIED,
+    case when logo = 121 then 7
+    when logo = 420 then 3
+    when logo in( 374,398,401,422,424,425,435,363,242,321,217,219,329,333,336,350,375,426,427,392,364 ) then 4
+    when logo in( 376,399,402,412 ) then 5 else-1 end as product_segment,
+    case when gross_salary is not null and gross_salary > 0 then
+      case when(account_open_date+365) >= Date_created then gross_salary else gross_salary*power(1.09,(months(account_open_date,date_created)/12)) end
+    when net_salary is not null and net_salary > 0 then
+      case when(account_open_date+365) >= Date_created then net_salary/.8 else(net_salary/.8)*power(1.09,(months(account_open_date,date_created)/12)) end
+    when salary is not null and salary > 0 then
+      case when(account_open_date+365) >= Date_created then(salary*12) else(salary*12)*power(1.09,(months(account_open_date,date_created)/12)) end
+    end as hh_income,
+    case when hh_income is not null and hh_income > 0 and income_validated_flag = 'Y' then
+      case when Category = 'CATEGORY - I' then
+        case when hh_income <= 30000 then 0
+        when hh_income <= 300000 then 1
+        when hh_income <= 1000000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5
+        else-1
+        end when Category = 'CATEGORY - II' then
+        case when hh_income <= 25000 then 0
+        when hh_income <= 200000 then 1
+        when hh_income <= 800000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5
+        else-1
+        end
+      else
+        case when hh_income <= 20000 then 0
+        when hh_income <= 150000 then 1
+        when hh_income <= 600000 then 2
+        when hh_income <= 2000000 then 3
+        when hh_income <= 5000000 then 4
+        when hh_income > 5000000 then 5
+        else-1
+        end
+      end
+    else-1
+    end as Income_Segment,
+    case when Credit_Limit <= 0 or Credit_Limit is null then-1
+    when Credit_Limit <= 30000 then 1
+    when Credit_Limit <= 90000 then 2
+    when Credit_Limit <= 150000 then 3
+    when Credit_Limit <= 300000 then 4
+    when Credit_Limit > 300000 then 5
+    else-1
+    end as imputed_segment,
+    (case when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) >= 0)
+    and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then product_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) >= 0)
+    and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) >= 0)
+    and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) < 0)
+    and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then product_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) < 0)
+    and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) < 0)
+    and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then Income_Segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0 and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      product_segment
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0 and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      product_segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0 and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      imputed_segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      Income_Segment
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0 and ifnull(imputed_segment,0,imputed_segment) < 0) then-1 end) as Acct_SegmenT,
+    --------
+    (case when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) >= 0)
+    and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then
+      'PCC1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0 and ifnull(imputed_segment,0,imputed_segment) >= 0)
+    and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then
+      'NCC1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then
+      'NCC1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) > ifnull(Income_Segment,0,Income_Segment)) then
+      'PCC1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) < ifnull(Income_Segment,0,Income_Segment)) then
+      'NCC1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) and(ifnull(product_segment,0,product_segment) = ifnull(Income_Segment,0,Income_Segment)) then
+      'NCC1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      'PCC1'
+    when(ifnull(product_segment,0,product_segment) >= 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      'PCC1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      'NCC1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      'ICC1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) >= 0
+    and ifnull(imputed_segment,0,imputed_segment) >= 0) then
+      'NCC1'
+    when(ifnull(product_segment,0,product_segment) < 0 and ifnull(Income_Segment,0,Income_Segment) < 0
+    and ifnull(imputed_segment,0,imputed_segment) < 0) then
+      '-1'
+    end) as acct_rule
+    into p2c.CARDS_basic_calculation_UPD
+    from p2c.CARDS_SEGMENT_TABLE_INCR_n_heena_UPD;
+  commit work;
+  create hg index HGIDX_P2C_NEWDEV_22 on p2c.CARDS_basic_calculation_UPD(account_nbr);
+  commit work
+end /*
+SELECT TOP 10 * FROM adityas.CARDS_BASE_Mar
+UNIQUE_ID,ACCOUNT_NBR,PRIMARY_CARD_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,LOGO,PROFESSION_TYPE,SEP_SENP,CITY,STATE,CATEGORY,ZONE,SALARY,GROSS_SALARY,NET_SALARY,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SURROGATE_CLUB,CREDIT_LIMIT,INCOME_VALIDATED_FLAG,DATE_CREATED,date_modified
+'G86817174',21746904,'4443410107394007','21528262',20,112,'SE','SEP','KOLKATA','WEST BENGAL','CATEGORY - I','EAST',12500.000000,150000.000000,150000.000000,'2007-06-10',,'PLASTICS',10000.000000,'N','2013-01-25','2014-01-15'
+
+SELECT TOP 10 * FROM p2c.CARDS_SEGMENT_TABLE_INCR_n_heena_UPD
+UNIQUE_ID,ACCOUNT_NBR,PRIMARY_CARD_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,LOGO,FLAG,PROFESSION_TYPE,SEP_SENP,CITY,STATE,CATEGORY,ZONE,SALARY,GROSS_SALARY,NET_SALARY,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SURROGATE_CLUB,CREDIT_LIMIT,INCOME_VALIDATED_FLAG,DATE_CREATED,DATE_MODIFIED,UCIC_VALUE
+'G74',77937827,'5177194105681008','2093049',20,340,'N','Oth','Others','JAIPU','RAJA','CATE','N',8666.000000,100000.000000,104000.000000,'2004-07-16',,'LIA',51250.000000,'N','2015-05-08','2015-05-08','0000000000000074'
+SELECT TOP 10 * FROM p2c.CARDS_basic_calculation
+UNIQUE_ID,ACCOUNT_NBR,PRIMARY_CARD_NBR,SOURCE_ACCOUNT_NBR,SOURCE_SYSTEM_CODE,LOGO,FLAG,PROFESSION_TYPE,SEP_SENP,CITY,STATE,CATEGORY,ZONE,SALARY,GROSS_SALARY,NET_SALARY,ACCOUNT_OPEN_DATE,ACCOUNT_CLOSE_DATE,SURROGATE_CLUB,CREDIT_LIMIT,INCOME_VALIDATED_FLAG,DATE_CREATED,DATE_MODIFIED,product_segment,hh_income,Income_Segment,imputed_segment,Acct_Segment,Acct_rule
+'G23050385',22019400,'4477466909429002','21668706',20,307,'N','Sal','Others','CHENN','TAMI','CATE','S',16666.000000,200000.000000,200000.000000,'2007-06-18',,'BUL',48000.000000,'N','2015-05-08','2015-05-08',-1,365607.82416333817,-1,2,2,'ICC1'
+
+*/
+

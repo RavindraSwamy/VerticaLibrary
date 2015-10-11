@@ -1,0 +1,784 @@
+create procedure EDW.CUSTOMER_MASTER()
+begin
+  declare @INCREE_DATE_1 date;
+  declare @INCREE_DATE_2 date;
+  declare @INCREE_DATE_3 date;
+  declare @INCREE_DATE_4 date;
+  declare @INCREE_DATE_5 date;
+  declare @INCREE_DATE_6 date;
+  declare @INCREE_DATE_7 date;
+  declare @INCREE_DATE_8 date;
+  declare @INCREE_DATE_9 date;
+  declare ERV_DATE date;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_1 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'FINACLE_PRIME_DEMAT' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_2 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'FINONE' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_3 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'FINAGRI' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_4 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'EPMS' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_5 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'B2' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_6 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'CO_APPLICANT' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_7 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'EBOR_MPESA_MOBO_TRAVEL_CARD' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_8 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'M2I' and PARAM_DATE is not null;
+  select MIN(PARAM_DATE)-3 into @INCREE_DATE_9 from MCCM.CUSTOMER_MASTER_PARAM where SOURCE_SYSTEM_NAME = 'NRISR' and PARAM_DATE is not null;
+  commit work;
+  truncate table MCCM.CUSTOMER_MASTER_TEMP;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      CUR_STATE,
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS where SOURCE_SYSTEM_CODE not in( 160,120,40,150 ) 
+      and(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  truncate table MCCM.CUSTOMER_MASTER_PARAM;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINACLE_PRIME_DEMAT' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 30 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINACLE_PRIME_DEMAT' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 20 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINACLE_PRIME_DEMAT' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 80 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINACLE_PRIME_DEMAT' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 30 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINACLE_PRIME_DEMAT' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 20 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINACLE_PRIME_DEMAT' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 80 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      MAIL_ADDRESS_LINE1,
+      MAIL_ADDRESS_LINE2,
+      MAIL_ADDRESS_LINE3,
+      MAIL_ADDRESS_LINE4,
+      MAIL_CITY,
+      MAIL_STATE,
+      MAIL_PIN,
+      MAIL_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_FINONE
+      where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 50 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 51 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 52 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 53 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 50 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 51 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 52 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINONE' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 53 ) ;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      CUR_STATE,
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINAGRI' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 75 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'FINAGRI' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 75 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      cast(SOURCE_OF_LEAD as varchar(30)) as SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      cast(CUR_STATE as varchar(30)),
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      cast(PER_STATE as varchar(30)),
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      cast(MINOR_FLG as varchar(5)),
+      cast(PROFESSION as varchar(20)),
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EPMS where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EPMS' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 90 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EPMS' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 90 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      CUR_STATE,
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from FINAGRI.T0111_SOURCE_CUSTOMER_DETAILS_B2 where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'B2' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 76 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'B2' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 76 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      CUR_STATE,
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from EDW.CO_APPLICANT_CUSTOMER_DETAILS_FINONE where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 50 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 51 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 52 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 53 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 50 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 51 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 52 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'CO_APPLICANT' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 53 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      CUR_STATE,
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_M2I where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'M2I' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 40 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'M2I' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 40 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      CUR_STATE,
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_NRISR where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'NRISR' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'MODIFIED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 150 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'NRISR' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 150 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER_TEMP
+    select cast(null as varchar(30)) as UCIC_CODE,
+      TRIM(SOURCE_PARTY_ID),
+      SOURCE_SYSTEM_CODE,
+      NAME_PREFIX,
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      FULL_NAME,
+      PAN_NBR,
+      FAXNUMBER,
+      cast(null as varchar(50)) as CUST_ADHAR_NO,
+      SOURCE_OF_LEAD,
+      cast(null as varchar(20)) as CUR_ADDR_LATITUDE,
+      cast(null as varchar(20)) as CUR_ADDR_LONGITUDE,
+      CUR_ADDRESS_LINE1,
+      CUR_ADDRESS_LINE2,
+      CUR_ADDRESS_LINE3,
+      CUR_ADDRESS_LINE4,
+      CUR_CITY,
+      CUR_STATE,
+      CUR_PIN,
+      CUR_COUNTRY,
+      cast(null as varchar(20)) as PER_ADDR_LATITUDE,
+      cast(null as varchar(20)) as PER_ADDR_LONGITUDE,
+      PER_ADDRESS_LINE1,
+      PER_ADDRESS_LINE2,
+      PER_ADDRESS_LINE3,
+      PER_ADDRESS_LINE4,
+      PER_CITY,
+      PER_STATE,
+      PER_PIN,
+      PER_COUNTRY,
+      cast(null as varchar(100)) as CUSTOMER_CATEGORY,
+      cast(null as varchar(20)) as LINKED_USER_ID,
+      GETDATE() as AS_OF_DATE,
+      MINOR_FLG,
+      PROFESSION,
+      cast(null as varchar(5)) as CORPORATE_USER_FLAG,
+      cast(null as varchar(20)) as CORP_CUST_ID,
+      cast(null as varchar(20)) as CORP_BAY_USER_ID,
+      cast(null as date) as CORP_LOGIN_DATE,
+      cast(null as varchar(5)) as ERV_CUSTOMER_FLAG,
+      cast(null as varchar(5)) as NEW_MOB_NO_REG,
+      cast(null as varchar(5)) as UPDATE_MOB_NO_REG,
+      cast(null as varchar(25)) as OLD_REGISTERED_MOBILE_NO
+      from EDW.T0111_SOURCE_CUSTOMER_DETAILS_EXTERNAL_SYSTEM where(DATE_CREATED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or DATE_LAST_MODIFIED > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_CREATED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01') or SRC_MODIFIED_ON > COALESCE(null,@INCREE_DATE_1,'1900-01-01'));
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'DATE_LAST_MODIFIED' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 301 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'DATE_LAST_MODIFIED' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 302 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'DATE_LAST_MODIFIED' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 303 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'DATE_LAST_MODIFIED' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 304 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_LAST_MODIFIED),'DATE_LAST_MODIFIED' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 305 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 301 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 302 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 303 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 304 ) ;
+  insert into MCCM.CUSTOMER_MASTER_PARAM select 'EBOR_MPESA_MOBO_TRAVEL_CARD' as SOURCE_SYSTEM_NAME,MAX(DATE_CREATED),'CREATED_DATE' as DATE_NAME,GETDATE() from MCCM.CUST_CLEAN_MOBILE where SOURCE_SYSTEM_CODE in( 305 ) ;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set A.CUSTOMER_CATEGORY = B.CUSTOMER_CATEGORY from
+    EDW.T01401_M2I_CUST_EXTENDED_DETAILS as B
+    where B.SOURCE_CUSTOMER_ID = TRIM(A.SOURCE_PARTY_ID)
+    and A.SOURCE_SYSTEM_CODE = 40;
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set LINKED_USER_ID = B.LINKED_USER_ID from
+    EDW.D0122_CAR_CUST_LINKAGE as B
+    where A.SOURCE_PARTY_ID = TRIM(B.CUSTOMER_ID) and B.LINKED_USER_ID is not null and A.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set LINKED_USER_ID = B.USER_ID from
+    EDW.D0122_CAR_CUST_LINKAGE as B
+    where A.SOURCE_PARTY_ID = TRIM(B.CUSTOMER_ID) and B.USER_ID is not null and A.LINKED_USER_ID is null and A.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  update
+    MCCM.CUSTOMER_MASTER_TEMP as A
+    set A.CUR_ADDR_LATITUDE = B.CURADDLATITUDE,
+    A.CUR_ADDR_LONGITUDE = B.CURADDLONGITUDE,
+    A.PER_ADDR_LATITUDE = B.PERADDLATITUDE,
+    A.PER_ADDR_LONGITUDE = B.PERADDLONGITUDE from
+    EDW.MAIN_GEOCODING_LAT_LONG as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID)
+    and A.SOURCE_SYSTEM_CODE = cast(B.SOURCE_SYSTEM_CODE as integer);
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set A.CUST_ADHAR_NO = B.AADHAR_NO,
+    A.PAN_NBR = B.CLEAN_PAN_NBR from
+    EDW.T0117_CUSTOMER_PAN_EMAIL_DETAILS as B
+    where B.SOURCE_PARTY_ID = TRIM(A.SOURCE_PARTY_ID)
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  /*select B.CCM_CUST_ID,1 as COUNT
+into #CORPORATE_USER_FLAG
+from MCCM.CUSTOMER_MASTER_TEMP as A,(select CCM_CUST_ID,CCM_SYS_APP_CD from RECONP.MAIN_CARUCC_CUST_DETAILS where CCM_SYS_APP_CD = 1) as B
+where A.SOURCE_PARTY_ID = B.CCM_CUST_ID
+and A.SOURCE_SYSTEM_CODE = 30;
+if sqlstate <> '00000' then
+return
+end if;
+commit work;*/
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set A.CORPORATE_USER_FLAG = 'Y' from
+    RECONP.MAIN_CARUCC_CUST_DETAILS as B
+    where A.SOURCE_PARTY_ID = TRIM(B.CCM_CUST_ID)
+    and A.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  select ACCOUNTNUMBER,
+    COUNT(1) as CNT,
+    cast(null as varchar(20)) as SOURCE_PARTY_ID,
+    cast(null as integer) as SOURCE_SYSTEM_CODE
+    into #T401_FCRM_INCIDENTS_STATIC
+    from EDW.T401_FCRM_INCIDENTS_STATIC where SERVICEREQUESTTYPE like 'LI_INTERNET/MOBILE BANKING_REQ FOR UPDATION OF MOBILE NO IN BANKAWAY%'
+    and ACCOUNTNUMBER is not null
+    group by ACCOUNTNUMBER;
+  commit work;
+  update #T401_FCRM_INCIDENTS_STATIC as A
+    set SOURCE_PARTY_ID = B.SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE from
+    EDW.B0328_PARTY_ACCOUNT as B
+    where A.ACCOUNTNUMBER = B.SOURCE_ACCOUNT_NBR
+    and B.SOURCE_SYSTEM_CODE not in( 20 ) ;
+  commit work;
+  update #T401_FCRM_INCIDENTS_STATIC as A
+    set SOURCE_PARTY_ID = B.SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE from
+    reconp.card_master_aj0904 as B
+    where A.ACCOUNTNUMBER = B.CARD_NBR
+    and A.SOURCE_PARTY_ID is null;
+  commit work;
+  update #T401_FCRM_INCIDENTS_STATIC as A
+    set SOURCE_PARTY_ID = C.SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE = C.SOURCE_SYSTEM_CODE from
+    EDW.T0330_ACCOUNT_CARD as B
+    ,reconp.card_master_aj0904 as C
+    where A.ACCOUNTNUMBER = B.CARD_NBR
+    and B.ACCOUNT_NBR = C.ACCOUNT_NBR
+    and A.SOURCE_PARTY_ID is null; -- change
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set A.NEW_MOB_NO_REG = (case when B.CNT = 1 then 'Y' else 'N' end) from
+    #T401_FCRM_INCIDENTS_STATIC as B where A.SOURCE_PARTY_ID = TRIM(B.source_party_id) -- change
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set A.UPDATE_MOB_NO_REG = (case when B.CNT > 1 then 'Y' else 'N' end) from
+    #T401_FCRM_INCIDENTS_STATIC as B where A.SOURCE_PARTY_ID = TRIM(B.source_party_id)
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  -- begin
+  --  DECLARE ERV_DATE DATE;
+  select(case when GETDATE() between convert(char(4),GETDATE(),112)+'-'+'01'+'-'+'01' and convert(char(4),GETDATE(),112)+'-'+'03'+'-'+'31' then
+      convert(DATETIME,convert(char(4),GETDATE(),112)-1+'04'+'01','YYYY-MM-DD') else convert(DATETIME,convert(char(4),GETDATE(),112)+'04'+'01','YYYY-MM-DD') end) into ERV_DATE;
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set ERV_CUSTOMER_FLAG = (case when B.ACCOUNT_OPEN_DATE < ERV_DATE then 'Y' else 'N' end) from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  select(case when GETDATE() between convert(char(4),GETDATE(),112)+'-'+'01'+'-'+'01' and convert(char(4),GETDATE(),112)+'-'+'03'+'-'+'31' then
+      convert(DATETIME,convert(char(4),convert(char(4),GETDATE(),112)-1)+'04'+'01','YYYY-MM-DD') else convert(DATETIME,convert(char(4),convert(char(4),GETDATE(),112))+'04'+'01','YYYY-MM-DD') end) into ERV_DATE;
+  commit work;
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set A.CORP_CUST_ID = B.CUST_ID,
+    A.CORP_BAY_USER_ID = B.BAY_USER_ID,
+    A.CORP_LOGIN_DATE = LOGIN_DATE from
+    EDW.T09571_CORPORATE_USER as B
+    where TRIM(A.SOURCE_PARTY_ID) = TRIM(SUBSTR(B.CUST_ID,4,LENGTH(B.CUST_ID))) and a.source_system_code = 30;
+  commit work;
+  select distinct SOURCE_ACCOUNT_NBR,MODE_ID,SUBSCRIPTION_DATE
+    into #OLD_MOBILE
+    from EDW.T09527_MOBILE_ALERT_REG where MODE_OF_DELIVERY = '0' and SOURCE_ACCOUNT_NBR is not null;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select *
+    into #OLD_MOBILE1
+    --WHERE SOURCE_ACCOUNT_NBR IN ('000101005057','042401504894')
+    from(select *,RANK() over(partition by SOURCE_ACCOUNT_NBR order by SUBSCRIPTION_DATE desc) as ROWNUM
+        from #OLD_MOBILE) as B
+    where B.ROWNUM = 2;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  insert into #OLD_MOBILE1 select *
+      --WHERE SOURCE_ACCOUNT_NBR IN ('000101005057','042401504894')
+      from(select *,RANK() over(partition by SOURCE_ACCOUNT_NBR order by SUBSCRIPTION_DATE desc) as ROWNUM
+          from #OLD_MOBILE) as B
+      where B.ROWNUM = 1 and not B.SOURCE_ACCOUNT_NBR = any(select SOURCE_ACCOUNT_NBR from #OLD_MOBILE1);
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  select A.*,B.SOURCE_PARTY_ID
+    into #SOURCE_PARTY
+    from #OLD_MOBILE1 as A,(select * from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 30 and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder')) as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  update MCCM.CUSTOMER_MASTER_TEMP as A
+    set OLD_REGISTERED_MOBILE_NO = B.MODE_ID from
+    #SOURCE_PARTY as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID);
+  commit work;
+  create table #UPS_CUSTOMER_MASTER(
+    SOURCE_PARTY_ID varchar(50) null,
+    SYB_SOURCE_PARTY_ID varchar(50) null,
+    SOURCE_SYSTEM_CODE smallint null,
+    SYB_SOURCE_SYSTEM_CODE smallint null,
+    );
+  commit work;
+  update MCCM.CUSTOMER_MASTER as A
+    set A.TITLE = B.TITLE,
+    A.FIRST_NAME = B.FIRST_NAME,
+    A.MIDDLE_NAME = B.MIDDLE_NAME,
+    A.LAST_NAME = B.LAST_NAME,
+    A.FULL_NAME = B.FULL_NAME,
+    A.PAN_NBR = B.PAN_NBR,
+    A.FAXNUMBER = B.FAXNUMBER,
+    A.CUST_ADHAR_NO = B.CUST_ADHAR_NO,
+    A.SOURCE_OF_LEAD = B.SOURCE_OF_LEAD,
+    A.CUR_ADDR_LATITUDE = B.CUR_ADDR_LATITUDE,
+    A.CUR_ADDR_LONGITUDE = B.CUR_ADDR_LONGITUDE,
+    A.CUR_ADDRESS_1 = B.CUR_ADDRESS_1,
+    A.CUR_ADDRESS_2 = B.CUR_ADDRESS_2,
+    A.CUR_ADDRESS_3 = B.CUR_ADDRESS_3,
+    A.CUR_ADDRESS_4 = B.CUR_ADDRESS_4,
+    A.CUR_CITY = B.CUR_CITY,
+    A.CUR_STATE = B.CUR_STATE,
+    A.CUR_PIN = B.CUR_PIN,
+    A.CUR_COUNTRY = B.CUR_COUNTRY,
+    A.PER_ADDR_LATITUDE = B.PER_ADDR_LATITUDE,
+    A.PER_ADDR_LONGITUDE = B.PER_ADDR_LONGITUDE,
+    A.PER_ADDRESS_1 = B.PER_ADDRESS_1,
+    A.PER_ADDRESS_2 = B.PER_ADDRESS_2,
+    A.PER_ADDRESS_3 = B.PER_ADDRESS_3,
+    A.PER_ADDRESS_4 = B.PER_ADDRESS_4,
+    A.PER_CITY = B.PER_CITY,
+    A.PER_STATE = B.PER_STATE,
+    A.PER_PIN = B.PER_PIN,
+    A.PER_COUNTRY = B.PER_COUNTRY,
+    A.CUSTOMER_CATEGORY = B.CUSTOMER_CATEGORY,
+    A.LINKED_USER_ID = B.LINKED_USER_ID,
+    A.ASOF_DATE = B.ASOF_DATE,
+    A.MINOR_FLAG = B.MINOR_FLAG,
+    A.OCCUPATION = B.OCCUPATION,
+    A.CORPORATE_USER_FLAG = B.CORPORATE_USER_FLAG,
+    A.CORP_CUST_ID = B.CORP_CUST_ID,
+    A.CORP_BAY_USER_ID = B.CORP_BAY_USER_ID,
+    A.CORP_LOGIN_DATE = B.CORP_LOGIN_DATE,
+    A.ERV_CUSTOMER_FLAG = B.ERV_CUSTOMER_FLAG,
+    A.NEW_MOB_NO_REG = B.NEW_MOB_NO_REG,
+    A.UPDATE_MOB_NO_REG = B.NEW_MOB_NO_REG,
+    A.OLD_REGISTERED_MOBILE_NO = B.OLD_REGISTERED_MOBILE_NO from
+    MCCM.CUSTOMER_MASTER_TEMP as B
+    where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into #UPS_CUSTOMER_MASTER
+    select A.SOURCE_PARTY_ID,
+      B.SOURCE_PARTY_ID as SYB_SOURCE_PARTY_ID,
+      A.SOURCE_SYSTEM_CODE,
+      B.SOURCE_SYSTEM_CODE as SYB_SOURCE_SYSTEM_CODE
+      from MCCM.CUSTOMER_MASTER_TEMP as A left outer join MCCM.CUSTOMER_MASTER as B
+        on A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+        and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE;
+  commit work;
+  insert into MCCM.CUSTOMER_MASTER
+    select A.*
+      from MCCM.CUSTOMER_MASTER_TEMP as A,#UPS_CUSTOMER_MASTER as B
+      where A.SOURCE_PARTY_ID = B.SOURCE_PARTY_ID
+      and B.SYB_SOURCE_PARTY_ID is null
+      and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+      and B.SYB_SOURCE_SYSTEM_CODE is null;
+  commit work;
+  update MCCM.CUSTOMER_MASTER as A
+    set A.UCIC_CODE = B.UCIC_VALUE from
+    EDW.P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID)
+    and A.SOURCE_SYSTEM_CODE = 30
+    and B.SOURCE_SYSTEM_CODE = 30
+    and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder');
+  commit work;
+  update MCCM.CUSTOMER_MASTER as A
+    set A.UCIC_CODE = B.UCIC_VALUE from
+    EDW.P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID)
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.UCIC_CODE is null;
+  commit work
+end

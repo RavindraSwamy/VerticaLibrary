@@ -1,0 +1,207 @@
+create procedure EDW.MAB()
+begin
+  select SUB.*
+    into #MTD_MAB_FULL_BASE_2015_ROWWISE
+    from(select SOURCE_ACCOUNT_NBR,'01' as BALANCE_DATE,BAL1 as BAL from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'02',BAL2 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'03',BAL3 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'04',BAL4 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'05',BAL5 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'06',BAL6 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'07',BAL7 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'08',BAL8 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'09',BAL9 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'10',BAL10 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'11',BAL11 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'12',BAL12 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'13',BAL13 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'14',BAL14 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'15',BAL15 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'16',BAL16 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'17',BAL17 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'18',BAL18 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'19',BAL19 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'20',BAL20 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'21',BAL21 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'22',BAL22 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'23',BAL23 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'24',BAL24 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'25',BAL25 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'26',BAL26 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'27',BAL27 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'28',BAL28 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'29',BAL29 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'30',BAL30 from swapnak.MTD_MAB_FULL_BASE_V3 union all
+      select SOURCE_ACCOUNT_NBR,'31',BAL31 from swapnak.MTD_MAB_FULL_BASE_V3) as SUB;
+  commit work;
+  commit work;
+  create variable DT date;
+  commit work;
+  select distinct SUMMARY_DATE into DT from swapnak.MTD_MAB_FULL_BASE_V3;
+  commit work;
+  -----SELECT COUNT(1) FROM #MTD_MAB_FULL_BASE_2015_ROWWISE
+  create hg index LKH on EDW.#MTD_MAB_FULL_BASE_2015_ROWWISE(SOURCE_ACCOUNT_NBR);
+  commit work;
+  --DROP TABLE #AJAY;
+  --COMMIT;
+  select SOURCE_ACCOUNT_NBR,
+    cast(null as varchar(20)) as CUST_ID,
+    cast(null as varchar(20)) as CUST_STAT_CODE,
+    cast(null as varchar(20)) as PRODUCT,
+    cast(null as decimal(18,2)) as CONTRACTED_MAB,
+    cast(null as decimal(18,2)) as FD_LIEU_MAB,
+    cast(null as varchar(2)) as YESTERDAY_DATE,
+    cast(null as decimal(18,2)) as MAB_TILL_YESTERDAY,
+    cast(null as decimal(18,2)) as FD_BALANCE_MAINTAINED,
+    cast(null as integer) as NBR_OF_DAYS_IN_CURR_MONTH,
+    cast(null as integer) as NBR_OF_DAYS_TILL_YESTRDAY,
+    cast(null as decimal(18,2)) as TOTAL_BALANCE_NEED_TO_BE_MAINTAINED_AS_PER_CONTRACT,
+    cast(null as decimal(18,2)) as TOTAL_BALANCE_NEED_ACTUALLY_MAINTAINED_TILL_YESTERDAY,
+    cast(null as decimal(18,2)) as DIFFERENCE_IN_MAB,
+    cast(null as integer) as NBR_OF_DAYS_BALANCE_IN_CURR_MONTH,
+    cast(null as decimal(18,2)) as TOTAL_BALANCE_NEED_TO_BE_MAINTAINED_FOR_REMAINING_DAYS
+    into #AJAY
+    from AMOLK.CAMPAIGN_LIABILITY_DATAMART_DAILY
+    where ACCOUNT_TYPE in( 'CA','SA' ) ;
+  commit work;
+  create hg index LKH on EDW.#AJAY(SOURCE_ACCOUNT_NBR);
+  commit work;
+  ---SELECT * FROM  #AJAY
+  update #AJAY as A
+    set CUST_ID = TRIM(B.SOURCE_PARTY_ID),
+    CUST_STAT_CODE = TRIM(B.CUST_STAT_CODE),
+    PRODUCT = B.PRODUCT_TYPE from
+    EDW.T09311_LIABILITY_ACCOUNT_ADDON as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and B.DEL_FLG = 'N';
+  commit work;
+  create hg index TRF on EDW.#AJAY(CUST_STAT_CODE);
+  create hg index OIK on EDW.#AJAY(CUST_ID);
+  commit work;
+  ------SELECT TOP 10 * FROM neerajs.E2E_HH_CNTRCT_MAB_MSTR
+  update #AJAY as A
+    set CONTRACTED_MAB = cast(REPLACE(B.MAB,',','') as decimal(18,2)),
+    FD_LIEU_MAB = cast(REPLACE(B.FD_LIEU_MAB,',','') as decimal(18,2)) from
+    RECONP.MAB_CA_SA as B
+    where A.CUST_STAT_CODE = TRIM(B.STATUS_CODE)
+    and A.PRODUCT = B.PRODUCT
+    and CONTRACTED_MAB is null;
+  commit work;
+  commit work;
+  update #AJAY as A
+    set FD_LIEU_MAB = null
+    where FD_LIEU_MAB = 0;
+  commit work;
+  --------SELECT TOP 10 * FROM  #AJAY
+  select *,
+    cast('' as varchar(50)) as FINAL_COMMENT
+    into #AJAY_1
+    from #AJAY
+    where CONTRACTED_MAB is not null;
+  commit work;
+  select CUST_ID
+    into #DISTINCT_CUST
+    from #AJAY_1
+    group by CUST_ID;
+  commit work;
+  create hg index TRF on EDW.#DISTINCT_CUST(CUST_ID);
+  commit work;
+  -------------AS DISCUSSED WITH VEERENDRA SIR WE HAVE TO TAKE THOSE FD WHICH ARE MATURE BUT LIVE
+  select A.CUST_ID,
+    B.SOURCE_ACCOUNT_NBR,
+    C.ACCOUNT_NBR,
+    cast(null as decimal(18,2)) as DEPOSIT_AMOUNT
+    into #DISTINCT_CUST_FD
+    from #DISTINCT_CUST as A
+      ,EDW.T09311_LIABILITY_ACCOUNT_ADDON as B
+      ,EDW.T0300_ACCOUNT as C
+    where A.CUST_ID = TRIM(B.SOURCE_PARTY_ID)
+    and B.ACCOUNT_NBR = C.ACCOUNT_NBR
+    and B.PRODUCT_TYPE = 'FD'
+    and B.DEL_FLG = 'N'
+    and C.ACCOUNT_CLOSE_DATE is null
+    and C.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  create hg index TRF on EDW.#DISTINCT_CUST_FD(ACCOUNT_NBR);
+  commit work;
+  update #DISTINCT_CUST_FD as A
+    set DEPOSIT_AMOUNT = B.DEPOSIT_AMOUNT from
+    EDW.T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR;
+  commit work;
+  create hg index DFC on EDW.#DISTINCT_CUST_FD(CUST_ID);
+  commit work;
+  select CUST_ID,
+    SUM(DEPOSIT_AMOUNT) as SUM_DEPOSIT_AMOUNT
+    into #DISTINCT_CUST_FD_FINAL
+    from #DISTINCT_CUST_FD
+    group by CUST_ID;
+  commit work;
+  update #AJAY_1 as A
+    set FD_BALANCE_MAINTAINED = B.SUM_DEPOSIT_AMOUNT from
+    #DISTINCT_CUST_FD_FINAL as B
+    where A.CUST_ID = B.CUST_ID;
+  commit work;
+  update #AJAY_1 as A
+    set FINAL_COMMENT = '-FD MAINTAINED'
+    where ISNULL(FD_BALANCE_MAINTAINED,0) >= FD_LIEU_MAB;
+  commit work;
+  update #AJAY_1 as A
+    set YESTERDAY_DATE = SUBSTR(cast(DT as varchar(50)),9,2);
+  commit work;
+  -------SELECT * FROM  #AJAY 
+  --SELECT * FROM swapnak.MTD_MAB_FULL_BASE_15may WHERE SOURCE_ACCOUNT_NBR  = '003601539302'
+  ---157220.85
+  update #AJAY_1 as A
+    set MAB_TILL_YESTERDAY = B.BAL from
+    #MTD_MAB_FULL_BASE_2015_ROWWISE as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.YESTERDAY_DATE = B.BALANCE_DATE;
+  commit work;
+  update #AJAY_1 as A
+    set NBR_OF_DAYS_IN_CURR_MONTH = (DATEADD(mm,1,(DT-DAY(DT)+1))-1)-(DT-DAY(DT));
+  commit work;
+  update #AJAY_1 as A
+    set NBR_OF_DAYS_TILL_YESTRDAY = cast(SUBSTR(cast(DT as varchar(50)),9,2) as integer);
+  commit work;
+  update #AJAY_1 as A
+    set NBR_OF_DAYS_BALANCE_IN_CURR_MONTH = ISNULL(NBR_OF_DAYS_IN_CURR_MONTH,0)-ISNULL(NBR_OF_DAYS_TILL_YESTRDAY,0);
+  commit work;
+  ----------SELECT * FROM #AJAY
+  update #AJAY_1 as A
+    set TOTAL_BALANCE_NEED_TO_BE_MAINTAINED_AS_PER_CONTRACT = ISNULL(CONTRACTED_MAB,0)*ISNULL(NBR_OF_DAYS_IN_CURR_MONTH,0);
+  commit work;
+  update #AJAY_1 as A
+    set TOTAL_BALANCE_NEED_ACTUALLY_MAINTAINED_TILL_YESTERDAY = ISNULL(MAB_TILL_YESTERDAY,0)*ISNULL(NBR_OF_DAYS_TILL_YESTRDAY,0);
+  commit work;
+  update #AJAY_1 as A
+    set DIFFERENCE_IN_MAB = ISNULL(CONTRACTED_MAB,0)-ISNULL(MAB_TILL_YESTERDAY,0);
+  commit work;
+  update #AJAY_1 as A
+    set DIFFERENCE_IN_MAB = 0
+    where DIFFERENCE_IN_MAB < 0;
+  commit work;
+  update #AJAY_1 as A
+    set FINAL_COMMENT = FINAL_COMMENT || '-MAB MAINTAINED'
+    where DIFFERENCE_IN_MAB = 0;
+  commit work;
+  commit work;
+  --select top 10 TOTAL_BALANCE_NEED_TO_BE_MAINTAINED_AS_PER_CONTRACT from #AJAY WHERE TOTAL_BALANCE_NEED_TO_BE_MAINTAINED_AS_PER_CONTRACT IS NOT NULL
+  update #AJAY_1 as A
+    set TOTAL_BALANCE_NEED_TO_BE_MAINTAINED_FOR_REMAINING_DAYS = (case when NBR_OF_DAYS_BALANCE_IN_CURR_MONTH > 0 then
+      (ISNULL(TOTAL_BALANCE_NEED_TO_BE_MAINTAINED_AS_PER_CONTRACT,0)-ISNULL(TOTAL_BALANCE_NEED_ACTUALLY_MAINTAINED_TILL_YESTERDAY,0))/(ISNULL(NBR_OF_DAYS_BALANCE_IN_CURR_MONTH,0)) else 0 end);
+  commit work;
+  update #AJAY_1 as A
+    set FINAL_COMMENT = 'NOT MAINTAINED'
+    where FINAL_COMMENT = '';
+  commit work;
+  update MCCM.LIABILITY_ACCT_MASTER as A
+    set A.CONTRACTED_MAB = B.CONTRACTED_MAB,
+    A.ACTUAL_MTDMAB = B.MAB_TILL_YESTERDAY,
+    A.MAB_DATE = B.YESTERDAY_DATE,
+    A.MAB_DAYS_LEFT = B.NBR_OF_DAYS_BALANCE_IN_CURR_MONTH,
+    A.MAB_NOT_MET = (case when B.FINAL_COMMENT = 'NOT MAINTAINED' then 'Y' else 'N' end) from
+    #AJAY_1 as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work
+end

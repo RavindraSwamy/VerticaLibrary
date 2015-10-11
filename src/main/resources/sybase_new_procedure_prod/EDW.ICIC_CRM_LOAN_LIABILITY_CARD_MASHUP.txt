@@ -1,0 +1,92 @@
+create procedure edw.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP()
+begin
+  declare MAB_DATE date;
+  declare MONTH_DATE varchar(10);
+  truncate table P2C.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP;
+  commit work;
+  --  select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into MONTH_DATE;
+  select UPPER(REPLACE(convert(char(20),date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))),106),' ','')) into MONTH_DATE;
+  select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into MAB_DATE;
+  insert into P2C.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP
+    select FILE_NO,
+      52 as SOURCE_SYSTEM_CODE,
+      LOAN_OUTSTANDING,
+      sanc_amt,
+      DISB_AMT,
+      cast(null as decimal(38,6)) as LAIBILITY_MAB,
+      cast(null as decimal(38,6)) as CARD_CURRENTOUTSTDAMT,
+      cast(null as integer) as seq
+      from FIN_BANK.FINNONE_DUMP_NEW_BANK
+      where FILE_NO is not null
+      and FILE_NO = any(select SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 52 and ACCOUNT_CLOSE_DATE is null and SUBSTR(SOURCE_PARTY_ID,1,4) <> 'COB_');
+  commit work;
+  insert into P2C.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP
+    select FILE_NO,
+      53 as SOURCE_SYSTEM_CODE,
+      LOAN_OUTSTANDING,
+      sanc_amt,
+      DISB_AMT,
+      cast(null as decimal(38,6)) as LAIBILITY_MAB,
+      cast(null as decimal(38,6)) as CARD_CURRENTOUTSTDAMT,
+      cast(null as integer) as seq
+      from FIN_BANK.FINNONE_DUMP_NEW_HFC
+      where FILE_NO is not null
+      and FILE_NO = any(select SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 53 and ACCOUNT_CLOSE_DATE is null and SUBSTR(SOURCE_PARTY_ID,1,4) <> 'COB_');
+  commit work;
+  insert into P2C.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP
+    select agreementno,
+      51 as SOURCE_SYSTEM_CODE,
+      cast(null as decimal(38,6)) as loan_outstanding,
+      s_loan_amount,
+      disbursal_amt,
+      cast(null as decimal(38,6)) as LAIBILITY_MAB,
+      cast(null as decimal(38,6)) as CARD_CURRENTOUTSTDAMT,
+      cast(null as integer) as seq
+      from FIN_RAPG.CONTROLDUMP_FINAL
+      where as_of_date = MAB_DATE and agreementno is not null
+      and agreementno = any(select SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 51 and ACCOUNT_CLOSE_DATE is null and SUBSTR(SOURCE_PARTY_ID,1,4) <> 'COB_');
+  commit work;
+  --BEGIN 
+  --declare MAB_DATE date;
+  select date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))) into MAB_DATE;
+  insert into P2C.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP
+    select A.src_account_nbr,
+      A.source_system_code,
+      null,
+      null,
+      null,
+      Monthly_avg_bal,
+      null,
+      cast(null as integer) as seq
+      from edw.T0305_ACCOUNT_SUMMARY_DERIVE as A,(select * from EDW.T0300_ACCOUNT where ACCOUNT_CLOSE_DATE is null and SOURCE_SYSTEM_CODE = 30) as B
+      where A.SRC_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+      and account_summary_date = MAB_DATE
+      and A.source_system_code = 30 and A.src_account_nbr = any(select SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where ACC_HOLDER = 'Main Holder');
+  commit work;
+  select B.CARD_NBR,A.STMT_GENERATE_DATE,A.STMT_END_BALANCE
+    into #CARD
+    from edw.t0930_statement_summary as A,edw.t0330_account_card as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and B.CARD_NBR = any(select SOURCE_ACCOUNT_NBR from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL where SOURCE_SYSTEM_CODE = 20 and ACCOUNT_CLOSE_DATE is null);
+  --AND B.CARD_NBR='4375510457321005'
+  commit work;
+  select * into #CARD_1
+    from(select CARD_NBR,STMT_GENERATE_DATE,STMT_END_BALANCE,
+        ROW_NUMBER() over(partition by CARD_NBR order by STMT_GENERATE_DATE desc) as ROWNUM
+        from #CARD) as A where A.ROWNUM = 1;
+  commit work;
+  insert into P2C.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP
+    select CARD_NBR,
+      20 as SOURCE_SYSTEM_CODE,
+      null,
+      null,
+      null,
+      null,
+      STMT_END_BALANCE,
+      cast(null as integer) as seq
+      from #CARD_1;
+  commit work;
+  update P2C.ICIC_CRM_LOAN_LIABILITY_CARD_MASHUP
+    set seq = number();
+  commit work
+end

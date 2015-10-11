@@ -1,0 +1,198 @@
+create procedure edw.Aml_Cmg_Load()
+begin
+  -------Truncating of staging tables-----------------
+  truncate table srcstage.S_AML_CMG;
+  truncate table srcstage.S_AML_cmg_insert;
+  commit work;
+  -----Loading of AML CMG Incremental data into staging table------------------------
+  load into table srcstage.S_AML_CMG( CUST_ID '~^',ENTITY_CRE_FLG '~^',DEL_FLG '~^',CUST_TITLE_CODE '~^',CUST_NAME '~^',CUST_PERM_ADDR1 '~^',CUST_PERM_ADDR2 '~^',CUST_PERM_ADDR3 '~^',CUST_PERM_CITY_CODE '~^',CUST_PERM_STATE_CODE '~^',CUST_PERM_PIN_CODE '~^',CUST_PERM_CNTRY_CODE '~^',CUST_PERM_PHONE_NUM '~^',CUST_PERM_TELEX_NUM '~^',CUST_SEX '~^',CUST_COMU_ADDR1 '~^',CUST_COMU_ADDR2 '~^',CUST_COMU_ADDR3 '~^',CUST_COMU_CITY_CODE '~^',CUST_COMU_STATE_CODE '~^',CUST_COMU_PIN_CODE '~^',CUST_COMU_CNTRY_CODE '~^',CUST_COMU_PHONE_NUM_1 '~^',CUST_COMU_PHONE_NUM_2 '~^',CUST_COMU_TELEX_NUM '~^',CUST_OCCP_CODE '~^',CUST_COMMU_CODE '~^',CUST_RATING_CODE '~^',CUST_FIRST_ACCT_DATE '~^',CUST_INTROD_CUST_ID '~^',INTROD_TITLE_CODE '~^',CUST_INTROD_NAME '~^',CUST_INTROD_STAT_CODE '~^',CUST_TYPE_CODE '~^',CUST_EMP_ID '~^',CUST_STAT_CODE '~^',CUST_STAT_CHG_DATE '~^',CUST_CONST '~^',CUST_MINOR_FLG '~^',CUST_NRE_FLG '~^',LCHG_TIME '~^',RCRE_TIME '~^',DATE_OF_BIRTH '~^',PAN_GIR_NUM '~^',PSPRT_NUM '~^',PSPRT_ISSU_DATE '~^',PSPRT_DET '~^',PSPRT_EXP_DATE '~^',CUST_PAGER_NO '~^',CUST_FAX_NO '~^',TDS_EXMPT_END_DATE '~^',TDS_EXMPT_SUBMIT_DATE '~^',TDS_EXMPT_REF_NUM '~^',TDS_EXMPT_RMKS '~^',CRNCY_CODE '~^',EMAIL_ID '~^',PRIMARY_SOL_ID '~^',DSA_ID '~^',CUST_OPN_DATE '~^',CUST_MARITAL_STATUS '~^',EMPLOYER_ID '~^',CUST_PERM_EMAIL_ID '~^',CUST_FREE_TEXT '~^',CUST_EMP_ADDR1 '~^',CUST_EMP_ADDR2 '~^',CUST_EMP_ADDR3 '~^',CUST_EMP_CITY_CODE '~^',CUST_EMP_STATE_CODE '~^',CUST_EMP_CNTRY_CODE '~^',CUST_EMP_PIN_CODE '~^',CUST_EMP_PHONE_NUM_1 '~^',CUST_EMP_EMAIL_ID '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/YET_TO_LOAD_FILES/aml_cmg_10x.out' quotes off escapes off preview on ignore constraint all 0 message log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_MSSG/aml_cmg_10x.msg' row log '/sybase_load/LOAD_MANAGEMENT/WEEKLYFIN/ACCOUNT/LOAD_LOGS/ERROR_RECORDS_DATA/aml_cmg_10x.row' only log all log delimited by '|' notify 100000 with checkpoint on;
+  commit work;
+  ----Aml CMg Updation
+  ------***updating s-table values with main tables ****------
+  ---------------updating Main cmg table with only S_cmg fileds---------------
+  update srcstage.AML_CMG as a
+    set a.ENTITY_CRE_FLG = b.ENTITY_CRE_FLG,
+    a.DEL_FLG = b.DEL_FLG,
+    a.CUST_TITLE_CODE = b.CUST_TITLE_CODE,
+    a.CUST_NAME = b.CUST_NAME,
+    a.CUST_PERM_ADDR1 = b.CUST_PERM_ADDR1,
+    a.CUST_PERM_ADDR2 = b.CUST_PERM_ADDR2,
+    a.CUST_PERM_ADDR3 = b.CUST_PERM_ADDR3,
+    a.CUST_PERM_CITY_CODE = b.CUST_PERM_CITY_CODE,
+    a.CUST_PERM_STATE_CODE = b.CUST_PERM_STATE_CODE,
+    a.CUST_PERM_PIN_CODE = b.CUST_PERM_PIN_CODE,
+    a.CUST_PERM_CNTRY_CODE = b.CUST_PERM_CNTRY_CODE,
+    a.CUST_PERM_PHONE_NUM = b.CUST_PERM_PHONE_NUM,
+    a.CUST_PERM_TELEX_NUM = b.CUST_PERM_TELEX_NUM,
+    a.CUST_SEX = b.CUST_SEX,
+    a.CUST_COMU_ADDR1 = b.CUST_COMU_ADDR1,
+    a.CUST_COMU_ADDR2 = b.CUST_COMU_ADDR2,
+    a.CUST_COMU_ADDR3 = b.CUST_COMU_ADDR3,
+    a.CUST_COMU_CITY_CODE = b.CUST_COMU_CITY_CODE,
+    a.CUST_COMU_STATE_CODE = b.CUST_COMU_STATE_CODE,
+    a.CUST_COMU_PIN_CODE = b.CUST_COMU_PIN_CODE,
+    a.CUST_COMU_CNTRY_CODE = b.CUST_COMU_CNTRY_CODE,
+    a.CUST_COMU_PHONE_NUM_1 = b.CUST_COMU_PHONE_NUM_1,
+    a.CUST_COMU_PHONE_NUM_2 = b.CUST_COMU_PHONE_NUM_2,
+    a.CUST_COMU_TELEX_NUM = b.CUST_COMU_TELEX_NUM,
+    a.CUST_OCCP_CODE = b.CUST_OCCP_CODE,
+    a.CUST_COMMU_CODE = b.CUST_COMMU_CODE,
+    a.CUST_RATING_CODE = b.CUST_RATING_CODE,
+    a.CUST_FIRST_ACCT_DATE = b.CUST_FIRST_ACCT_DATE,
+    a.CUST_INTROD_CUST_ID = b.CUST_INTROD_CUST_ID,
+    a.INTROD_TITLE_CODE = b.INTROD_TITLE_CODE,
+    a.CUST_INTROD_NAME = b.CUST_INTROD_NAME,
+    a.CUST_INTROD_STAT_CODE = b.CUST_INTROD_STAT_CODE,
+    a.CUST_TYPE_CODE = b.CUST_TYPE_CODE,
+    a.CUST_EMP_ID = b.CUST_EMP_ID,
+    a.CUST_STAT_CODE = b.CUST_STAT_CODE,
+    a.CUST_STAT_CHG_DATE = b.CUST_STAT_CHG_DATE,
+    a.CUST_CONST = b.CUST_CONST,
+    a.CUST_MINOR_FLG = b.CUST_MINOR_FLG,
+    a.CUST_NRE_FLG = b.CUST_NRE_FLG,
+    a.LCHG_TIME = b.LCHG_TIME,
+    a.RCRE_TIME = b.RCRE_TIME,
+    a.DATE_OF_BIRTH = b.DATE_OF_BIRTH,
+    a.PAN_GIR_NUM = b.PAN_GIR_NUM,
+    a.PSPRT_NUM = b.PSPRT_NUM,
+    a.PSPRT_ISSU_DATE = b.PSPRT_ISSU_DATE,
+    a.PSPRT_DET = b.PSPRT_DET,
+    a.PSPRT_EXP_DATE = b.PSPRT_EXP_DATE,
+    a.CUST_PAGER_NO = b.CUST_PAGER_NO,
+    a.CUST_FAX_NO = b.CUST_FAX_NO,
+    a.TDS_EXMPT_END_DATE = b.TDS_EXMPT_END_DATE,
+    a.TDS_EXMPT_SUBMIT_DATE = b.TDS_EXMPT_SUBMIT_DATE,
+    a.TDS_EXMPT_REF_NUM = b.TDS_EXMPT_REF_NUM,
+    a.TDS_EXMPT_RMKS = b.TDS_EXMPT_RMKS,
+    a.CRNCY_CODE = b.CRNCY_CODE,
+    a.EMAIL_ID = b.EMAIL_ID,
+    a.PRIMARY_SOL_ID = b.PRIMARY_SOL_ID,
+    a.DSA_ID = b.DSA_ID,
+    a.CUST_OPN_DATE = b.CUST_OPN_DATE,
+    a.CUST_MARITAL_STATUS = b.CUST_MARITAL_STATUS,
+    a.EMPLOYER_ID = b.EMPLOYER_ID from
+    srcstage.S_AML_CMG as b
+    where A.CUST_ID = b.cust_id;
+  commit work;
+  ----------- Updating Permanent Email
+  update srcstage.AML_CMG as a
+    set a.CUST_PERM_EMAIL_ID = b.EMAIL from
+    srcstage.cmg_PHONEEMAIL as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'HOMEEML';
+  commit work;
+  ----------------------------------**updating the Cmg from ADDRESS,PHONEEMAIL for Employee ****---------------
+  ---- updating Working Address Details for Retails Customers
+  update srcstage.AML_CMG as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    srcstage.cmg_ADDRESS as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Work'
+    --and cust_const != 'C%'
+    and b.CORP_ID is null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  ---- updating Working Address Details for Corporate Customers
+  update srcstage.AML_CMG as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    srcstage.cmg_ADDRESS as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Head Office'
+    --and cust_const = 'C%'
+    and b.CORP_ID is not null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  -- CUST_FREE_TEXT is pending to be updated
+  --- Updating Employee Phone Num1
+  update srcstage.AML_CMG as a
+    set a.CUST_EMP_PHONE_NUM_1 = b.PHONENO from
+    srcstage.cmg_PHONEEMAIL as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'WORKPH1';
+  commit work;
+  --- Updating Employee Email Id
+  update srcstage.AML_CMG as a
+    set a.CUST_EMP_EMAIL_ID = b.EMAIL from
+    srcstage.cmg_PHONEEMAIL as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'WORKEML';
+  commit work;
+  ----Aml CMg Insertion
+  ------------identify the new records from each & Every table-------------------
+  insert into srcstage.S_AML_cmg_insert
+    select * from srcstage.S_AML_CMG as b
+      where not b.cust_id = any(select cust_id from srcstage.AML_CMG);
+  commit work;
+  ----------- Updating Permanent Email
+  update srcstage.S_AML_cmg_insert as a
+    set a.CUST_PERM_EMAIL_ID = b.EMAIL from
+    srcstage.cmg_PHONEEMAIL as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'HOMEEML';
+  commit work;
+  ----------------------------------**updating the Cmg from ADDRESS,PHONEEMAIL for Employee ****---------------
+  ---- updating Working Address Details for Retails Customers
+  update srcstage.S_AML_cmg_insert as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    srcstage.cmg_ADDRESS as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Work'
+    --and cust_const != 'C%'
+    and b.CORP_ID is null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  ---- updating Working Address Details for Corporate Customers
+  update srcstage.S_AML_cmg_insert as a
+    set a.CUST_EMP_ADDR1 = b.ADDRESS1,
+    a.CUST_EMP_ADDR2 = b.ADDRESS2,
+    a.CUST_EMP_ADDR3 = b.ADDRESS3,
+    a.CUST_EMP_CITY_CODE = b.CITY_CODE,
+    a.CUST_EMP_STATE_CODE = b.STATE_CODE,
+    a.CUST_EMP_PIN_CODE = b.PIN_CODE,
+    a.CUST_EMP_CNTRY_CODE = b.CNTRY_CODE from
+    srcstage.cmg_ADDRESS as b
+    where trim(A.CUST_ID) = trim(B.ADDR_B2KID)
+    and B.ADDR_ID = 'Head Office'
+    --and cust_const = 'C%'
+    and b.CORP_ID is not null
+    and date(b.END_DATE) = '2099-12-31';
+  commit work;
+  -- CUST_FREE_TEXT is pending to be updated
+  --- Updating Employee Phone Num1
+  update srcstage.S_AML_cmg_insert as a
+    set a.CUST_EMP_PHONE_NUM_1 = b.PHONENO from
+    srcstage.cmg_PHONEEMAIL as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'Work';
+  commit work;
+  --- Updating Employee Email Id
+  update srcstage.S_AML_cmg_insert as a
+    set a.CUST_EMP_EMAIL_ID = b.EMAIL from
+    srcstage.cmg_PHONEEMAIL as b
+    where trim(A.CUST_ID) = trim(b.ORGKEY)
+    and b.phoneemailtype = 'WORKEML';
+  commit work;
+  -------------------- new cust_ids insertion-----------------------
+  insert into srcstage.AML_CMG
+    select * from srcstage.S_AML_cmg_insert;
+  commit work
+end

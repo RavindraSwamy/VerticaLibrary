@@ -1,0 +1,47 @@
+create procedure EDW.SP_LOCKTABLESIZE_Mind_Node1( in @StDt date,in @StTime time,in @SizeGb integer,out @SNoConn integer,out @SWNoConn integer ) 
+on exception resume
+begin
+  drop table EDW.LOCKTABLE_Node1;
+  select distinct
+    @StDt as ExecDT,
+    @StTime as ExecTM,
+    1 as SRNo,
+    TRIM(cast(USER_ID as varchar(50))) as USER_ID,
+    TRIM(L.CREATOR+'.'+L.TABLE_NAME) as TABLE_NAME,
+    TRIM(L.CREATOR) as SCHIMA_NAME,
+    TRIM(cast(LOCK_TYPE as varchar(5))) as LOCK_TYPE,
+    TRIM(cast(null as varchar(50))) as LOCK_NAME,
+    cast(null as decimal(20,2)) as TABLESIZEGB
+    into LOCKTABLE_Node1
+    from SP_IQLOCKS() as L
+      ,SYSTABLE as T
+    where SCHIMA_NAME not in( 'dbo','dba' ) 
+    and T.Table_NAME not like 'Temp%'
+    and T.Table_TYPE <> 'VIEW'
+    and SUBSTR(TRIM(L.TABLE_NAME),CHARINDEX('.',TRIM(L.TABLE_NAME))+1) = T.TABLE_NAME;
+  -------  update table size with last hist
+  update LOCKTABLE_Node1 as L
+    set TABLESIZEGB = h.TABLESIZEGB from
+    edw.table_size_hist_node1 as H
+    where L.TABLE_NAME = h.TABLE_NAME;
+  -------  take distinct table who has size not available in hist table
+  select distinct TABLE_NAME into #DistTableSize from LOCKTABLE_Node1 where TABLESIZEGB is null;
+  -------- calc size of table who has size not available in hist table
+  select TABLE_NAME,Fn_TableSizeKB_writer(TABLE_NAME) as TabSizeKB into #TEMP_SIZE from #DistTableSize;
+  if @@ERROR <> 0 then return-1
+  end if; ---------------insert  calcated size of table who has size not available in hist table
+  -- TRUNCATE TABLE edw.table_size_hist_writer  
+  insert into EDW.table_size_hist_node1(
+    select @StDt as ExecDT,@StTime as ExecTM,TABLE_NAME,TabSizeKB/1048576 from #TEMP_SIZE);
+  update LOCKTABLE_Node1 as L
+    set L.TABLESIZEGB = D.TabSizeKB/1048576 from
+    LOCKTABLE_Node1 as L
+    ,#TEMP_SIZE as D
+    where L.TABLE_NAME = D.TABLE_NAME
+    and L.TABLESIZEGB is null;
+  if @@ERROR <> 0 then return-1
+  end if;
+  select ISNULL(COUNT(1),0) into @SNoConn from LOCKTABLE_Node1 where LOCK_TYPE = 'S' and TABLESIZEGB >= ISNULL(@SizeGb,0);
+  select ISNULL(COUNT(1),0) into @SWNoConn from LOCKTABLE_Node1 where LOCK_TYPE = 'SW' and TABLESIZEGB >= ISNULL(@SizeGb,0);
+  commit work
+end

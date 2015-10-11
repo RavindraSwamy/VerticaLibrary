@@ -1,0 +1,167 @@
+create procedure EDW.server_monitor_Node03( @ThreadAbove integer,@CpuUtilPer decimal(5,2),@MemoryUtilPer decimal(5,2),@PageUtilPer decimal(5,2) ) 
+as
+begin
+  declare @MemoryUtilzation varchar(50)
+  declare @StorageUtilzation varchar(50)
+  declare @VersonUtilization varchar(50)
+  declare @loadingJobs varchar(50)
+  declare @TotloadingJobs varchar(50)
+  declare @NoOfQuery varchar(50)
+  declare @SpaceGB varchar(50)
+  declare @ConnCnt integer
+  declare @idleConnCnt integer
+  declare @ThreadsCntAbove30 integer
+  declare @ReadLock varchar(30)
+  declare @WriteLock varchar(30)
+  declare @IOWaitUtilPer decimal(5,2)
+  declare @StDt date
+  declare @StTime time
+  set @StDt = DATEFORMAT(getdate(),'YYYY-MM-DD')
+  set @StTime = DATEFORMAT(getdate(),'HH:MM AA ')
+  truncate table edw.IdleConnWriter
+  truncate table edw.ThreaGreater20Writer
+  truncate table EDW.server_monitor_Node03
+  truncate table edw.LockTable_writer
+  commit work
+  execute Load_OS_VAR_node1
+  select
+    @CpuUtilPer = CpuUtilPer,
+    @MemoryUtilPer = MemoryUtilPer,
+    @PageUtilPer = convert(decimal(5,2),PageUtilPer),
+    @IOWaitUtilPer = IOWaitUtilPer
+    from Load_OS_VAR_node1
+  select
+    @StorageUtilzation = VALUE
+    from sp_iqstatus()
+    where NAME = ' Main IQ Blocks Used:'
+  select
+    @VersonUtilization = VALUE
+    from sp_iqstatus()
+    where NAME = ' Other Versions:'
+  select
+    @NoOfQuery = count(1)
+    from sp_iqcontext()
+    where cmdline <> 'NO COMMAND'
+  select
+    @loadingJobs = count(1)
+    from sp_iqcontext()
+    where(cmdline like 'Call%' or cmdline like '% INTO %')
+  select
+    @TotloadingJobs = count(1)
+    from sp_iqcontext()
+    where(cmdline like 'Call%' or cmdline like 'Spin%' or cmdline like 'SP_%' or cmdline like '% INTO %')
+    and TRIM(cmdline) not in( 'SP_IQSTAUS','SP_IQCONTEXT','SP_IQTABLESIZE','SP_IQCOLUMN SIZE' ) 
+  select
+    @SpaceGB = COUNT(1)
+    from(select distinct X.Connhandle,'User Name'=X.userid,'I.P. Address'=X.nodeaddr,X.IQthreads,'TempworkspaceGB'=X.TempworkspaceKB/1048576.0,
+        'exec_time'=Datediff(minute,X.lastreqtime,getdate())/60.0,
+        'Last Request Time'=X.lastreqtime,'Last Command Time'=X.lastiqcmdtime,
+        'Temp Table Space Used'=X.TempTablespaceKB/1048576.0,'Temp Work Space Used'=X.TempworkspaceKB/1048576.0,'Command'=Y.cmdline,'Last Idle'=X.lastidle,
+        'Login Time'=X.conncreatetime
+        from sp_iqconnection() as X,sp_iqcontext() as Y where X.connhandle = Y.connhandle and Y.cmdline not like '%NO COMMAND%' and Y.cmdline is not null
+        and Y.cmdline <> ' ' and X.userid not in( 'DBA','dbo' ) and X.TempworkspaceKB/1048576.0 > 50
+        order by TempworkspaceGB desc,x.IQthreads asc) as X
+  select
+    @ReadLock = count(1)
+    from sp_iqlocks()
+    where lock_type = 'S'
+  select
+    @WriteLock = count(1)
+    from sp_iqlocks()
+    where lock_type = 'SW'
+  select
+    @ConnCnt = count(1)
+    from sp_iqconnection()
+  select
+    @idleConnCnt = COUNT(1)
+    from(select distinct X.Connhandle,'User Name'=X.userid,'I.P. Address'=X.nodeaddr,X.IQthreads,'TempworkspaceGB'=X.TempworkspaceKB/1048576.0,
+        'exec_time'=Datediff(minute,X.lastreqtime,getdate())/60.0,
+        'Last Request Time'=X.lastreqtime,'Last Command Time'=X.lastiqcmdtime,
+        'Temp Table Space Used'=X.TempTablespaceKB/1048576.0,'Temp Work Space Used'=X.TempworkspaceKB/1048576.0,'Command'=Y.cmdline,'Last Idle'=Datediff(minute,X.lastreqtime,getdate()),
+        'Login Time'=X.conncreatetime
+        from sp_iqconnection() as X,sp_iqcontext() as Y where X.connhandle = Y.connhandle and Y.cmdline like '%NO COMMAND%' and Y.cmdline is not null
+        and Y.cmdline <> ' ' and X.userid not in( 'DBA','dbo' ) 
+        and Datediff(minute,X.lastreqtime,getdate()) > 30
+        order by TempworkspaceGB desc,x.IQthreads asc) as X
+  insert into edw.IdleConnWriter(
+    select distinct X.Connhandle,
+      'User Name'=X.userid,
+      'I.P. Address'=X.nodeaddr,X.IQthreads,'TempworkspaceGB'=X.TempworkspaceKB/1048576.0,
+      'exec_time'=Datediff(minute,X.lastreqtime,getdate())/60.0,
+      'Last Request Time'=X.lastreqtime,'Last Command Time'=X.lastiqcmdtime,
+      'Temp Table Space Used'=X.TempTablespaceKB/1048576.0,'Temp Work Space Used'=X.TempworkspaceKB/1048576.0,'Command'=Y.cmdline,'Last Idle'=Datediff(minute,X.lastreqtime,getdate()),
+      'Login Time'=X.conncreatetime,'ServerType'='Node03','ServerNo'=3,@StDt,@StTime
+      from sp_iqconnection() as X,sp_iqcontext() as Y where X.connhandle = Y.connhandle and Y.cmdline like '%NO COMMAND%' and Y.cmdline is not null
+      and Y.cmdline <> ' ' and X.userid not in( 'DBA','dbo' ) 
+      and Datediff(minute,X.lastreqtime,getdate()) > 30 order by TempworkspaceGB desc,x.IQthreads asc)
+  select
+    @ThreadsCntAbove30 = COUNT(1)
+    from(select distinct X.Connhandle,'User Name'=X.userid,'I.P. Address'=X.nodeaddr,X.IQthreads,'TempworkspaceGB'=X.TempworkspaceKB/1048576.0,
+        'exec_time'=Datediff(minute,X.lastreqtime,getdate())/60.0,
+        'Last Request Time'=X.lastreqtime,'Last Command Time'=X.lastiqcmdtime,
+        'Temp Table Space Used'=X.TempTablespaceKB/1048576.0,'Temp Work Space Used'=X.TempworkspaceKB/1048576.0,'Command'=Y.cmdline,'Last Idle'=X.lastidle,
+        'Login Time'=X.conncreatetime
+        from sp_iqconnection() as X,sp_iqcontext() as Y where X.connhandle = Y.connhandle and Y.cmdline not like '%NO COMMAND%' and Y.cmdline is not null
+        and Y.cmdline <> ' ' and X.userid not in( 'DBA','dbo' ) and x.IQthreads > @ThreadAbove
+        order by TempworkspaceGB desc,x.IQthreads asc) as X
+  insert into edw.ThreaGreater20Writer(
+    select distinct X.Connhandle,'User Name'=X.userid,'I.P. Address'=X.nodeaddr,X.IQthreads,'TempworkspaceGB'=X.TempworkspaceKB/1048576.0,
+      'exec_time'=Datediff(minute,X.lastreqtime,getdate())/60.0,
+      'Last Request Time'=X.lastreqtime,'Last Command Time'=X.lastiqcmdtime,
+      'Temp Table Space Used'=X.TempTablespaceKB/1048576.0,'Temp Work Space Used'=X.TempworkspaceKB/1048576.0,'Command'=Y.cmdline,'Last Idle'=X.lastidle,
+      'Login Time'=X.conncreatetime,'ServerType'='Node03','ServerNo'=3,@StDt,@StTime
+      from sp_iqconnection() as X,sp_iqcontext() as Y where X.connhandle = Y.connhandle and Y.cmdline not like '%NO COMMAND%' and Y.cmdline is not null
+      and Y.cmdline <> ' ' and X.userid not in( 'DBA','dbo' ) and x.IQthreads > @ThreadAbove
+      order by TempworkspaceGB desc,x.IQthreads asc)
+  declare @ReadLockCnt integer
+  declare @WriteLockCnt integer
+  declare @SIZEGB integer
+  set @SIZEGB = 100
+  execute EDW.SP_LOCKTABLESIZE_Mind_writer @StDt,@StTime,@SIZEGB,@ReadLockCnt,@WriteLockCnt
+  if sqlstate <> 0 continue
+  declare @runtime unsigned bigint
+  declare @TotStSec unsigned bigint
+  declare @TotEdSec unsigned bigint
+  set @TotStSec = HOUR(getdate())*60*60+MINUTE(getdate())*60+SECOND(getdate())
+  select top 10 * into #EXETIME from EDW.T0300_ACCOUNT
+  set @TotEdSec = HOUR(getdate())*60*60+MINUTE(getdate())*60+SECOND(getdate())
+  set @runtime = (@TotEdSec-@TotStSec)
+  insert into server_monitor_Node03( ServerType,
+    ServerNo,ExecDT,ExecTM,CpuUtilPer,MemoryUtilPer,
+    PageUtilPer,QryResponseTime,ServerResponseInd,StorageUtilization,
+    VersionUtilization,TotalConnCnt,idleConnCnt,NoOfQuery,
+    CntThreadsAbove,WriteLock,
+    ReadLock,loadingJobs,
+    TotloadingJobs,
+    SpaceGB,GrtReadLockCnt,
+    GrtWriteLockCnt,
+    IOWaitUtilPer ) 
+    select 'ServerType'='NODE3',
+      'ServerNo'=1,
+      @StDt,
+      @StTime,
+      @CpuUtilPer,
+      @MemoryUtilPer,
+      @PageUtilPer,
+      'ExeTime'=@runtime,
+      'ServerStatusInd'=case when ExeTime < 15 then 'good'
+      when ExeTime > 45 then 'slow' else 'average' end,
+      'StorageUtilization'=substring(@StorageUtilzation,locate(@StorageUtilzation,',',1)+1,3),
+      'VersionUtilization'=case when RIGHT(TRIM(substring(@VersonUtilization,locate(@VersonUtilization,'=',1)+1)),2) = 'Mb' then
+        convert(varchar(20),(convert(real,REPLACE(TRIM(substring(@VersonUtilization,locate(@VersonUtilization,'=',1)+1)),'Mb',''))/1024))
+      else REPLACE(substring(@VersonUtilization,locate(@VersonUtilization,'=',1)+1),'Gb','')
+      end,
+      @ConnCnt,
+      @idleConnCnt,
+      @NoOfQuery,
+      @ThreadsCntAbove30,
+      @WriteLock,
+      @ReadLock,
+      @loadingJobs,
+      @TotloadingJobs,
+      @SpaceGB,
+      @ReadLockCnt,
+      @WriteLockCnt,
+      @IOWaitUtilPer
+  commit work
+end

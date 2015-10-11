@@ -1,0 +1,460 @@
+create procedure EDW.GOOGLE_NOW_INPUT_TABLE()
+begin
+  create table #INPUT_FILE_1(
+    NAME varchar(500) null,
+    GAMIL_ID varchar(250) null,
+    REG_MOBILE varchar(50) null,
+    USER_ID varchar(50) null,
+    SOURCE_ACCOUNT_NBR varchar(50) null,
+    UNIQUE_ID varchar(50) null,
+    LINK_SOURCE_ACCOUNT_NBR varchar(50) null,
+    SOURCE_SYSTEM_CODE varchar(50) null,
+    ACCOUNT_OPEN_DATE varchar(50) null,
+    ACCOUNT_CLOSE_DATE varchar(50) null,
+    UCIC varchar(50) null,
+    );
+  commit work;
+  load into table #INPUT_FILE_1( USER_ID '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/PwC/YET_TO_LOAD_FILES/users_infinity_id.out' skip 0 preview on quotes off escapes off;
+  commit work;
+  update #INPUT_FILE_1 as A set USER_ID = TRIM(USER_ID);
+  commit work;
+  select distinct USER_ID,
+    cast(null as varchar(50)) as UCIC
+    into #INPUT_FILE_2
+    from #INPUT_FILE_1
+    where USER_ID is not null;
+  commit work;
+  update #INPUT_FILE_2 set USER_ID = TRIM(USER_ID);
+  commit work;
+  select A.*,TRIM(SOURCE_ACCOUNT_NBR) as SOURCE_ACCOUNT_NBR
+    into #INPUT_FILE_3
+    from #INPUT_FILE_2 as A
+      ,EDW.T09315_CAR_ACCOUNTS as B
+    where A.USER_ID = TRIM(B.OLD_NET_USER_ID);
+  commit work;
+  select A.*,TRIM(SOURCE_ACCOUNT_NBR) as SOURCE_ACCOUNT_NBR
+    into #INPUT_FILE_4
+    from #INPUT_FILE_2 as A
+      ,EDW.T09315_CAR_ACCOUNTS as B
+    where A.USER_ID = TRIM(B.USER_ID);
+  commit work;
+  select SUB.*,cast(null as varchar(50)) as SOURCE_PARTY_ID,cast(null as integer) as SOURCE_SYSTEM_CODE
+    into #INPUT_FILE
+    from(select * from #INPUT_FILE_3 union all select * from #INPUT_FILE_4) as SUB;
+  commit work;
+  update #INPUT_FILE as A
+    set SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID),SOURCE_SYSTEM_CODE = 30 from
+    EDW.T09311_LIABILITY_ACCOUNT_ADDON as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR and B.DEL_FLG = 'N' and A.SOURCE_PARTY_ID is null;
+  update #INPUT_FILE as A
+    set SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID),SOURCE_SYSTEM_CODE = 20 from
+    RECONP.CARD_MASTER_AJ0904 as B
+    where A.SOURCE_ACCOUNT_NBR = B.CARD_NBR and A.SOURCE_PARTY_ID is null;
+  commit work;
+  update #INPUT_FILE as A
+    set SOURCE_PARTY_ID = TRIM(C.SOURCE_PARTY_ID),SOURCE_SYSTEM_CODE = 20 from
+    EDW.T0330_ACCOUNT_CARD as B,RECONP.CARD_MASTER_AJ0904 as C
+    where A.SOURCE_ACCOUNT_NBR = B.CARD_NBR and B.ACCOUNT_NBR = C.ACCOUNT_NBR and A.SOURCE_PARTY_ID is null;
+  commit work;
+  update #INPUT_FILE as A
+    set SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID),SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE from
+    EDW.B0328_PARTY_ACCOUNT as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR and A.SOURCE_PARTY_ID is null;
+  commit work;
+  update #INPUT_FILE as A
+    set UCIC = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID) and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder')
+    and A.SOURCE_SYSTEM_CODE = 30 and B.SOURCE_SYSTEM_CODE = 30 and A.UCIC is null;
+  update #INPUT_FILE as A
+    set UCIC = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID)
+    -------------(ACC_HOLDER IS NULL OR  ACC_HOLDER = 'Main Holder') AND
+    and A.SOURCE_SYSTEM_CODE = 20 and B.SOURCE_SYSTEM_CODE = 20 and A.UCIC is null;
+  update #INPUT_FILE as A
+    set UCIC = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_PARTY_ID = TRIM(B.SOURCE_PARTY_ID)
+    -------------(ACC_HOLDER IS NULL OR  ACC_HOLDER = 'Main Holder') AND
+    and A.SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE
+    and A.UCIC is null;
+  commit work;
+  select USER_ID,UCIC
+    into #INPUT_FILE_FINAL
+    from #INPUT_FILE
+    where UCIC is not null
+    group by USER_ID,UCIC;
+  commit work;
+  select distinct A.USER_ID,A.UCIC,B.SOURCE_ACCOUNT_NBR,B.ACCOUNT_NBR,
+    cast(null as integer) as SOURCE_SYSTEM_CODE,
+    cast(null as varchar(50)) as NEW_USER_ID,
+    cast(null as varchar(50)) as OLD_USER_ID,
+    cast(null as date) as ACCOUNT_OPEN_DATE,
+    cast(null as date) as ACCOUNT_CLOSE_DATE,
+    cast(null as varchar(50)) as ACCOUNT_TYPE,
+    cast(null as date) as DUE_DATE_MATURITY_DATE,
+    cast(null as date) as LAST_LOGIN_DATE,
+    cast(null as decimal(18,2)) as DUE_AMOUNT_MATURITY_AMOUNT
+    into #LIABILITY
+    from #INPUT_FILE_FINAL as A
+      ,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.UCIC = B.UCIC_VALUE
+    and B.SOURCE_ACCOUNT_NBR is not null
+    and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder')
+    and B.SOURCE_SYSTEM_CODE = 30;
+  commit work;
+  commit work;
+  select distinct
+    A.USER_ID,
+    A.UCIC,
+    B.SOURCE_ACCOUNT_NBR,
+    B.ACCOUNT_NBR,
+    cast(null as integer) as SOURCE_SYSTEM_CODE,
+    cast(null as varchar(50)) as NEW_USER_ID,
+    cast(null as varchar(50)) as OLD_USER_ID,
+    cast(null as date) as ACCOUNT_OPEN_DATE,
+    cast(null as date) as ACCOUNT_CLOSE_DATE,
+    cast(null as varchar(50)) as ACCOUNT_TYPE,
+    cast(null as date) as DUE_DATE_MATURITY_DATE,
+    cast(null as date) as LAST_LOGIN_DATE,
+    cast(null as decimal(18,2)) as DUE_AMOUNT_MATURITY_AMOUNT
+    into #NONLIABILITY
+    from #INPUT_FILE_FINAL as A
+      ,P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.UCIC = B.UCIC_VALUE
+    and B.SOURCE_ACCOUNT_NBR is not null
+    -----------AND (ACC_HOLDER IS NULL OR  ACC_HOLDER = 'Main Holder') AND
+    and B.SOURCE_SYSTEM_CODE in( 20,50,51,52,53,54 ) 
+    and SUBSTR(B.SOURCE_PARTY_ID,1,4) < 'COB_';
+  commit work;
+  select SUB.*
+    into #ICICI_Bank_alerts_on_Google
+    from(select * from #LIABILITY union all
+      select * from #NONLIABILITY) as SUB;
+  commit work;
+  update #ICICI_Bank_alerts_on_Google as A
+    set SOURCE_SYSTEM_CODE = B.SOURCE_SYSTEM_CODE,
+    ACCOUNT_OPEN_DATE = B.ACCOUNT_OPEN_DATE,
+    ACCOUNT_CLOSE_DATE = B.ACCOUNT_CLOSE_DATE from
+    EDW.T0300_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR;
+  commit work;
+  update #ICICI_Bank_alerts_on_Google as A
+    set NEW_USER_ID = TRIM(CA.USER_ID),
+    OLD_USER_ID = TRIM(CA.Old_Net_User_ID) from
+    EDW.T09315_CAR_ACCOUNTS as CA
+    where A.SOURCE_ACCOUNT_NBR = CA.SOURCE_ACCOUNT_NBR;
+  commit work;
+  select *
+    into #ICICI_Bank_alerts_on_Google_NOW
+    from #ICICI_Bank_alerts_on_Google
+    where ACCOUNT_CLOSE_DATE is null;
+  update #ICICI_Bank_alerts_on_Google_Now as A
+    set ACCOUNT_TYPE = B.PRODUCT_TYPE from
+    EDW.T09311_LIABILITY_ACCOUNT_ADDON as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR;
+  commit work;
+  update #ICICI_Bank_alerts_on_Google_Now as A
+    set DUE_DATE_MATURITY_DATE = B.MATURITY_DATE,
+    DUE_AMOUNT_MATURITY_AMOUNT = B.MATURITY_AMOUNT from
+    EDW.T0324_DEPOSIT_TERM_ACCOUNT as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and ACCOUNT_TYPE = 'FD';
+  commit work;
+  select A.ACCOUNT_NBR,MAX(STMT_GENERATE_DATE) as MAX_STMT_GENERATE_DATE
+    into #CC_DUMP
+    from #ICICI_Bank_alerts_on_Google_Now as A,EDW.T0930_Statement_Summary as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    group by A.ACCOUNT_NBR;
+  update #ICICI_Bank_alerts_on_Google_Now as A
+    set DUE_DATE_MATURITY_DATE = C.PRINT_DUEDATE,DUE_AMOUNT_MATURITY_AMOUNT = ABS(C.STMT_END_BALANCE) from
+    #CC_DUMP as B,EDW.T0930_Statement_Summary as C
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR and B.ACCOUNT_NBR = C.ACCOUNT_NBR and B.MAX_STMT_GENERATE_DATE = C.STMT_GENERATE_DATE and A.SOURCE_SYSTEM_CODE = 20;
+  commit work;
+  select SUB.*,
+    cast(null as date) as FINAL_NEXT_INSTALLMENT_DATE
+    into #SUB
+    from(select A.SOURCE_ACCOUNT_NBR,
+        B.INSTL_AMT,
+        B.INSL_START_DATE,
+        DATEADD(mm,DATEDIFF(mm,B.INSL_START_DATE,GETDATE()),INSL_START_DATE) as NEXT_INSTALLMENT_DATE,
+        DATEADD(mm,DATEDIFF(mm,B.INSL_START_DATE,GETDATE())+1,INSL_START_DATE) as NEXT_NEXT_INSTALLMENT_DATE
+        from #ICICI_Bank_alerts_on_Google_Now as A
+          ,FIN_RAPG.CONTROLDUMP_FINAL as B
+        where A.SOURCE_ACCOUNT_NBR = B.AGREEMENTNO
+        and AS_OF_DATE = (select max(date(AS_OF_DATE)) from FIN_RAPG.CONTROLDUMP_FINAL) union all
+      select A.SOURCE_ACCOUNT_NBR,
+        B.EMI,
+        B.EMI_START_DATE,
+        DATEADD(mm,DATEDIFF(mm,B.EMI_START_DATE,GETDATE()),EMI_START_DATE) as NEXT_INSTALLMENT_DATE,
+        DATEADD(mm,DATEDIFF(mm,B.EMI_START_DATE,GETDATE())+1,EMI_START_DATE) as NEXT_NEXT_INSTALLMENT_DATE
+        from #ICICI_Bank_alerts_on_Google_Now as A
+          ,FIN_BANK.FINNONE_DUMP_NEW_HFC as B
+        where A.SOURCE_ACCOUNT_NBR = B.FILE_NO
+        and SUBSTR(A.SOURCE_ACCOUNT_NBR,1,2) in( 'LB','LH','NH' ) union all
+      select A.SOURCE_ACCOUNT_NBR,
+        B.EMI,
+        B.EMI_START_DATE,
+        DATEADD(mm,DATEDIFF(mm,B.EMI_START_DATE,GETDATE()),EMI_START_DATE) as NEXT_INSTALLMENT_DATE,
+        DATEADD(mm,DATEDIFF(mm,B.EMI_START_DATE,GETDATE())+1,EMI_START_DATE) as NEXT_NEXT_INSTALLMENT_DATE
+        from #ICICI_Bank_alerts_on_Google_Now as A
+          ,FIN_BANK.FINNONE_DUMP_NEW_BANK as B
+        where A.SOURCE_ACCOUNT_NBR = B.FILE_NO
+        and SUBSTR(A.SOURCE_ACCOUNT_NBR,1,2) in( 'LB','LH','NH' ) ) as SUB;
+  commit work;
+  update #SUB as A
+    set FINAL_NEXT_INSTALLMENT_DATE = (case when NEXT_INSTALLMENT_DATE = cast(GETDATE() as date) then NEXT_INSTALLMENT_DATE else NEXT_NEXT_INSTALLMENT_DATE end);
+  commit work;
+  update #ICICI_Bank_alerts_on_Google_Now as A
+    set DUE_DATE_MATURITY_DATE = B.FINAL_NEXT_INSTALLMENT_DATE,
+    DUE_AMOUNT_MATURITY_AMOUNT = B.INSTL_AMT from
+    #SUB as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  select *,
+    cast(null as varchar(50)) as MASKED_SOURCE_ACCOUNT_NBR
+    into #ICICI_Bank_alerts_on_Google_Now_FINAL
+    from #ICICI_Bank_alerts_on_Google_Now
+    where cast(DUE_DATE_MATURITY_DATE as date) between cast(GETDATE()+4 as date) and cast(GETDATE()+10 as date);
+  commit work;
+  update #ICICI_Bank_alerts_on_Google_Now_FINAL as A
+    set MASKED_SOURCE_ACCOUNT_NBR = REPEAT('X',(LENGTH(SOURCE_ACCOUNT_NBR)-4)) || RIGHT(SOURCE_ACCOUNT_NBR,4)
+    where ACCOUNT_TYPE = 'FD';
+  commit work;
+  update #ICICI_Bank_alerts_on_Google_Now_FINAL as A
+    set MASKED_SOURCE_ACCOUNT_NBR = LEFT(SOURCE_ACCOUNT_NBR,5) || REPEAT('X',(LENGTH(SOURCE_ACCOUNT_NBR)-9)) || RIGHT(SOURCE_ACCOUNT_NBR,4)
+    where SOURCE_SYSTEM_CODE in( 50,51,52,53,54 ) ;
+  commit work;
+  select SUB.*
+    into #SUB3
+    from(select A.USER_ID,
+        A.NEW_USER_ID
+        from #ICICI_Bank_alerts_on_Google as A
+        where NEW_USER_ID is not null union all
+      select A.USER_ID,
+        A.OLD_USER_ID
+        from #ICICI_Bank_alerts_on_Google as A
+        where OLD_USER_ID is not null) as SUB;
+  ----2800
+  commit work;
+  select USER_ID,NEW_USER_ID
+    into #SUB4
+    from #SUB3
+    group by USER_ID,NEW_USER_ID;
+  update #SUB4 as A
+    set NEW_USER_ID = TRIM(NEW_USER_ID);
+  commit work;
+  select distinct
+    A.USER_ID,c.payee_list_id,pay_req_id,q.ubp_user_id,q.pmt_amt,p.payee_name,q.r_mod_id,q.r_mod_time,
+    cast(q.INSTANCE_PMT_DT as date) as inst_pmt_dt,
+    q.Pmt_Stat,CONSUMER_CD,PAYEE_NIC_NAME,bill_dt,c.payee_id,bill_due_date
+    into #BILL_DUMP
+    from edw.T09533_BENEFICIARY_DETAILS as p
+      ,edw.T09532_CUSTOMER_PAY_REGISTER_DETAILS as c
+      ,edw.T09534_BILL_PAY_REQUEST_DETAILS as q
+      ,#SUB4 as A
+    where c.payee_list_id = q.payee_list_id
+    and c.payee_id = p.payee_id
+    and TRIM(c.ubp_user_id) = TRIM(q.ubp_user_id)
+    and TRIM(q.ubp_user_id) = TRIM(A.NEW_USER_ID)
+    and(q.r_mod_id = 'UPLOAD' or q.r_mod_id = 'AUTOUPLOAD')
+    and bill_due_date between cast(GETDATE()+5 as date) and cast(GETDATE()+10 as date);
+  commit work;
+  select distinct
+    USER_ID as user_infinity_id,
+    2 as event_type_id,
+    'http://m.icicibank.com' as action_link,
+    'Bill Pay Alert' as content_head,
+    payee_name as content_str_a,
+    null as content_str_b,
+    null as content_str_c,
+    null as content_int_a,
+    null as content_int_b,
+    cast(pmt_amt as decimal(18,2)) as content_float_a,
+    null as content_float_b,
+    DATEFORMAT(bill_due_date,'DD-MMM-YYYY') as content_date_a,
+    null as content_date_b,
+    null as content_long_a,
+    null as content_long_b,
+    null as card_start_time,
+    null as card_end_time,
+    2 as card_priority,
+    bill_due_date,
+    payee_name as source_account_nbr
+    into #TABLE_1 from #BILL_DUMP;
+  commit work;
+  select distinct
+    USER_ID as user_infinity_id,
+    4 as event_type_id,
+    'http://m.icicibank.com' as action_link,
+    'FD Maturity Alert' as content_head,
+    MASKED_SOURCE_ACCOUNT_NBR as content_str_a,
+    null as content_str_b,
+    null as content_str_c,
+    null as content_int_a,
+    null as content_int_b,
+    null as content_float_a,
+    null as content_float_b,
+    DATEFORMAT(DUE_DATE_MATURITY_DATE,'DD-MMM-YYYY') as content_date_a,
+    null as content_date_b,
+    null as content_long_a,
+    null as content_long_b,
+    null as card_start_time,
+    null as card_end_time,
+    4 as card_priority,
+    DUE_DATE_MATURITY_DATE,
+    SOURCE_ACCOUNT_NBR
+    into #TABLE_2
+    from #ICICI_Bank_alerts_on_Google_Now_FINAL
+    where ACCOUNT_TYPE = 'FD';
+  commit work;
+  select USER_ID as user_infinity_id,
+    5 as event_type_id,
+    'http://m.icicibank.com' as action_link,
+    'Loan EMI Alert' as content_head,
+    MASKED_SOURCE_ACCOUNT_NBR as content_str_a,
+    null as content_str_b,
+    null as content_str_c,
+    null as content_int_a,
+    null as content_int_b,
+    cast(DUE_AMOUNT_MATURITY_AMOUNT as decimal(18,2)) as content_float_a,
+    null as content_float_b,
+    DATEFORMAT(DUE_DATE_MATURITY_DATE,'DD-MMM-YYYY') as content_date_a,
+    null as content_date_b,
+    null as content_long_a,
+    null as content_long_b,
+    null as card_start_time,
+    null as card_end_time,
+    3 as card_priority,
+    DUE_DATE_MATURITY_DATE,
+    SOURCE_ACCOUNT_NBR
+    into #TABLE_3
+    from #ICICI_Bank_alerts_on_Google_Now_FINAL
+    where SOURCE_SYSTEM_CODE in( 50,51,52,53,54 ) ;
+  commit work;
+  select USER_ID,
+    ACCOUNT_NBR,
+    SOURCE_ACCOUNT_NBR,
+    DUE_AMOUNT_MATURITY_AMOUNT,
+    DUE_DATE_MATURITY_DATE,
+    cast(null as date) as CARD_ISSUE_DATE
+    into #TEST
+    from #ICICI_Bank_alerts_on_Google_Now_FINAL
+    where SOURCE_SYSTEM_CODE = 20
+    group by USER_ID,
+    ACCOUNT_NBR,
+    SOURCE_ACCOUNT_NBR,
+    DUE_AMOUNT_MATURITY_AMOUNT,
+    DUE_DATE_MATURITY_DATE;
+  commit work;
+  select USER_ID,
+    ACCOUNT_NBR,
+    cast(null as varchar(20)) as SOURCE_ACCOUNT_NBR,
+    cast(null as varchar(20)) as MASKED_ACCOUNT_NBR,
+    DUE_AMOUNT_MATURITY_AMOUNT,
+    DUE_DATE_MATURITY_DATE
+    into #TEST_FINAL
+    from #TEST
+    group by USER_ID,
+    ACCOUNT_NBR,
+    SOURCE_ACCOUNT_NBR,
+    DUE_AMOUNT_MATURITY_AMOUNT,
+    DUE_DATE_MATURITY_DATE;
+  commit work;
+  update #TEST as A
+    set CARD_ISSUE_DATE = B.CARD_ISSUE_DATE from EDW.T0308_CARD as B
+    where A.SOURCE_ACCOUNT_NBR = B.CARD_NBR;
+  commit work;
+  select ACCOUNT_NBR,MAX(CARD_ISSUE_DATE) as MAX_CARD_ISSUE_DATE
+    into #TEST_1
+    from #TEST
+    group by ACCOUNT_NBR;
+  commit work;
+  select A.*
+    into #TEST_2
+    from #TEST as A,#TEST_1 as B
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR
+    and A.CARD_ISSUE_DATE = B.MAX_CARD_ISSUE_DATE;
+  commit work;
+  select ACCOUNT_NBR,
+    MIN(SOURCE_ACCOUNT_NBR) as MIN_SOURCE_ACCOUNT_NBR
+    into #TEST_3
+    from #TEST_2
+    group by ACCOUNT_NBR;
+  commit work;
+  update #TEST_FINAL as A
+    set SOURCE_ACCOUNT_NBR = B.MIN_SOURCE_ACCOUNT_NBR,
+    MASKED_ACCOUNT_NBR = REPEAT('X',(LENGTH(B.MIN_SOURCE_ACCOUNT_NBR)-4)) || RIGHT(B.MIN_SOURCE_ACCOUNT_NBR,4) from
+    #TEST_3 as B -------------CHANGE HERE ALSO
+    where A.ACCOUNT_NBR = B.ACCOUNT_NBR;
+  commit work;
+  select distinct
+    USER_ID as user_infinity_id,
+    6 as event_type_id,
+    'http://m.icicibank.com' as action_link,
+    'Credit Card Alert' as content_head,
+    MASKED_ACCOUNT_NBR as content_str_a,
+    null as content_str_b,
+    null as content_str_c,
+    null as content_int_a,
+    null as content_int_b,
+    cast(DUE_AMOUNT_MATURITY_AMOUNT as decimal(18,2)) as content_float_a,
+    null as content_float_b,
+    DATEFORMAT(DUE_DATE_MATURITY_DATE,'DD-MMM-YYYY') as content_date_a,
+    null as content_date_b,
+    null as content_long_a,
+    null as content_long_b,
+    null as card_start_time,
+    null as card_end_time,
+    1 as card_priority,
+    DUE_DATE_MATURITY_DATE,
+    SOURCE_ACCOUNT_NBR
+    into #TABLE_4
+    from #TEST_FINAL;
+  commit work;
+  select SUB.*,
+    (TRIM(USER_INFINITY_ID) || TRIM(SOURCE_ACCOUNT_NBR) || CONTENT_DATE_A || ISNULL(CONTENT_FLOAT_A,0)) as FLAG
+    into #TABLE_FINAL
+    from(select * from #TABLE_1 union all
+      select * from #TABLE_2 union all
+      select * from #TABLE_3 union all
+      select * from #TABLE_4) as SUB
+    order by user_infinity_id asc,card_priority asc,BILL_DUE_DATE asc;
+  select *,RANK() over(partition by user_infinity_id order by card_priority asc,BILL_DUE_DATE asc,CONTENT_FLOAT_A desc) as RANK_1
+    into #TABLE_FINAL_1
+    from #TABLE_FINAL
+    where not FLAG = any(select FLAG from edw.MAIN_GOOGLE_NOW_EXCLUSION_BASE where FLAG is not null);
+  commit work;
+  truncate table EDW.GOOGLE_NOW_TABLE;
+  commit work;
+  insert into EDW.GOOGLE_NOW_TABLE
+    select user_infinity_id,
+      event_type_id,
+      action_link,
+      content_head,
+      content_str_a,
+      content_str_b,
+      content_str_c,
+      content_int_a,
+      content_int_b,
+      content_float_a,
+      content_float_b,
+      content_date_a,
+      content_date_b,
+      content_long_a,
+      content_long_b,
+      card_start_time,
+      card_end_time,
+      card_priority,
+      bill_due_date,
+      FLAG,
+      RANK_1,
+      source_account_nbr,
+      GETDATE()
+      from #TABLE_FINAL_1
+      where RANK_1 <= 2;
+  commit work;
+  insert into edw.MAIN_GOOGLE_NOW_EXCLUSION_BASE select * from EDW.GOOGLE_NOW_TABLE;
+  commit work
+end

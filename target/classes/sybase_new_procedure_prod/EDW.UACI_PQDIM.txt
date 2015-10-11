@@ -1,0 +1,329 @@
+create procedure EDW.UACI_PQDIM()
+begin
+  truncate table MCCM.UACI_PQDIM;
+  commit work;
+  select distinct UCIC_CODE
+    into #PQR
+    from MCCM.PRE_QUALIFIED_OFFERS where UCIC_CODE is not null;
+  --WHERE UCIC_CODE IN ('0000000053115926','0000000000000074');
+  commit work;
+  insert into MCCM.UACI_PQDIM
+    select UCIC_CODE,
+      cast(null as varchar(10)) as PRODUCT_HL_TYPE,
+      cast(null as varchar(10)) as PRODUCT_CC_TYPE,
+      cast(null as varchar(10)) as PRODUCT_AL_TYPE,
+      cast(null as varchar(10)) as PRODUCT_AL_TOPUP_TYPE,
+      cast(null as varchar(10)) as PRODUCT_HL_TOPUP_TYPE,
+      cast(null as varchar(10)) as PRODUCT_PL_TOPUP_TYPE,
+      cast(null as varchar(10)) as PRODUCT_PLCC_OTL_TYPE,
+      cast(null as varchar(10)) as PRODUCT_LAP_TYPE,
+      cast(null as varchar(10)) as PRODUCT_PL_TYPE,
+      cast(null as varchar(10)) as EXPIRY_DATE_HL,
+      cast(null as varchar(10)) as EXPIRY_DATE_CC,
+      cast(null as varchar(10)) as EXPIRY_DATE_AL,
+      cast(null as varchar(10)) as EXPIRY_DATE_AL_TOPUP,
+      cast(null as varchar(10)) as EXPIRY_DATE_HL_TOPUP,
+      cast(null as varchar(10)) as EXPIRY_DATE_PL_TOPUP,
+      cast(null as varchar(10)) as EXPIRY_DATE_PLCC_OTL,
+      cast(null as varchar(10)) as EXPIRY_DATE_LAP,
+      cast(null as varchar(10)) as EXPIRY_DATE_PL,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_HL,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_CC,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_AL,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_AL_TOPUP,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_HL_TOPUP,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_PL_TOPUP,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_PLCC_OTL,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_LAP,
+      cast(null as decimal(17,2)) as ASSESSED_INCOME_EMI_CR_LIMIT_PL,
+      cast(null as decimal(17,2)) as MULTIPLIER_HL,
+      cast(null as decimal(17,2)) as MULTIPLIER_CC,
+      cast(null as decimal(17,2)) as MULTIPLIER_AL,
+      cast(null as decimal(17,2)) as MULTIPLIER_AL_TOPUP,
+      cast(null as decimal(17,2)) as MULTIPLIER_HL_TOPUP,
+      cast(null as decimal(17,2)) as MULTIPLIER_PL_TOPUP,
+      cast(null as decimal(17,2)) as MULTIPLIER_PLCC_OTL,
+      cast(null as decimal(17,2)) as MULTIPLIER_LAP,
+      cast(null as decimal(17,2)) as MULTIPLIER_PL,
+      cast(null as decimal(20,2)) as TENOR_HL,
+      cast(null as decimal(20,2)) as TENOR_CC,
+      cast(null as decimal(20,2)) as TENOR_AL,
+      cast(null as decimal(20,2)) as TENOR_AL_TOPUP,
+      cast(null as decimal(20,2)) as TENOR_HL_TOPUP,
+      cast(null as decimal(20,2)) as TENOR_PL_TOPUP,
+      cast(null as decimal(20,2)) as TENOR_PLCC_OTL,
+      cast(null as decimal(20,2)) as TENOR_LAP,
+      cast(null as decimal(20,2)) as TENOR_PL,
+      cast(null as varchar(50)) as GCRN_NO_HL,
+      cast(null as varchar(50)) as GCRN_NO_CC,
+      cast(null as varchar(50)) as GCRN_NO_AL,
+      cast(null as varchar(50)) as GCRN_NO_AL_TOPUP,
+      cast(null as varchar(50)) as GCRN_NO_HL_TOPUP,
+      cast(null as varchar(50)) as GCRN_NO_PL_TOPUP,
+      cast(null as varchar(50)) as GCRN_NO_PLCC_OTL,
+      cast(null as varchar(50)) as GCRN_NO_LAP,
+      cast(null as varchar(50)) as GCRN_NO_PL,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_HL,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_CC,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_AL,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_AL_TOPUP,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_HL_TOPUP,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_PL_TOPUP,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_PLCC_OTL,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_LAP,
+      cast(null as decimal(17,2)) as LOAN_AMOUNT_PL,
+      cast(null as decimal(17,2)) as MAX_LIMIT_HL,
+      cast(null as decimal(17,2)) as MAX_LIMIT_CC,
+      cast(null as decimal(17,2)) as MAX_LIMIT_AL,
+      cast(null as decimal(17,2)) as MAX_LIMIT_AL_TOPUP,
+      cast(null as decimal(17,2)) as MAX_LIMIT_HL_TOPUP,
+      cast(null as decimal(17,2)) as MAX_LIMIT_PL_TOPUP,
+      cast(null as decimal(17,2)) as MAX_LIMIT_PLCC_OTL,
+      cast(null as decimal(17,2)) as MAX_LIMIT_LAP,
+      cast(null as decimal(17,2)) as MAX_LIMIT_PL,
+      cast(null as decimal(9,2)) as POS_HL,
+      cast(null as decimal(9,2)) as POS_CC,
+      cast(null as decimal(9,2)) as POS_AL,
+      cast(null as decimal(9,2)) as POS_AL_TOPUP,
+      cast(null as decimal(9,2)) as POS_HL_TOPUP,
+      cast(null as decimal(9,2)) as POS_PL_TOPUP,
+      cast(null as decimal(9,2)) as POS_PLCC_OTL,
+      cast(null as decimal(9,2)) as POS_LAP,
+      cast(null as decimal(9,2)) as POS_PL,
+      cast(null as varchar(1)) as UNQ_HL,
+      cast(null as varchar(1)) as UNQ_CC,
+      cast(null as varchar(1)) as UNQ_AL,
+      cast(null as varchar(1)) as UNQ_AL_TOPUP,
+      cast(null as varchar(1)) as UNQ_HL_TOPUP,
+      cast(null as varchar(1)) as UNQ_PL_TOPUP,
+      cast(null as varchar(1)) as UNQ_PLCC_OTL,
+      cast(null as varchar(1)) as UNQ_LAP,
+      cast(null as varchar(1)) as UNQ_PL
+      from #PQR;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_HL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_HL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_HL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_HL = B.MULTIPLIER,
+    A.TENOR_HL = B.TENOR,
+    A.GCRN_NO_HL = B.GCRN_NO,
+    A.LOAN_AMOUNT_HL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_HL = B.MAX_LIMIT,
+    A.POS_HL = B.POS,
+    A.UNQ_HL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'HL-GOLD';
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_HL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_HL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_HL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_HL = B.MULTIPLIER,
+    A.TENOR_HL = B.TENOR,
+    A.GCRN_NO_HL = B.GCRN_NO,
+    A.LOAN_AMOUNT_HL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_HL = B.MAX_LIMIT,
+    A.POS_HL = B.POS,
+    A.UNQ_HL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'HL' and A.PRODUCT_HL_TYPE is null;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_HL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_HL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_HL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_HL = B.MULTIPLIER,
+    A.TENOR_HL = B.TENOR,
+    A.GCRN_NO_HL = B.GCRN_NO,
+    A.LOAN_AMOUNT_HL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_HL = B.MAX_LIMIT,
+    A.POS_HL = B.POS,
+    A.UNQ_HL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'HL-BT' and A.PRODUCT_HL_TYPE is null;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_HL_TOPUP_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_HL_TOPUP = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_HL_TOPUP = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_HL_TOPUP = B.MULTIPLIER,
+    A.TENOR_HL_TOPUP = B.TENOR,
+    A.GCRN_NO_HL_TOPUP = B.GCRN_NO,
+    A.LOAN_AMOUNT_HL_TOPUP = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_HL_TOPUP = B.MAX_LIMIT,
+    A.POS_HL_TOPUP = B.POS,
+    A.UNQ_HL_TOPUP = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'HL-TOPUP';
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_AL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_AL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_AL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_AL = B.MULTIPLIER,
+    A.TENOR_AL = B.TENOR,
+    A.GCRN_NO_AL = B.GCRN_NO,
+    A.LOAN_AMOUNT_AL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_AL = B.MAX_LIMIT,
+    A.POS_AL = B.POS,
+    A.UNQ_AL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'AL-GOLD';
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_AL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_AL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_AL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_AL = B.MULTIPLIER,
+    A.TENOR_AL = B.TENOR,
+    A.GCRN_NO_AL = B.GCRN_NO,
+    A.LOAN_AMOUNT_AL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_AL = B.MAX_LIMIT,
+    A.POS_AL = B.POS,
+    A.UNQ_AL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'AU' and A.PRODUCT_AL_TYPE is null;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_AL_TOPUP_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_AL_TOPUP = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_AL_TOPUP = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_AL_TOPUP = B.MULTIPLIER,
+    A.TENOR_AL_TOPUP = B.TENOR,
+    A.GCRN_NO_AL_TOPUP = B.GCRN_NO,
+    A.LOAN_AMOUNT_AL_TOPUP = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_AL_TOPUP = B.MAX_LIMIT,
+    A.POS_AL_TOPUP = B.POS,
+    A.UNQ_AL_TOPUP = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'AL-TOPUPG';
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_AL_TOPUP_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_AL_TOPUP = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_AL_TOPUP = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_AL_TOPUP = B.MULTIPLIER,
+    A.TENOR_AL_TOPUP = B.TENOR,
+    A.GCRN_NO_AL_TOPUP = B.GCRN_NO,
+    A.LOAN_AMOUNT_AL_TOPUP = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_AL_TOPUP = B.MAX_LIMIT,
+    A.POS_AL_TOPUP = B.POS,
+    A.UNQ_AL_TOPUP = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'AL-TOPUPN' and A.PRODUCT_AL_TOPUP_TYPE is null;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_PL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_PL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_PL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_PL = B.MULTIPLIER,
+    A.TENOR_PL = B.TENOR,
+    A.GCRN_NO_PL = B.GCRN_NO,
+    A.LOAN_AMOUNT_PL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_PL = B.MAX_LIMIT,
+    A.POS_PL = B.POS,
+    A.UNQ_PL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'PL-SELECT';
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_PL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_PL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_PL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_PL = B.MULTIPLIER,
+    A.TENOR_PL = B.TENOR,
+    A.GCRN_NO_PL = B.GCRN_NO,
+    A.LOAN_AMOUNT_PL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_PL = B.MAX_LIMIT,
+    A.POS_PL = B.POS,
+    A.UNQ_PL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'PL-NORMAL' and A.PRODUCT_PL_TYPE is null;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_PLCC_OTL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_PLCC_OTL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_PLCC_OTL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_PLCC_OTL = B.MULTIPLIER,
+    A.TENOR_PLCC_OTL = B.TENOR,
+    A.GCRN_NO_PLCC_OTL = B.GCRN_NO,
+    A.LOAN_AMOUNT_PLCC_OTL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_PLCC_OTL = B.MAX_LIMIT,
+    A.POS_PLCC_OTL = B.POS,
+    A.UNQ_PLCC_OTL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'PLCC-OTL' and A.PRODUCT_PLCC_OTL_TYPE is null;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_PL_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_PL = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_PL = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_PL = B.MULTIPLIER,
+    A.TENOR_PL = B.TENOR,
+    A.GCRN_NO_PL = B.GCRN_NO,
+    A.LOAN_AMOUNT_PL = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_PL = B.MAX_LIMIT,
+    A.POS_PL = B.POS,
+    A.UNQ_PL = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'PL-BT' and A.PRODUCT_PL_TYPE is null;
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_PL_TOPUP_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_PL_TOPUP = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_PL_TOPUP = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_PL_TOPUP = B.MULTIPLIER,
+    A.TENOR_PL_TOPUP = B.TENOR,
+    A.GCRN_NO_PL_TOPUP = B.GCRN_NO,
+    A.LOAN_AMOUNT_PL_TOPUP = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_PL_TOPUP = B.MAX_LIMIT,
+    A.POS_PL_TOPUP = B.POS,
+    A.UNQ_PL_TOPUP = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'PL-TOPUP';
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_CC_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_CC = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_CC = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_CC = B.MULTIPLIER,
+    A.TENOR_CC = B.TENOR,
+    A.GCRN_NO_CC = B.GCRN_NO,
+    A.LOAN_AMOUNT_CC = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_CC = B.MAX_LIMIT,
+    A.POS_CC = B.POS,
+    A.UNQ_CC = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'CC';
+  commit work;
+  update MCCM.UACI_PQDIM as A
+    set A.PRODUCT_LAP_TYPE = B.PRODUCT,
+    A.EXPIRY_DATE_LAP = B.EXPIRY_DATE,
+    A.ASSESSED_INCOME_EMI_CR_LIMIT_LAP = B.ASSESSED_INCOME_EMI_CR_LIMIT,
+    A.MULTIPLIER_LAP = B.MULTIPLIER,
+    A.TENOR_LAP = B.TENOR,
+    A.GCRN_NO_LAP = B.GCRN_NO,
+    A.LOAN_AMOUNT_LAP = B.LOAN_AMOUNT,
+    A.MAX_LIMIT_LAP = B.MAX_LIMIT,
+    A.POS_LAP = B.POS,
+    A.UNQ_LAP = B.UNQ from
+    MCCM.PRE_QUALIFIED_OFFERS as B
+    where A.UCIC_CODE = B.UCIC_CODE
+    and PRODUCT = 'LAP';
+  commit work
+end

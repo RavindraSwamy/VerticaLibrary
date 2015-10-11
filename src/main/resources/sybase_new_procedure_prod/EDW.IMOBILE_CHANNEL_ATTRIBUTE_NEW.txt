@@ -1,0 +1,289 @@
+create procedure EDW.IMOBILE_CHANNEL_ATTRIBUTE_NEW()
+begin
+  select ALIAS,
+    deviceactivationdate,
+    enrollmentdate,
+    DEVICESOFTWARECLASS,
+    DEVICESTATUS,
+    lastaccessdate,
+    MOBILENUMBER
+    into #IMOBILE_BASE
+    --WHERE DEVICESTATUS in( 0,4,16,20 )
+    from(select ALIAS,
+        deviceactivationdate,
+        enrollmentdate,
+        DEVICESOFTWARECLASS,
+        DEVICESTATUS,
+        lastaccessdate,
+        MOBILENUMBER,
+        row_number() over(partition by mobilenumber order by lastaccessdate desc) as rownum
+        from srcstage.IMOBILE_WSC_USER) as B
+    where B.ROWNUM = 1;
+  commit work;
+  select(case when LOCATE(ALIAS,'_') = 0 then TRIM(ALIAS)
+    else SUBSTR(ALIAS,LOCATE(ALIAS,'_')+1,LOCATE(SUBSTR(ALIAS,LOCATE(ALIAS,'_')+1),'_')-1)
+    end) as USER_ID,
+    deviceactivationdate,
+    enrollmentdate,
+    DEVICESOFTWARECLASS,
+    DEVICESTATUS,
+    lastaccessdate,
+    RIGHT(MOBILENUMBER,12) as MOBILENUMBER
+    into #base1
+    from #IMOBILE_BASE;
+  commit work;
+  select SUB.*,
+    cast(null as date) as MIN_ENROLLMENT_DATE,
+    cast(null as date) as MAX_ENROLLMENT_DATE,
+    cast(null as integer) as DEVICESTATUS,
+    cast(null as varchar(50)) as MOBILENUMBER,
+    cast(null as varchar(50)) as DEVICESOFTWARECLASS,
+    cast(null as date) as deviceactivationdate,
+    cast(null as date) as FIRST_LOGIN_DATE,
+    cast(null as date) as LAST_LOGIN_DATE,
+    cast(null as date) as FINAL_deviceactivationdate,
+    cast(null as integer) as NO_OF_LOGINS
+    into #base2
+    from(select distinct USER_ID from #base1 union
+      select distinct USERID from EDW.MAIN_IMOBILEWIN8) as SUB;
+  commit work;
+  -----------------------------------------------
+  select USER_ID,
+    MIN(enrollmentdate) as MIN_enrollmentdate,
+    MAX(enrollmentdate) as MAX_enrollmentdate
+    into #MIN_MAX_ENTOLLMENT_DATE from #BASE1
+    group by USER_ID;
+  commit work;
+  --------------------------------------------------
+  update #base2 as A
+    set MIN_ENROLLMENT_DATE = B.MIN_enrollmentdate,
+    MAX_ENROLLMENT_DATE = B.MAX_enrollmentdate from
+    #MIN_MAX_ENTOLLMENT_DATE as B
+    where A.USER_ID = B.USER_ID;
+  commit work;
+  update #base2 as A
+    set DEVICESTATUS = B.DEVICESTATUS,
+    MOBILENUMBER = B.MOBILENUMBER,
+    DEVICESOFTWARECLASS = B.DEVICESOFTWARECLASS from
+    #base1 as B
+    where A.USER_ID = B.USER_ID
+    and A.MAX_ENROLLMENT_DATE = B.enrollmentdate;
+  commit work;
+  update #base2 as A
+    set deviceactivationdate = B.deviceactivationdate from
+    #base1 as B
+    where A.USER_ID = B.USER_ID
+    and A.MIN_ENROLLMENT_DATE = B.enrollmentdate;
+  commit work;
+  ---------------------------------------------------------------------no of logins----------------------------------------------------------------------
+  select dateformat(logdate,'yyyy-mm-dd') as txndate,useralias,(isoamount/100) as amt,txserviceid,txstatus,servicestatus --, Txserviceid
+    into #Imob_loggers
+    from srcstage.imobile_transaction_session
+    where txstatus = 3 and servicestatus = 2
+    ------------------and (logdate between '2013-04-01 00:00:00' and '2015-06-07 23:59:59')
+    order by useralias asc;
+  commit work;
+  create table #fin_flag(
+    txserviceid varchar(50) null,
+    description_flag varchar(50) null,
+    financial_flag varchar(50) null,
+    );
+  commit work;
+  load into table EDW.#fin_flag( txserviceid ',',description_flag ',',financial_flag '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MCCM/ACCOUNT/YET_TO_LOAD_FILES/iMobile_Mapping_CSAM(_Android_IoS_etc).csv' skip 1 preview on quotes on escapes off;
+  commit work;
+  --select top 10 * from #imob_loggers;
+  ---select top 100 * from  #fin_flag
+  update #fin_flag
+    set financial_flag = replace(financial_flag,'\x0D','');
+  commit work;
+  ---select distinct financial_flag from #fin_flag
+  ----------------------------------------------------------------------------------------------------
+  select distinct a.*,b.description_flag,b.financial_flag
+    into #logger_txn_details_csam
+    from #Imob_loggers as a
+      join #fin_flag as b
+      on trim(a.txserviceid) = trim(b.txserviceid);
+  commit work;
+  create table #txn_master(
+    TRANSID varchar(20) null,
+    Description varchar(100) null,
+    Fin_nofin varchar(20) null,);
+  load into table EDW.#txn_master( TRANSID ',',Description ',',Fin_nofin '\x0A' ) using file
+    '/sybase_load/LOAD_MANAGEMENT/MCCM/ACCOUNT/YET_TO_LOAD_FILES/iMobile_Mapping_Snapworks(_windows).csv' skip 1 preview on quotes off escapes off;
+  commit work;
+  update #txn_master
+    set Fin_nofin = replace(Fin_nofin,'\x0D',''); --38
+  commit work;
+  select userid,txndate,amount,errorcode,description,fin_nofin,A.TRANSID -----------------
+    into #txn_mis2
+    from EDW.MAIN_IMOBILEWIN8 as a,#txn_master as b
+    where a.transid = b.transid and txndate <= GETDATE();
+  commit work;
+  update #txn_mis2
+    set Fin_nofin = replace(Fin_nofin,'\x0D','');
+  commit work;
+  ---select distinct fin_nofin ,errorcode from #txn_mis2
+  ----select * from #txn_mis2 where (errorcode='0' AND fin_nofin='Financial') or (fin_nofin ='')
+  select *
+    into #logger_txn_details
+    from(select distinct useralias as USER_ID,txndate,amt,financial_flag,description_flag,Txserviceid,cast('CSAM' as varchar) as flag from #logger_txn_details_csam union all
+      select userid as useraliad,txndate,amount as amt,fin_nofin as financial_flag,description as description_flag,TRANSID,cast('WINDOWS' as varchar) as flag from #txn_mis2
+        where((errorcode = '0' and fin_nofin = 'Financial') or(fin_nofin = ''))) as a;
+  commit work;
+  select USER_ID,
+    COUNT() as cnt,
+    MIN(TXNDATE) as FIRST_LOGIN_DATE,
+    MAX(TXNDATE) as LAST_LOGIN_DATE
+    into #logger_txn_details1
+    from #logger_txn_details
+    group by USER_ID;
+  commit work;
+  update #base2 as A
+    set NO_OF_LOGINS = B.CNT,
+    FIRST_LOGIN_DATE = B.FIRST_LOGIN_DATE,
+    LAST_LOGIN_DATE = B.LAST_LOGIN_DATE from
+    #logger_txn_details1 as B
+    where A.USER_ID = B.USER_ID;
+  commit work;
+  update #base2 as A
+    set FINAL_deviceactivationdate = (case when deviceactivationdate < FIRST_LOGIN_DATE then deviceactivationdate else FIRST_LOGIN_DATE end);
+  commit work;
+  update #base2 as A
+    set FINAL_deviceactivationdate = deviceactivationdate
+    where FIRST_LOGIN_DATE is null;
+  commit work;
+  update #base2 as A
+    set FINAL_deviceactivationdate = FIRST_LOGIN_DATE
+    where deviceactivationdate is null;
+  commit work;
+  select A.*,
+    TRIM(SOURCE_ACCOUNT_NBR) as SOURCE_ACCOUNT_NBR,
+    B.SOURCE_SYSTEM_CODE ----------NEED TO TAKE APPROVAL FROM ANU
+    into #EVER_LOGIN_BASE_1
+    from #base2 as A
+      ,EDW.T09315_CAR_ACCOUNTS as B
+    where A.USER_ID = TRIM(B.OLD_NET_USER_ID);
+  commit work;
+  select A.*,
+    TRIM(SOURCE_ACCOUNT_NBR) as SOURCE_ACCOUNT_NBR,
+    B.SOURCE_SYSTEM_CODE ---------ANU AND MANSISH HAS GIVEN CONFIRMATION TO USE THIS COLUMNS
+    into #EVER_LOGIN_BASE_2
+    from #base2 as A
+      ,EDW.T09315_CAR_ACCOUNTS as B
+    where A.USER_ID = TRIM(B.USER_ID);
+  commit work;
+  select SUB.*,
+    cast(null as varchar(50)) as UCIC
+    into #base3
+    from(select * from #EVER_LOGIN_BASE_1 union all
+      select * from #EVER_LOGIN_BASE_2) as SUB;
+  commit work;
+  create hg index LKJ on EDW.#base3(SOURCE_ACCOUNT_NBR);
+  commit work;
+  ---------SELECT TOP 10 * FROM #ACTIVE_BASE
+  -----------16673759 record(s) updated
+  commit work;
+  update #base3 as A
+    set UCIC = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = '30'
+    and B.SOURCE_SYSTEM_CODE = 30
+    and(ACC_HOLDER is null or ACC_HOLDER = 'Main Holder');
+  commit work;
+  update #base3 as A
+    set UCIC = B.UCIC_VALUE from
+    P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and A.SOURCE_SYSTEM_CODE = '20'
+    and B.SOURCE_SYSTEM_CODE = 20; -------AS DISCUSSED WITH  MANISH 20 ALSO NEED TO BE TAKEN
+  commit work;
+  select *,
+    cast(null as varchar(50)) as DEVICE_SOFTWARE,
+    cast(null as varchar(10)) as REFEREENAME,
+    cast(null as varchar(10)) as REFEREEMOBILENO,
+    cast(null as varchar(10)) as FT_DONE,
+    cast(null as varchar(10)) as BP_DONE,
+    cast(null as varchar(10)) as PMR_DONE,
+    cast(null as varchar(10)) as RD_DONE,
+    cast(null as varchar(10)) as FD_DONE,
+    cast(null as varchar(10)) as CHEQUE_BOOK_REQUEST,
+    cast(null as bigint) as REFEREE_ID,
+    cast(null as bigint) as REFERRAL_ID,
+    cast(null as date) as LOG_DATE,
+    GETDATE() as AS_OF_DATE,
+    DATEADD(mm,1,GETDATE()) as EXPIRY_REVIEW_DATE,
+    cast(null as integer) as SCORE
+    into #base4
+    from #base3;
+  commit work;
+  select B.REFEREENAME,B.REFEREEMOBILENO,RIGHT(REFEREEMOBILENO,12) as MOBILENUMBER,LOGDATE,REFEREE_ID,REFERRAL_ID into #REFREE_NAME from SRCSTAGE.IMOBILE_REFEREEDATA as B;
+  commit work;
+  update #base4 as A
+    set A.REFEREENAME = B.REFEREENAME,
+    A.REFEREEMOBILENO = B.REFEREEMOBILENO,
+    A.REFEREE_ID = B.REFEREE_ID,
+    A.REFERRAL_ID = B.REFERRAL_ID,
+    A.LOG_DATE = B.LOGDATE from
+    #REFREE_NAME as B
+    where A.MOBILENUMBER = B.MOBILENUMBER;
+  commit work;
+  update #base4 as A
+    set DEVICE_SOFTWARE = 'WINDOWS' from ----------NEED TO TAKE CONFIRMATION ON THIS  PART
+    #logger_txn_details as B
+    where A.USER_ID = B.USER_ID
+    and A.LAST_LOGIN_DATE = B.txndate
+    and B.flag = 'WINDOWS';
+  commit work;
+  update #base4 as A
+    set A.DEVICE_SOFTWARE = (case when SUBSTRING(DEVICESOFTWARECLASS,1,1) = 'A' then 'ANDRIOD'
+    when SUBSTRING(DEVICESOFTWARECLASS,1,1) = 'W' then 'WINDOWS'
+    when SUBSTRING(DEVICESOFTWARECLASS,1,1) = 'I' then 'IPHONE'
+    when SUBSTRING(DEVICESOFTWARECLASS,1,1) = 'B' then 'BLACKBERRY'
+    when DEVICESOFTWARECLASS like '%BLBO%' then 'BLACKBERRY' else 'J2ME' end)
+    where DEVICE_SOFTWARE is null;
+  commit work;
+  commit work;
+  update #base4 as A
+    set FT_DONE = 'Y' from
+    #logger_txn_details as B
+    where A.USER_ID = B.USER_ID
+    and Txserviceid in( 'icici.device.bank.fundstransfer','icici.device.bank.ownaccountfundstranfer','qp.device.bank.masfundtransfer','icici.device.bank.fundstransfer.outsidebank',
+    'ICFTR04','ICTPT04','ICMMID02','ICIMPFT04','ICIMPAC04' ) ;
+  commit work;
+  update #base4 as A
+    set BP_DONE = 'Y' from
+    #logger_txn_details as B
+    where A.USER_ID = B.USER_ID
+    and Txserviceid in( 'icici.device.bill.presentmentbillpay','icici.device.bill.billpay','ICBLPAY04','ICBPB04' ) ;
+  commit work;
+  update #base4 as A
+    set PMR_DONE = 'Y' from
+    #logger_txn_details as B
+    where A.USER_ID = B.USER_ID
+    and Txserviceid in( 'icici.device.iservices.mobilerecharge','ICPBPR04' ) ;
+  commit work;
+  update #base4 as A
+    set RD_DONE = 'Y' from
+    #logger_txn_details as B
+    where A.USER_ID = B.USER_ID
+    and Txserviceid in( 'icici.device.bank.applyforrecurringdeposit','ICORD03' ) ;
+  commit work;
+  update #base4 as A
+    set FD_DONE = 'Y' from
+    #logger_txn_details as B
+    where A.USER_ID = B.USER_ID
+    and Txserviceid in( 'icici.device.bank.applyforspecialFD','ICOFD03' ) ;
+  commit work;
+  update #base4 as A
+    set CHEQUE_BOOK_REQUEST = 'Y' from
+    #logger_txn_details as B
+    where A.USER_ID = B.USER_ID
+    and Txserviceid in( 'icici.device.bank.chequebookrequest','ICCBR02' ) ;
+  commit work;
+  truncate table MCCM.IMOBILE_CHANNEL_ATTRIBUTE;
+  insert into MCCM.IMOBILE_CHANNEL_ATTRIBUTE(
+    select * from #BASE4);
+  commit work
+end

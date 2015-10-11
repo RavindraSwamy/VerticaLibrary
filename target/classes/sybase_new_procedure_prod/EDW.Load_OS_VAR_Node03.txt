@@ -1,0 +1,6 @@
+create procedure EDW.Load_OS_VAR_Node03()
+begin
+  truncate table EDW.Load_OS_VAR_Node03;
+  load into table EDW.Load_OS_VAR_Node03( CpuUtilPer '~',MemoryUtilPer '~',PageUtilPer '~',IOWaitUtilPer '\x0A' ) using file
+    '/opt/sybase/all_util.out' escapes off quotes off preview on
+end

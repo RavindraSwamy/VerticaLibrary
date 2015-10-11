@@ -1,0 +1,12 @@
+create procedure edw.P2C.ICICI_CUST_CARD_MASHUP()
+begin
+  declare MONTH_DATE varchar(10);
+  truncate table P2C.ICICI_CUST_CARD_MASHUP;
+  select UPPER(REPLACE(convert(char(20),date(dateadd(dd,-1,convert(datetime,(convert(char(6),getdate(),112)+'01'),112))),106),' ','')) into MONTH_DATE;
+  --SELECT MONTH_DATE;
+  insert into P2C.ICICI_CUST_CARD_MASHUP
+    select NUMBERX,
+      BALANCE
+      from EDW.D0123_FINBAL_DUMP
+      where MONTH = MONTH_DATE
+end

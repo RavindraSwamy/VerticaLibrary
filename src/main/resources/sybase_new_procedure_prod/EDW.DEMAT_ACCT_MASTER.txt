@@ -1,0 +1,176 @@
+create procedure EDW.DEMAT_ACCT_MASTER()
+begin
+  truncate table MCCM.DEMAT_ACCT_MASTER_FULL_DATA;
+  truncate table mccm.DEMAT_ACCT_MASTER;
+  commit work;
+  insert into MCCM.DEMAT_ACCT_MASTER_FULL_DATA
+    select distinct UCIC_VALUE as UCIC_CODE,
+      P2C.SOURCE_PARTY_ID,
+      P2C.SOURCE_SYSTEM_CODE,
+      T0300_ACCOUNT.SOURCE_ACCOUNT_NBR,
+      P2C.ACCOUNT_OPEN_DATE,
+      P2C.ACCOUNT_CLOSE_DATE,
+      cast(null as varchar(25)) as SAVINGS_ACCOUNT_NO,
+      --CAST(NULL AS VARCHAR (80) ) AS BANK_NAME,/* NOT APPLICABLE */
+      cast(null as varchar(10)) as DORMANCY_STATUS,
+      DATE(GETDATE()) as ASOF_DATE,
+      cast(null as decimal(20,4)) as VALUE_AT_MARKET_PRICE,
+      cast(null as date) as DAILY_RATE_DATE,
+      P2C.ACCOUNT_NBR
+      --INTO MCCM.DEMAT_ACCT_MASTER_FULL_DATA
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as P2C,EDW.T0300_ACCOUNT as T0300_ACCOUNT
+      where p2c.SOURCE_ACCOUNT_NBR = T0300_ACCOUNT.SOURCE_ACCOUNT_NBR
+      and P2C.SOURCE_SYSTEM_CODE = 80;
+  commit work;
+  --CREATE HG INDEX HG_IDX_DEMAT_ACCT_MASTER ON MCCM.DEMAT_ACCT_MASTER_FULL_DATA (ACCOUNT_NBR);
+  --CREATE HG INDEX HG_IDX_UCIC_CODE ON MCCM.DEMAT_ACCT_MASTER_FULL_DATA (UCIC_CODE);
+  --COMMIT;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  commit work;
+  --select * from MCCM.DEMAT_ACCT_MASTER_FULL_DATA where source_account_nbr='IN30290240816526' and  date_created='2015-08-12'
+  --#sum_data where source_account_nbr='IN30290240816526' and  date_created='2015-08-12'
+  update MCCM.DEMAT_ACCT_MASTER_FULL_DATA as A
+    set A.VALUE_AT_MARKET_PRICE = B.VALUE_AT_MARKET_PRICE,
+    A.DAILY_RATE_DATE = B.DAILY_RATE_DATE from
+    MCCM.DEMAT_SUM_DATA as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR and date_created = (select max(date_created) from MCCM.DEMAT_SUM_DATA);
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  select A.ACID,
+    B.FORACID,
+    A.ACCT_STATUS
+    into #DISB_STATUS_DATA from srcstage.SBCA_mast_table as A,srcstage.GENERAL_ACCT_MAST_TABLE as B
+    where A.ACID = B.ACID;
+  commit work;
+  select SOURCE_ACCOUNT_NBR,UCIC_VALUE into #DEMAT_DATA
+    from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL
+    where SOURCE_SYSTEM_CODE = 30 and PRODUCT_TYPE = 'SA' and Substr(source_account_nbr,5,2) in( '01','02' ) 
+    group by UCIC_VALUE,SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.DEMAT_ACCT_MASTER_FULL_DATA as A
+    set A.SAVINGS_ACCOUNT_NO = D.SOURCE_ACCOUNT_NBR from
+    #DEMAT_DATA as D
+    where A.UCIC_CODE = D.UCIC_VALUE;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  select A.ACCT_STATUS,A.FORACID into #DORMANCY_STATUS
+    from #DISB_STATUS_DATA as A,#DEMAT_DATA as B where A.FORACID = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.DEMAT_ACCT_MASTER_FULL_DATA as A
+    set A.DORMANCY_STATUS = B.ACCT_STATUS from
+    #DORMANCY_STATUS as B
+    where A.SAVINGS_ACCOUNT_NO = B.FORACID;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  insert into mccm.DEMAT_ACCT_MASTER
+    ( UCIC_CODE,
+    SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE,
+    SOURCE_ACCOUNT_NBR,
+    ACCOUNT_OPEN_DATE,
+    ACCOUNT_CLOSE_DATE,
+    SAVINGS_ACCOUNT_NO,
+    DORMANCY_STATUS,
+    ASOF_DATE,
+    VALUE_AT_MARKET_PRICE,
+    DAILY_RATE_DATE ) 
+    select distinct UCIC_CODE,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      SOURCE_ACCOUNT_NBR,
+      ACCOUNT_OPEN_DATE,
+      ACCOUNT_CLOSE_DATE,
+      SAVINGS_ACCOUNT_NO,
+      DORMANCY_STATUS,
+      ASOF_DATE,
+      VALUE_AT_MARKET_PRICE,
+      DAILY_RATE_DATE from MCCM.DEMAT_ACCT_MASTER_FULL_DATA;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  ----------------------------------------------------------------------------DEMAT EBOR DATA---------------------------------------------
+  truncate table MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM;
+  commit work;
+  insert into MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM
+    select distinct UCIC_VALUE as UCIC_CODE,
+      P2C.SOURCE_PARTY_ID,
+      P2C.SOURCE_SYSTEM_CODE,
+      T0300_ACCOUNT.SOURCE_ACCOUNT_NBR,
+      P2C.ACCOUNT_OPEN_DATE,
+      P2C.ACCOUNT_CLOSE_DATE,
+      cast(null as varchar(25)) as SAVINGS_ACCOUNT_NO,
+      --CAST(NULL AS VARCHAR (80) ) AS BANK_NAME,/* NOT APPLICABLE */
+      cast(null as varchar(10)) as DORMANCY_STATUS,
+      DATE(GETDATE()) as ASOF_DATE,
+      cast(null as decimal(20,4)) as VALUE_AT_MARKET_PRICE,
+      cast(null as date) as DAILY_RATE_DATE,
+      P2C.ACCOUNT_NBR
+      --INTO MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as P2C,EDW.T0300_ACCOUNT_external_system as T0300_ACCOUNT
+      where p2c.SOURCE_ACCOUNT_NBR = T0300_ACCOUNT.SOURCE_ACCOUNT_NBR
+      and P2C.SOURCE_SYSTEM_CODE = 301;
+  --CREATE HG INDEX HG_IDX_DEMAT_ACCT_MASTER ON MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM (ACCOUNT_NBR);
+  --CREATE HG INDEX HG_IDX_UCIC_CODE ON MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM (UCIC_CODE);
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  update MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM as A
+    set A.VALUE_AT_MARKET_PRICE = B.VALUE_AT_MARKET_PRICE,
+    A.DAILY_RATE_DATE = B.DAILY_RATE_DATE from
+    MCCM.DEMAT_SUM_DATA as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR and date_created = (select max(date_created) from MCCM.DEMAT_SUM_DATA);
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  update MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM as A
+    set A.SAVINGS_ACCOUNT_NO = D.SOURCE_ACCOUNT_NBR from
+    #DEMAT_DATA as D
+    where A.UCIC_CODE = D.UCIC_VALUE;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if;
+  update MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM as A
+    set A.DORMANCY_STATUS = B.ACCT_STATUS from
+    #DORMANCY_STATUS as B
+    where A.SAVINGS_ACCOUNT_NO = B.FORACID;
+  commit work;
+  insert into mccm.DEMAT_ACCT_MASTER
+    ( UCIC_CODE,
+    SOURCE_PARTY_ID,
+    SOURCE_SYSTEM_CODE,
+    SOURCE_ACCOUNT_NBR,
+    ACCOUNT_OPEN_DATE,
+    ACCOUNT_CLOSE_DATE,
+    SAVINGS_ACCOUNT_NO,
+    DORMANCY_STATUS,
+    ASOF_DATE,
+    VALUE_AT_MARKET_PRICE,
+    DAILY_RATE_DATE ) 
+    select distinct UCIC_CODE,
+      SOURCE_PARTY_ID,
+      SOURCE_SYSTEM_CODE,
+      SOURCE_ACCOUNT_NBR,
+      ACCOUNT_OPEN_DATE,
+      ACCOUNT_CLOSE_DATE,
+      SAVINGS_ACCOUNT_NO,
+      DORMANCY_STATUS,
+      ASOF_DATE,
+      VALUE_AT_MARKET_PRICE,
+      DAILY_RATE_DATE from MCCM.DEMAT_ACCT_MASTER_FULL_DATA_EXTRENAL_SYSTEM;
+  commit work;
+  if sqlstate <> '00000' then
+    return
+  end if
+end

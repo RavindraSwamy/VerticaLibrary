@@ -1,0 +1,74 @@
+create procedure EDW.XID_MAPPING()
+begin
+  truncate table MCCM.XID_MAPPING;
+  commit work;
+  drop index MCCM.XID_MAPPING.UQHGIDX_XID_1;
+  commit work;
+  insert into MCCM.XID_MAPPING
+    select SOURCE_SYSTEM,USER_XID,USER_ID,
+      (case when USER_MOBILE = 'undefined' then cast(null as varchar(15))
+      else cast(USER_MOBILE as varchar(15))
+      end) as USER_MOBILE,ACTIVATION_FLAG,USER_REG_UPDATE,USER_WLDEVICEID,OS_TYPE,DEVICE_TYPE
+      from(select cast('IMOBILE' as varchar(25)) as SOURCE_SYSTEM,USER_XID,cast(USER_ID as varchar(50)) as USER_ID,cast('Y' as varchar(5)) as ACTIVATION_FLAG,USER_REG_CRDATE,USER_REG_UPDATE,USER_MOBILE,USER_WLDEVICEID,
+          cast(null as varchar(50)) as OS_TYPE,cast(null as varchar(80)) as DEVICE_TYPE,
+          RANK() over(partition by USER_ID order by USER_REG_UPDATE desc) as ROWNUM
+          from EDW.MAIN_IMB_USER_ACTIVATION_ACTIVITY where USER_XID is not null and USER_ID is not null and USER_XID <> 'OK') as B
+      where B.ROWNUM = 1;
+  commit work;
+  insert into MCCM.XID_MAPPING
+    select SOURCE_SYSTEM,USERD_XID,USER_ID,ACT_MOBILENO,ACTIVATION_FLAG,ACT_UPDATE,ACT_WLDEVICEID,OS_TYPE,DEVICE_TYPE
+      from(select cast('IMOBILE' as varchar(25)) as SOURCE_SYSTEM,USERD_XID,null as USER_ID,cast('N' as varchar(5)) as ACTIVATION_FLAG,ACT_UPDATE,
+          cast(ACT_MOBILENO as varchar(15)) as ACT_MOBILENO,ACT_WLDEVICEID,
+          cast(null as varchar(50)) as OS_TYPE,cast(null as varchar(80)) as DEVICE_TYPE,
+          RANK() over(partition by USERD_XID order by ACT_UPDATE desc) as ROWNUM from EDW.MAIN_IMB_ACTIVATION_QUEUE where USERD_XID is not null and not USERD_XID = any(select USER_XID
+            from MCCM.XID_MAPPING) and USERD_XID <> 'OK') as B
+      where B.ROWNUM = 1;
+  commit work;
+  update MCCM.XID_MAPPING as A
+    set A.OS_TYPE = B.USERD_OSTYPE,
+    A.DEVICE_TYPE = B.USERD_MODEL from
+    EDW.MAIN_IMB_USER_DEVICES as B
+    where A.USER_WLDEVICEID = B.USERD_WLDEVICEID
+    and A.USER_XID = B.USERD_XID;
+  commit work;
+  select A.*,B.CUSTOMER_ALIAS,CUSTOMER_MOBILE
+    into #POCKET
+    from RECONP.ICICI_DIGIBANK_CUSTDEVICE_DTLS as A
+      ,RECONP.MAIN_ICICI_DIGIBANK_CUSTOMERS as B
+    where A.CUSTOMER_ID = B.CUSTOMER_ID;
+  commit work;
+  insert into MCCM.XID_MAPPING
+    select SOURCE_SYSTEM,USER_XID,USER_ID,
+      (case when USER_MOBILE = 'undefined' then cast(null as varchar(15))
+      else cast(USER_MOBILE as varchar(15))
+      end) as USER_MOBILE,ACTIVATION_FLAG,USER_REG_UPDATE,USER_WLDEVICEID,OS_TYPE,DEVICE_TYPE
+      from(select cast('POCKET' as varchar(25)) as SOURCE_SYSTEM,
+          DEVICE_X_ID as USER_XID,
+          cast(CUSTOMER_ALIAS as varchar(50)) as USER_ID,
+          cast('Y' as varchar(5)) as ACTIVATION_FLAG,
+          null as USER_REG_CRDATE,
+          CREATEDATE as USER_REG_UPDATE,
+          cast(CUSTOMER_MOBILE as varchar(25)) as USER_MOBILE,
+          DEVICE_ID as USER_WLDEVICEID,
+          cast(DEVICE_TYPE as varchar(50)) as OS_TYPE,
+          cast(null as varchar(80)) as DEVICE_TYPE,
+          RANK() over(partition by USER_ID order by USER_REG_UPDATE desc) as ROWNUM
+          from #POCKET where DEVICE_X_ID is not null) as B
+      where B.ROWNUM = 1;
+  commit work;
+  delete from MCCM.XID_MAPPING as A from
+    MCCM.XID_MAPPING as A,(select MAX(ROWID(XID_MAPPING)) as MAX_ROW_ID,user_id,source_system from MCCM.XID_MAPPING group by user_id,source_system) as C
+    where A.user_id = C.user_id
+    and a.source_system = c.source_system
+    and ROWID(A) <> C.MAX_ROW_ID;
+  commit work;
+  delete from MCCM.XID_MAPPING as A from
+    MCCM.XID_MAPPING as A,(select MAX(ROWID(XID_MAPPING)) as MAX_ROW_ID,user_xid from MCCM.XID_MAPPING group by user_xid) as C
+    where A.user_xid = C.user_xid
+    and ROWID(A) <> C.MAX_ROW_ID;
+  commit work;
+  delete from MCCM.XID_MAPPING where USER_XID = 'OK';
+  commit work;
+  create unique hg index UQHGIDX_XID_1 on MCCM.XID_MAPPING(USER_XID);
+  commit work
+end

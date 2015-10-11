@@ -1,0 +1,207 @@
+create procedure EDW.BRANCH_CHANNEL_ATTRIBUTE()
+begin
+  truncate table MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW;
+  commit work;
+  insert into MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW
+    select A.UCIC_VALUE as UCIC_CODE,
+      B.DOMICILE_CHANNEL_ID as BRANCH_SOLID,
+      cast(null as varchar(25)) as BRANCH_LOCATION, /*---CHECK WITH RIK*/
+      A.SOURCE_PARTY_ID,
+      A.SOURCE_SYSTEM_CODE,
+      B.SOURCE_ACCOUNT_NBR,
+      cast(null as varchar(20)) as TRANSACTION_TYPE, /*NEED CLARIFICATION*/
+      (case when PRODUCT_TYPE = 'FD' and A.ACCOUNT_CLOSE_DATE is null then 'Y'
+      else 'N'
+      end) as FD_OPENED,
+      (case when PRODUCT_TYPE = 'RD' and A.ACCOUNT_CLOSE_DATE is null then 'Y'
+      else 'N'
+      end) as RD_OPENED,
+      cast('N' as varchar(10)) as FT_DONE,
+      cast('N' as varchar(10)) as BP_DONE,
+      cast('N' as varchar(10)) as PMR_DONE,
+      cast(0 as integer) as FT_COUNT,
+      DATE(GETDATE()) as ASOF_DATE,
+      DATE(GETDATE())+30 as EXPIRY_REVIEW_DATE,
+      cast(null as integer) as SCORE,
+      1 as SEQ,
+      cast('N' as varchar(5)) as CHEQUE_BOOK_REQUEST,
+      cast('N' as varchar(5)) as DD
+      --INTO MCCM.BRANCH_CHANNEL_ATTRIBUTE_FULL_DATA
+      from P2C.UCIC_LINKAGE_TABLE_UPDATED_FINAL as A,EDW.T0300_ACCOUNT as B
+      where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  select distinct ACCOUNT_NUMBER as SOURCE_ACCOUNT_NBR,
+    UBP_USER_ID as USER_ID,
+    PMT_STAT as PAYMENT_STATUS,
+    INSTANCE_PMT_DT,
+    PAYEE_NAME,
+    PAYEE_TYPE,
+    (case when PAYEE_TYPE = 'N' then
+      'FUND TRANSFER- WITHIN ICICI BANK'
+    when PAYEE_TYPE = 'M' then
+      'SHOPPING MALL'
+    when PAYEE_NAME in( 'RBI-NEFT','RBI-EFT' ) then
+      'FUND TRANSFER- OUTSIDE ICICI BANK'
+    when PAYEE_NAME = 'PREPAID MOBILE RECHARGE' then
+      'PMR'
+    when PAYEE_NAME = 'ICICI BANK CREDIT CARDS' then
+      'ICICI CREDIT CARD PAYMENT'
+    when PAYEE_NAME = 'VISA MONEY TRANSFER' then
+      'VISA MONEY TRANSFER'
+    when PAYEE_NAME = 'MONEY ORDER TRANSFER' then
+      'MONEY ORDER'
+    when PAYEE_NAME = 'RTGS' then
+      'RTGS'
+    when PAYEE_NAME = 'MONEY MANAGER' then
+      'MM FEES'
+    else 'BILL PAY'
+    end) as TRANSACTION_TYPE
+    into #PMT_BASE
+    from EDW.T09531_REAL_TIME_PAYMENT
+    where R_CRE_ID like 'BWY/%'
+    and PMT_STAT = 'S'
+    and INSTANCE_PMT_DT > DATEADD(hh,-48,GETDATE())
+    and LENGTH(ACCOUNT_NUMBER) = 12 ---
+    and SUBSTR(ACCOUNT_NUMBER,5,2) in( '01','02' ) ; ---884711 RECORD(S) AFFECTED
+  commit work;
+  update MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as A
+    set A.BRANCH_LOCATION = B.BRANCH_NAME from
+    NILESHM.BRANCH_MASTER as B
+    where A.BRANCH_SOLID = B.SOL_ID;
+  commit work;
+  update MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as A
+    set A.FT_DONE = (case when COUNT >= 1 then 'Y' else 'N' end) from
+    (select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE as B
+      where TRANSACTION_TYPE like 'FUND TRANSFER%' group by SOURCE_ACCOUNT_NBR) as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as A
+    set A.PMR_DONE = (case when COUNT >= 1 then 'Y' else 'N' end) from
+    (select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE as B
+      where TRANSACTION_TYPE = 'PREPAID MOBILE RECHARGE' group by SOURCE_ACCOUNT_NBR) as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as A
+    set A.BP_DONE = (case when COUNT >= 1 then 'Y' else 'N' end) from
+    (select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE as B
+      where TRANSACTION_TYPE = 'BILL PAY' group by SOURCE_ACCOUNT_NBR) as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  update MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as A
+    set A.FT_COUNT = B.COUNT from
+    (select SOURCE_ACCOUNT_NBR,COUNT(1) as COUNT from #PMT_BASE as B
+      where TRANSACTION_TYPE like 'FUND TRANSFER%' group by SOURCE_ACCOUNT_NBR) as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR;
+  commit work;
+  select accountnumber into #cheque_book_request from EDW.T401_FCRM_INCIDENTS_STATIC where servicerequesttype in( 
+    'BR-QK_BR-QK_Request for Cheque Book - QK','ESC_ESC_Reqst for additional Cheque books','GBO_Quick Kill-GB_Cheque Book Request','GENERAL BANKING OPERATIONS_Q KILL-GBO_CHEQUE BOOK REQUEST-GBO','GENERAL BANKING OPERATIONS_SMS Service-GB_IVR Cheque Book Request-GB','Internet Banking_Deposits-Secured_Request for cheque book-LI','Internet Banking_Deposits-Unsecured_Request for Cheque book','IPB_Cheque Book-IPB_Request for Cheque Book Branch-IPB','LI_CHEQUE BOOK RELATED_Issuance of cheques for RFIG client Banks','LI_CHEQUE BOOK RELATED_Jump Q request for Cheque Book-Branch','LI_CHEQUE BOOK RELATED_Landmark/Pincode updtn and Request for cheque bk','LI_CHEQUE BOOK RELATED_Req for Contns Stnry less< 5000','LI_CHEQUE BOOK RELATED_Req for Contns Stnry more> 5000','LI_CHEQUE BOOK RELATED_Request for additional Cheque books','LI_CHEQUE BOOK RELATED_Request for Cheque book','LI_CHEQUE BOOK RELATED_Request for Cheque book at Branch-STP','LI_CHEQUE BOOK RELATED_Request for Cheque book at commun address-STP','LI_CHEQUE BOOK RELATED_Request for Cheque Book-Branch','LI_CHEQUE BOOK RELATED_Request for cheque book-STP','LI_CHEQUE BOOK RELATED_Request for Multicity cheque book','LI_Deliverable Related LI_Request for additional Cheque books','LI_Deliverable Related LI_Request for Cheque Book-LI','LI_SMS Service-LI_ICBR Cheque Book Request Mobile code','LI_SMS Service-LI_IVR Cheque Book Request','LI-QK_LI-QK_Cheque book request-QK','LI-QK_LI-QK_Multicity cheque book-QK','PB-LI_CHEQUE BOOK RELATED-PB-LI_Jump Q request for Cheque Book-Branch-PB-LI','PB-LI_CHEQUE BOOK RELATED-PB-LI_Landmark/Pincode updtn and Req for Cheque book','PB-LI_CHEQUE BOOK RELATED-PB-LI_Request for additional Cheque book','PB-LI_CHEQUE BOOK RELATED-PB-LI_Request for Cheque book - PB-LI','PB-LI_CHEQUE BOOK RELATED-PB-LI_Request for Multicity cheque book - PB-LI','PB-LI-QK_PB-LI-QK_Cheque book request-PB','SING_Service related-sing_REISSUE FOR CHEQUEBOOK','Unsecured_Deposits_Request for Cheque book - Unsec','USDEP_Checking A/C_Cheque book not received_resend or reissue request','USDEP_Checking A/C_CHK_Cheque book request' ) 
+    and channel like '%branch%' and srtype like '%cheque%';
+  commit work;
+  update MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as A
+    set A.CHEQUE_BOOK_REQUEST = (case when B.ACCOUNTNUMBER is not null then 'Y' else 'N' end) from
+    #cheque_book_request as B
+    where A.SOURCE_ACCOUNT_NBR = B.ACCOUNTNUMBER;
+  commit work;
+  -------------------------------------------------ATTRIBUTE POPULATION---------------------------------------------
+  commit work;
+  select UCIC_CODE,BRANCH_SOLID,BRANCH_LOCATION,SOURCE_PARTY_ID,SOURCE_SYSTEM_CODE,SOURCE_ACCOUNT_NBR,ASOF_DATE,EXPIRY_REVIEW_DATE,SCORE
+    into #BRANCH_CHANNEL_BASE
+    from MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW;
+  commit work;
+  create table #ATT_NAMES(
+    ATTRIB_NAME varchar(200) null,
+    SEQ integer null,);
+  commit work;
+  insert into #ATT_NAMES values( 'TRANSACTION_TYPE',1 ) ;
+  insert into #ATT_NAMES values( 'FD_OPENED',1 ) ;
+  insert into #ATT_NAMES values( 'RD_OPENED',1 ) ;
+  insert into #ATT_NAMES values( 'FT_DONE',1 ) ;
+  insert into #ATT_NAMES values( 'BP_DONE',1 ) ;
+  insert into #ATT_NAMES values( 'PMR_DONE',1 ) ;
+  insert into #ATT_NAMES values( 'FT_COUNT',1 ) ;
+  insert into #ATT_NAMES values( 'CHEQUE_BOOK_REQUEST',1 ) ;
+  insert into #ATT_NAMES values( 'DD',1 ) ;
+  commit work;
+  --alter TABLE MCCM.BRANCH_CHANNEL_ATTRIBUTE_FULL_DATA ADD seq INT ;
+  --COMMIT;
+  --UPDATE MCCM.BRANCH_CHANNEL_ATTRIBUTE_FULL_DATA
+  --SET seq=1;
+  --COMMIT;
+  select A.UCIC_CODE,
+    A.BRANCH_SOLID,
+    A.BRANCH_LOCATION,
+    A.SOURCE_PARTY_ID,
+    A.SOURCE_SYSTEM_CODE,
+    A.SOURCE_ACCOUNT_NBR,
+    B.ATTRIB_NAME,
+    cast(null as decimal(30,4)) as ATTRIB_VALUE_NUMERIC,
+    cast(null as varchar(100)) as ATTRIB_VALUE_CHARACTER,
+    cast(null as date) as ATTRIB_VALUE_DATE,
+    A.ASOF_DATE,A.EXPIRY_REVIEW_DATE,A.SCORE
+    into #BRANCH_CHANNEL_ATTRIBUTE
+    from MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as A,#ATT_NAMES as B
+    where a.SEQ = B.SEQ;
+  commit work;
+  create hg index IDX_SRC_NBR1 on EDW.#BRANCH_CHANNEL_ATTRIBUTE(SOURCE_ACCOUNT_NBR);
+  commit work;
+  --CREATE HG INDEX IDX_SRC_NBR1 ON MCCM.BRANCH_CHANNEL_ATTRIBUTE_FULL_DATA(SOURCE_ACCOUNT_NBR);
+  --COMMIT;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.TRANSACTION_TYPE from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'TRANSACTION_TYPE';
+  commit work;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FD_OPENED from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'FD_OPENED';
+  commit work;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.RD_OPENED from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'RD_OPENED';
+  commit work;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.FT_DONE from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'FT_DONE';
+  commit work;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.BP_DONE from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'BP_DONE';
+  commit work;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.PMR_DONE from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'PMR_DONE';
+  commit work;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_NUMERIC = B.FT_COUNT from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'FT_COUNT';
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.CHEQUE_BOOK_REQUEST from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'CHEQUE_BOOK_REQUEST';
+  commit work;
+  update #BRANCH_CHANNEL_ATTRIBUTE as A
+    set A.ATTRIB_VALUE_CHARACTER = B.DD from
+    MCCM.BRANCH_CHANNEL_ATTRIBUTE_NEW as B
+    where A.SOURCE_ACCOUNT_NBR = B.SOURCE_ACCOUNT_NBR
+    and ATTRIB_NAME = 'DD';
+  commit work;
+  truncate table MCCM.BRANCH_CHANNEL_ATTRIBUTE;
+  commit work;
+  insert into MCCM.BRANCH_CHANNEL_ATTRIBUTE
+    select * from #BRANCH_CHANNEL_ATTRIBUTE;
+  commit work
+end

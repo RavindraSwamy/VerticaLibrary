@@ -1,0 +1,4 @@
+create procedure EDW.SP_vijay_test1()
+begin
+  select 1 from dummy
+end
